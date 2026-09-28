@@ -18,7 +18,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -32,6 +32,7 @@ ts-rs = { version = "12.0.1", features = ["serde-compat", "chrono-impl"] }
 tauri-plugin-single-instance = "2.5.0"
 uuid = { version = "1.26.1", features = ["v4", "serde"] }
 tokio = { version = "1.53.1", features = ["sync"] }
+tauri-plugin-global-shortcut = "2.4.0"
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
@@ -41,3 +42,7 @@ lto = true
 opt-level = 3
 panic = "abort"
 strip = true
+
+[target.'cfg(windows)'.dependencies]
+# Same major as Tauri's own `windows` dependency so HWND types line up.
+windows = { version = "0.61", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging"] }

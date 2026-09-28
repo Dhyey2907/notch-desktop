@@ -1,0 +1,125 @@
+.island-frame {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  pointer-events: none;
+}
+
+.island {
+  position: relative;
+  overflow: hidden;
+  background: var(--background);
+  box-shadow: var(--shadow-island);
+  color: var(--text-primary);
+  pointer-events: auto;
+  /* Hairline so the island reads against dark wallpapers too. */
+  outline: 1px solid var(--border);
+  outline-offset: -1px;
+}
+
+.island-hit {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  border-radius: inherit;
+}
+
+.island-hit:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
+.island-content {
+  position: absolute;
+  inset: 0;
+}
+
+.island-title {
+  font-weight: var(--weight-emphasis);
+  font-size: var(--text-md);
+}
+
+.island-muted {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.island-peek {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 0 24px;
+}
+
+.island-expanded {
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  padding: 18px 20px 14px;
+}
+
+.island-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.island-text-button {
+  border: 1px solid var(--border);
+  background: var(--surface-elevated);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-label);
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+
+.island-text-button:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.island-text-button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.island-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 6px;
+}
+
+.island-empty p {
+  margin: 0;
+  max-width: 320px;
+}
+
+.island-empty-title {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-emphasis);
+}
+
+.island-footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}

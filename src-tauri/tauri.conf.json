@@ -12,9 +12,20 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "Notch Desktop",
-        "width": 800,
-        "height": 600
+        "width": 228,
+        "height": 66,
+        "transparent": true,
+        "decorations": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "shadow": false,
+        "resizable": false,
+        "maximizable": false,
+        "minimizable": false,
+        "focus": false,
+        "visible": false
       }
     ],
     "security": {

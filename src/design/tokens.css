@@ -1,0 +1,51 @@
+/* Design tokens from docs/design.md §4–8. New UI must use these, never ad-hoc values (plan.md Rule 6). */
+:root {
+  /* Surfaces */
+  --background: #090909;
+  --surface: #111111;
+  --surface-elevated: #171717;
+  --surface-hover: #202020;
+
+  /* Text */
+  --text-primary: #f5f5f5;
+  --text-secondary: #a3a3a3;
+  --text-muted: #666666;
+
+  /* Lines */
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.14);
+
+  /* Semantic accents: meaning, never decoration */
+  --success: #4ade80;
+  --warning: #fb923c;
+  --danger: #f87171;
+  --info: #60a5fa;
+  --active: #ffffff;
+
+  /* Radii */
+  --radius-sm: 12px;
+  --radius-card: 16px;
+  --radius-module: 20px;
+  --radius-expanded: 24px;
+  --radius-pill: 999px;
+
+  /* Layered soft shadow. Tighter than design.md's example so it fits inside the island
+     window's margin (see WINDOW_MARGIN in src/shell/geometry.ts); a larger blur would be
+     clipped by the window edge, and a larger window would block clicks on the desktop. */
+  --shadow-island: 0 8px 18px rgba(0, 0, 0, 0.24), 0 2px 6px rgba(0, 0, 0, 0.18);
+
+  /* Typography */
+  --font-sans: Inter, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --weight-body: 400;
+  --weight-label: 500;
+  --weight-emphasis: 600;
+  --weight-headline: 700;
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-md: 13px;
+  --text-lg: 15px;
+  --text-xl: 18px;
+
+  /* Focus */
+  --focus-ring: 0 0 0 2px var(--background), 0 0 0 4px rgba(255, 255, 255, 0.6);
+}

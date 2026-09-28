@@ -2,3 +2,4 @@
 //! commands only validate input, call into state, and map results.
 
 pub mod app;
+pub mod shell;

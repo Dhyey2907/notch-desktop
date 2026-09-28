@@ -3,6 +3,7 @@ mod db;
 mod error;
 mod events;
 mod logging;
+mod shell;
 mod state;
 
 use tauri::Manager;
@@ -10,19 +11,25 @@ use tauri::Manager;
 use crate::{
     db::Db,
     events::{AppEvent, EventBus},
+    shell::ShellState,
     state::{AppPaths, AppState},
 };
+
+/// Logical size of the collapsed island window; mirrors `windowSizeFor("collapsed")`
+/// in `src/shell/geometry.ts` so the first frame is already the right size.
+const INITIAL_WINDOW_SIZE: (f64, f64) = (228.0, 66.0);
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         // Must be registered first: a second launch focuses the running instance instead.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = window.show();
+            if let Some(window) = app.get_webview_window(shell::MAIN_WINDOW) {
+                let _ = shell::show_island(&window);
             }
         }))
         .plugin(tauri_plugin_opener::init())
+        .plugin(shell::shortcut_plugin())
         .setup(|app| {
             let handle = app.handle();
             let paths = AppPaths {
@@ -41,11 +48,14 @@ pub fn run() {
             bus.emit("app", AppEvent::AppReady { version });
 
             app.manage(AppState { db, bus, paths });
+            app.manage(ShellState::new(INITIAL_WINDOW_SIZE));
+            shell::init(handle)?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             commands::app::app_info,
             commands::app::diagnostics_ping,
+            commands::shell::shell_set_window_size,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Notch Desktop");

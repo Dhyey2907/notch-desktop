@@ -35,12 +35,17 @@ Start the app with WebView2 remote debugging on, then evaluate JavaScript in the
 ```bash
 WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9222 pnpm tauri dev
 node scripts/cdp-eval.mjs "document.title"
+node scripts/cdp-screenshot.mjs page.png                        # webview render only
+powershell -File scripts/window-rect.ps1                        # window bounds, topmost/tool-window flags
+powershell -File scripts/screen-capture.ps1 screen.png          # real screen pixels (true transparency)
 ```
 
 ## Layout
 
 ```
-src-tauri/src/   commands/ db/ events/ error.rs logging.rs state.rs
+src-tauri/src/   commands/ db/ events/ shell/ error.rs logging.rs state.rs
 src/core/        ipc.ts (typed commands), eventBus.ts, generated/ (ts-rs types)
+src/design/      tokens.css (design.md tokens)
+src/shell/       Island (collapsed/peek/expanded), geometry, islandStore
 docs/            architecture, design, and plan documents
 ```

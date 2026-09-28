@@ -2,6 +2,8 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 
 import App from "./App";
+import "./design/tokens.css";
+import "./index.css";
 import { connectEventBus } from "./core/eventBus";
 
 // Start listening before the first render so no backend event is missed.

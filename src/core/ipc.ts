@@ -17,4 +17,6 @@ export function isIpcError(value: unknown): value is IpcError {
 export const ipc = {
   appInfo: () => invoke<AppInfo>("app_info"),
   diagnosticsPing: (nonce: string) => invoke<void>("diagnostics_ping", { nonce }),
+  /** Resize the island window (logical px); the backend keeps it pinned top-center. */
+  setWindowSize: (width: number, height: number) => invoke<void>("shell_set_window_size", { width, height }),
 };

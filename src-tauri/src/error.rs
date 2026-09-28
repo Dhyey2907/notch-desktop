@@ -13,6 +13,8 @@ pub enum AppError {
     Tauri(#[from] tauri::Error),
     #[error("migration error: {0}")]
     Migration(String),
+    #[error("invalid input: {0}")]
+    InvalidInput(String),
 }
 
 impl AppError {
@@ -22,6 +24,7 @@ impl AppError {
             AppError::Io(_) => "io",
             AppError::Tauri(_) => "tauri",
             AppError::Migration(_) => "migration",
+            AppError::InvalidInput(_) => "invalid_input",
         }
     }
 }

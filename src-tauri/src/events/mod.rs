@@ -23,6 +23,8 @@ pub enum AppEvent {
     AppReady { version: String },
     /// Reply to `diagnostics_ping`; proves the command → event round trip.
     DiagnosticsPong { nonce: String },
+    /// The global shortcut asked the island to toggle between collapsed and expanded.
+    ShellToggleRequested,
 }
 
 impl AppEvent {
@@ -31,6 +33,7 @@ impl AppEvent {
         match self {
             AppEvent::AppReady { .. } => "AppReady",
             AppEvent::DiagnosticsPong { .. } => "DiagnosticsPong",
+            AppEvent::ShellToggleRequested => "ShellToggleRequested",
         }
     }
 }
