@@ -21,11 +21,15 @@ export const ISLAND_SIZE: Record<IslandMode, Size> = {
  */
 export const WINDOW_MARGIN = { x: 22, top: 6, bottom: 30 } as const;
 
+/** Module dock shown beneath the expanded island (design.md §17). */
+export const DOCK = { height: 40, gap: 8 } as const;
+
 export function windowSizeFor(mode: IslandMode): Size {
   const island = ISLAND_SIZE[mode];
+  const dock = mode === "expanded" ? DOCK.gap + DOCK.height : 0;
   return {
     width: island.width + WINDOW_MARGIN.x * 2,
-    height: island.height + WINDOW_MARGIN.top + WINDOW_MARGIN.bottom,
+    height: island.height + dock + WINDOW_MARGIN.top + WINDOW_MARGIN.bottom,
   };
 }
 

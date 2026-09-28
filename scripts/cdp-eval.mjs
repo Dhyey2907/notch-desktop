@@ -2,12 +2,16 @@
 // DevTools protocol. Start the app with
 //   WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9222 pnpm tauri dev
 // then: node scripts/cdp-eval.mjs "<expression>"   (async expressions are awaited)
+//   or: node scripts/cdp-eval.mjs path/to/snippet.js
+import { existsSync, readFileSync } from "node:fs";
+
 const port = process.env.CDP_PORT ?? "9222";
-const expression = process.argv[2];
-if (!expression) {
-  console.error('usage: node scripts/cdp-eval.mjs "<expression>"');
+const arg = process.argv[2];
+if (!arg) {
+  console.error('usage: node scripts/cdp-eval.mjs "<expression>" | <file.js>');
   process.exit(2);
 }
+const expression = arg.endsWith(".js") && existsSync(arg) ? readFileSync(arg, "utf8") : arg;
 
 const targets = await (await fetch(`http://127.0.0.1:${port}/json`)).json();
 const page = targets.find((t) => t.type === "page" && t.url.includes("localhost:1420"));

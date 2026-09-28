@@ -22,6 +22,13 @@
   --info: #60a5fa;
   --active: #ffffff;
 
+  /* Data: stepped blues for activity intensity (architecture.md §7); quiet days stay gray */
+  --heat-0: #1f1f1f;
+  --heat-1: #1e3a5f;
+  --heat-2: #1d5b9e;
+  --heat-3: #2f7fd8;
+  --heat-4: #6cb2ff;
+
   /* Radii */
   --radius-sm: 12px;
   --radius-card: 16px;
@@ -45,6 +52,14 @@
   --text-md: 13px;
   --text-lg: 15px;
   --text-xl: 18px;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
 
   /* Focus */
   --focus-ring: 0 0 0 2px var(--background), 0 0 0 4px rgba(255, 255, 255, 0.6);

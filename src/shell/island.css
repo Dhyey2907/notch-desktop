@@ -2,13 +2,15 @@
   position: fixed;
   inset: 0;
   display: flex;
-  justify-content: center;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px; /* DOCK.gap in geometry.ts */
   pointer-events: none;
 }
 
 .island {
   position: relative;
+  flex: none;
   overflow: hidden;
   background: var(--background);
   box-shadow: var(--shadow-island);
@@ -39,87 +41,83 @@
   inset: 0;
 }
 
-.island-title {
-  font-weight: var(--weight-emphasis);
-  font-size: var(--text-md);
+.island-content--expanded {
+  padding: var(--space-4) var(--space-5);
 }
 
-.island-muted {
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
+/* Collapsed: module indicators, centered and quiet. */
+.compact-host {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
 }
 
-.island-peek {
+/* Peek content shared by modules. */
+.module-peek {
   height: 100%;
   display: flex;
   flex-direction: column;
   justify-content: center;
   gap: 2px;
-  padding: 0 24px;
+  padding: 0 var(--space-6);
 }
 
-.island-expanded {
-  height: 100%;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  padding: 18px 20px 14px;
-}
-
-.island-header {
-  display: flex;
-  justify-content: space-between;
+.module-peek__title {
+  display: inline-flex;
   align-items: center;
-}
-
-.island-text-button {
-  border: 1px solid var(--border);
-  background: var(--surface-elevated);
-  color: var(--text-secondary);
-  font: inherit;
-  font-size: var(--text-sm);
-  font-weight: var(--weight-label);
-  padding: 5px 12px;
-  border-radius: var(--radius-pill);
-  cursor: pointer;
-  transition:
-    background-color 150ms ease,
-    color 150ms ease;
-}
-
-.island-text-button:hover {
-  background: var(--surface-hover);
-  color: var(--text-primary);
-}
-
-.island-text-button:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
-
-.island-empty {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  gap: 6px;
-}
-
-.island-empty p {
-  margin: 0;
-  max-width: 320px;
-}
-
-.island-empty-title {
-  font-size: var(--text-lg);
+  gap: var(--space-2);
+  font-size: var(--text-md);
   font-weight: var(--weight-emphasis);
 }
 
-.island-footer {
+.module-peek__meta {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.module-host {
+  height: 100%;
+}
+
+/* Dock beneath the expanded island. */
+.dock {
+  flex: none;
   display: flex;
-  justify-content: space-between;
-  font-size: var(--text-xs);
-  color: var(--text-muted);
+  align-items: center;
+  gap: var(--space-1);
+  height: 40px; /* DOCK.height in geometry.ts */
+  box-sizing: border-box;
+  padding: 0 var(--space-1);
+  background: var(--background);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-island);
+  outline: 1px solid var(--border);
+  outline-offset: -1px;
+  pointer-events: auto;
+}
+
+/* Gallery (development only). */
+.gallery {
+  height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface-hover) transparent;
+}
+
+.gallery .nd-surface {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.gallery__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
 }

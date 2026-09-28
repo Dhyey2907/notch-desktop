@@ -1,24 +1,23 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { AnimatePresence, motion, useReducedMotion, type Transition } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { useEffect, useRef, type WheelEvent } from "react";
 
 import { eventBus } from "../core/eventBus";
-import { ipc } from "../core/ipc";
+import { contentEnter, INSTANT, ISLAND_SPRING } from "../design/motion";
+import { Dock } from "./Dock";
 import { ISLAND_SIZE, WINDOW_MARGIN, type IslandMode } from "./geometry";
+import { CompactHost, ModuleHost, PeekHost } from "./ModuleHost";
 import { useIsland } from "./useIsland";
+import { useModuleLifecycle, useModuleNav } from "./useModules";
 import "./island.css";
 
 /** Hover must linger this long before the island peeks (design.md §18: no accidental panels). */
 const PEEK_INTENT_MS = 140;
 /** Grace period before a peek collapses after the pointer leaves. */
 const PEEK_LEAVE_MS = 200;
-
-// design.md §8: peek 180–250ms, expansion 350–500ms (spring), collapse 250–400ms.
-const ISLAND_SPRING: Record<IslandMode, Transition> = {
-  collapsed: { type: "spring", visualDuration: 0.32, bounce: 0 },
-  peek: { type: "spring", visualDuration: 0.22, bounce: 0.1 },
-  expanded: { type: "spring", visualDuration: 0.42, bounce: 0.18 },
-};
+/** Horizontal scroll distance that switches module, and the cooldown between switches. */
+const SWIPE_THRESHOLD = 60;
+const SWIPE_COOLDOWN_MS = 350;
 
 const ISLAND_RADIUS: Record<IslandMode, number> = {
   collapsed: ISLAND_SIZE.collapsed.height / 2,
@@ -26,27 +25,35 @@ const ISLAND_RADIUS: Record<IslandMode, number> = {
   expanded: 24,
 };
 
+function focusActiveDockItem() {
+  const id = useModuleNav.getState().activeId;
+  requestAnimationFrame(() =>
+    document.querySelector<HTMLElement>(`.dock [data-module="${id}"] button`)?.focus(),
+  );
+}
+
 export function Island() {
   const mode = useIsland((s) => s.mode);
   const request = useIsland((s) => s.request);
   const settle = useIsland((s) => s.settle);
   const reduceMotion = useReducedMotion();
   const hoverTimer = useRef<number | undefined>(undefined);
+  const swipe = useRef({ distance: 0, lockedUntil: 0 });
+
+  useModuleLifecycle();
 
   // Sync the window to the initial mode once the webview is up.
   useEffect(() => {
     void settle();
   }, [settle]);
 
-  // Keyboard path (Ctrl+Alt+N): after expanding, move focus into the island so Tab works.
-  // Pointer opens don't steal focus, so no focus ring appears on click.
+  // Keyboard path (Ctrl+Alt+N): after expanding, move focus to the dock so arrows/Tab work.
+  // Pointer opens don't move focus, so no focus ring appears on click.
   useEffect(
     () =>
       eventBus.on("ShellToggleRequested", async () => {
         await useIsland.getState().toggleExpanded();
-        if (useIsland.getState().mode === "expanded") {
-          requestAnimationFrame(() => document.querySelector<HTMLElement>(".island button")?.focus());
-        }
+        if (useIsland.getState().mode === "expanded") focusActiveDockItem();
       }),
     [],
   );
@@ -87,6 +94,18 @@ export function Island() {
     void request("expanded");
   };
 
+  // Horizontal swipe / trackpad scroll switches module (design.md §18).
+  const onWheel = (e: WheelEvent) => {
+    if (mode !== "expanded" || Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
+    const now = performance.now();
+    if (now < swipe.current.lockedUntil) return;
+    swipe.current.distance += e.deltaX;
+    if (Math.abs(swipe.current.distance) >= SWIPE_THRESHOLD) {
+      useModuleNav.getState().step(swipe.current.distance > 0 ? 1 : -1);
+      swipe.current = { distance: 0, lockedUntil: now + SWIPE_COOLDOWN_MS };
+    }
+  };
+
   const size = ISLAND_SIZE[mode];
 
   return (
@@ -97,10 +116,11 @@ export function Island() {
         aria-label="Notch"
         initial={false}
         animate={{ width: size.width, height: size.height, borderRadius: ISLAND_RADIUS[mode] }}
-        transition={reduceMotion ? { duration: 0 } : ISLAND_SPRING[mode]}
+        transition={reduceMotion ? INSTANT : ISLAND_SPRING[mode]}
         onAnimationComplete={() => void settle()}
         onPointerEnter={onPointerEnter}
         onPointerLeave={onPointerLeave}
+        onWheel={onWheel}
       >
         {mode !== "expanded" && (
           <button className="island-hit" aria-label="Open Notch" aria-expanded={false} onClick={expand} />
@@ -108,62 +128,18 @@ export function Island() {
         <AnimatePresence mode="popLayout" initial={false}>
           <motion.div
             key={mode}
-            className="island-content"
+            className={`island-content island-content--${mode}`}
             initial={{ opacity: 0, scale: 0.97 }}
-            animate={{
-              opacity: 1,
-              scale: 1,
-              // Content follows the container once it has started to unfold (design.md §8).
-              transition: reduceMotion
-                ? { duration: 0 }
-                : { delay: mode === "expanded" ? 0.1 : 0.05, duration: 0.2 },
-            }}
+            animate={{ opacity: 1, scale: 1, transition: contentEnter(mode, reduceMotion) }}
             exit={{ opacity: 0, transition: { duration: 0.08 } }}
           >
-            {mode === "peek" && <PeekContent />}
-            {mode === "expanded" && <ExpandedContent onCollapse={() => void request("collapsed")} />}
+            {mode === "collapsed" && <CompactHost />}
+            {mode === "peek" && <PeekHost />}
+            {mode === "expanded" && <ModuleHost />}
           </motion.div>
         </AnimatePresence>
       </motion.section>
-    </div>
-  );
-}
-
-function PeekContent() {
-  return (
-    <div className="island-peek">
-      <span className="island-title">Notch Desktop</span>
-      <span className="island-muted">Click to open</span>
-    </div>
-  );
-}
-
-function ExpandedContent({ onCollapse }: { onCollapse: () => void }) {
-  const [version, setVersion] = useState<string | null>(null);
-
-  useEffect(() => {
-    ipc
-      .appInfo()
-      .then((info) => setVersion(info.version))
-      .catch(() => setVersion(null));
-  }, []);
-
-  return (
-    <div className="island-expanded">
-      <header className="island-header">
-        <span className="island-title">Notch Desktop</span>
-        <button className="island-text-button" onClick={onCollapse}>
-          Collapse
-        </button>
-      </header>
-      <div className="island-empty">
-        <p className="island-empty-title">No modules yet</p>
-        <p className="island-muted">Media, Calendar, Git and Claude will appear here as they are built.</p>
-      </div>
-      <footer className="island-footer island-muted">
-        {version && <span>v{version}</span>}
-        <span>Ctrl+Alt+N to toggle · Esc to close</span>
-      </footer>
+      <AnimatePresence>{mode === "expanded" && <Dock />}</AnimatePresence>
     </div>
   );
 }

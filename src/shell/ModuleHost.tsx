@@ -1,0 +1,81 @@
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { Component, Suspense, type ErrorInfo, type ReactNode } from "react";
+
+import { Button, ErrorState } from "../design/components";
+import { CONTENT_SWAP, INSTANT } from "../design/motion";
+import { findModule, MODULES } from "../modules/registry";
+import { useModuleNav } from "./useModules";
+
+/** Isolates a module's render errors so the shell and other modules keep working. */
+export class ModuleErrorBoundary extends Component<
+  { name: string; children: ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error(`module ${this.props.name} crashed`, error, info.componentStack);
+  }
+
+  render() {
+    if (this.state.failed) {
+      return (
+        <ErrorState
+          title={`${this.props.name} hit a problem`}
+          body="Other modules keep working. Try reloading this one."
+          action={<Button onClick={() => this.setState({ failed: false })}>Reload</Button>}
+        />
+      );
+    }
+    return this.props.children;
+  }
+}
+
+/** Expanded view of the active module, with a direction-aware slide between modules. */
+export function ModuleHost() {
+  const activeId = useModuleNav((s) => s.activeId);
+  const reduceMotion = useReducedMotion();
+  const module = findModule(activeId);
+  if (!module) return null;
+  const { Expanded } = module;
+
+  return (
+    <AnimatePresence mode="popLayout" initial={false}>
+      <motion.div
+        key={module.id}
+        className="module-host"
+        initial={{ opacity: 0, x: 12 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: -12 }}
+        transition={reduceMotion ? INSTANT : CONTENT_SWAP}
+      >
+        <ModuleErrorBoundary name={module.name}>
+          <Suspense fallback={null}>
+            <Expanded />
+          </Suspense>
+        </ModuleErrorBoundary>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
+/** Peek content: the active module's preview, or Home's as a fallback. */
+export function PeekHost() {
+  const activeId = useModuleNav((s) => s.activeId);
+  const Peek = findModule(activeId)?.Peek ?? MODULES[0].Peek;
+  return Peek ? <Peek /> : null;
+}
+
+/** Collapsed indicators contributed by modules; each renders null when idle. */
+export function CompactHost() {
+  const withCompact = MODULES.filter((m) => m.Compact);
+  return (
+    <div className="compact-host">
+      {withCompact.map(({ id, Compact }) => Compact && <Compact key={id} />)}
+    </div>
+  );
+}
