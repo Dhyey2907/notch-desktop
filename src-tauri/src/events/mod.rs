@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::broadcast;
 use ts_rs::TS;
 
-use crate::settings::Settings;
+use crate::{media::MediaState, settings::Settings};
 
 /// Name of the single Tauri channel that carries every `EventEnvelope` to the frontend.
 pub const APP_EVENT_CHANNEL: &str = "app-event";
@@ -71,6 +71,8 @@ pub enum AppEvent {
     ShellToggleRequested,
     /// Settings were saved; every window replaces its copy with this one.
     SettingsChanged(Settings),
+    /// The active media session changed (`None` when nothing is playing).
+    MediaStateChanged { state: Option<MediaState> },
     /// Fake activity fired from the dev panel (debug builds only).
     #[cfg(debug_assertions)]
     DevTestActivity(DevTestActivity),
@@ -84,6 +86,7 @@ impl AppEvent {
             AppEvent::DiagnosticsPong { .. } => "DiagnosticsPong",
             AppEvent::ShellToggleRequested => "ShellToggleRequested",
             AppEvent::SettingsChanged(_) => "SettingsChanged",
+            AppEvent::MediaStateChanged { .. } => "MediaStateChanged",
             #[cfg(debug_assertions)]
             AppEvent::DevTestActivity(_) => "DevTestActivity",
         }

@@ -38,7 +38,9 @@ export function ActivityView({
     >
       <button type="button" className="activity__open" onClick={onOpen} aria-label={`Open ${moduleName}`} />
       <div className="activity__main">
-        {activity.avatar ? (
+        {activity.imageUrl ? (
+          <img className="activity__image" src={activity.imageUrl} alt="" />
+        ) : activity.avatar ? (
           <span className="nd-avatar" aria-hidden>
             {activity.avatar}
           </span>

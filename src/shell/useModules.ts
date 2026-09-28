@@ -24,7 +24,7 @@ export function useEnabledModules(): readonly NotchModule[] {
 
 /** A context scoped to one module, so the shell can apply that module's preferences. */
 function contextFor(module: NotchModule): ModuleContext {
-  const { push, dismiss } = useActivities.getState();
+  const { push, dismiss, update } = useActivities.getState();
   return {
     events: eventBus,
     activities: {
@@ -36,6 +36,7 @@ function contextFor(module: NotchModule): ModuleContext {
         return push(input);
       },
       dismiss,
+      update,
     },
   };
 }

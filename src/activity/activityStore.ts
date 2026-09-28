@@ -45,6 +45,8 @@ export interface ActivityInput {
   body?: string;
   /** Short avatar text, usually a sender's initial. */
   avatar?: string;
+  /** Small square image (e.g. album art) shown instead of the avatar. */
+  imageUrl?: string;
   tone?: Tone;
   dedupKey?: string;
   /** Overrides the priority default: persistent activities never time out. */
@@ -67,6 +69,11 @@ export interface ActivityState {
   activities: Activity[];
   push: (input: ActivityInput) => string;
   dismiss: (id: string) => void;
+  /** Refresh an activity's content in place (e.g. artwork arrived) without counting a repeat or restarting its timer. */
+  update: (
+    id: string,
+    patch: Partial<Pick<ActivityInput, "title" | "body" | "avatar" | "imageUrl" | "tone">>,
+  ) => void;
   runAction: (id: string, actionId: string) => Promise<void>;
   /** Pause an activity's timeout, e.g. while the pointer rests on it. */
   hold: (id: string) => void;
@@ -149,6 +156,8 @@ export function createActivityStore({
       },
 
       dismiss: (id) => commit(get().activities.filter((a) => a.id !== id)),
+
+      update: (id, patch) => commit(get().activities.map((a) => (a.id === id ? { ...a, ...patch } : a))),
 
       runAction: async (id, actionId) => {
         const action = get()

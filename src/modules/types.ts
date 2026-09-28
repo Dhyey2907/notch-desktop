@@ -9,7 +9,7 @@ import type { EventBus } from "../core/eventBus";
 export interface ModuleContext {
   events: Pick<EventBus, "on" | "onAny">;
   /** Ask the shell to show something; the activity engine decides when and how. */
-  activities: Pick<ActivityState, "push" | "dismiss">;
+  activities: Pick<ActivityState, "push" | "dismiss" | "update">;
 }
 
 export interface NotchModule {

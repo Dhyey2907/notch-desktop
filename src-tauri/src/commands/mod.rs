@@ -5,5 +5,6 @@ pub mod app;
 #[cfg(debug_assertions)]
 pub mod dev;
 pub mod diagnostics;
+pub mod media;
 pub mod settings;
 pub mod shell;

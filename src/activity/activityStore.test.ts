@@ -119,6 +119,17 @@ describe("replacement", () => {
   });
 });
 
+it("updates content in place without a repeat or a new timer", () => {
+  const store = setup();
+  const id = store.getState().push({ ...base, title: "Song" });
+  vi.advanceTimersByTime(4000);
+  store.getState().update(id, { imageUrl: "art.png" });
+
+  expect(store.getState().activities[0]).toMatchObject({ imageUrl: "art.png", repeats: 1 });
+  vi.advanceTimersByTime(1000);
+  expect(store.getState().activities).toHaveLength(0);
+});
+
 describe("actions", () => {
   it("runs an action and dismisses the activity", async () => {
     const store = setup();

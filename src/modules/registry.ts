@@ -3,6 +3,7 @@
 import { devEventsModule } from "./devEvents";
 import { galleryModule } from "./gallery";
 import { homeModule } from "./home";
+import { mediaModule } from "./media";
 import type { NotchModule } from "./types";
 
 export function sortModules(modules: NotchModule[], includeDev: boolean): NotchModule[] {
@@ -13,7 +14,10 @@ export function sortModules(modules: NotchModule[], includeDev: boolean): NotchM
 // out of release bundles entirely (not just hidden).
 const devModules: NotchModule[] = import.meta.env.DEV ? [galleryModule, devEventsModule] : [];
 
-export const MODULES: readonly NotchModule[] = sortModules([homeModule, ...devModules], import.meta.env.DEV);
+export const MODULES: readonly NotchModule[] = sortModules(
+  [homeModule, mediaModule, ...devModules],
+  import.meta.env.DEV,
+);
 
 export function findModule(id: string): NotchModule | undefined {
   return MODULES.find((m) => m.id === id);

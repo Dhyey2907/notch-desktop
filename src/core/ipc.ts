@@ -4,6 +4,8 @@ import { invoke } from "@tauri-apps/api/core";
 
 import type { AppInfo } from "./generated/AppInfo";
 import type { DevTestActivity } from "./generated/DevTestActivity";
+import type { MediaCommand } from "./generated/MediaCommand";
+import type { MediaState } from "./generated/MediaState";
 import type { Settings } from "./generated/Settings";
 
 /** Shape of `AppError` as serialized by the backend. */
@@ -33,5 +35,7 @@ export const ipc = {
   diagnosticsOpenLogDir: () => invoke<void>("diagnostics_open_log_dir"),
   /** Copies logs into a new folder under Downloads, reveals it, and returns its path. */
   diagnosticsExportLogs: () => invoke<string>("diagnostics_export_logs"),
+  mediaGetState: () => invoke<MediaState | null>("media_get_state"),
+  mediaCommand: (command: MediaCommand) => invoke<void>("media_command", { command }),
   setWindowSize: (width: number, height: number) => invoke<void>("shell_set_window_size", { width, height }),
 };

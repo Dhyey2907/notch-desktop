@@ -1,0 +1,139 @@
+.media {
+  position: relative;
+  height: 100%;
+}
+
+/* Artwork backdrop: blurred, dimmed, and under a dark gradient so controls stay readable. */
+.media__backdrop {
+  position: absolute;
+  inset: calc(-1 * var(--space-4)) calc(-1 * var(--space-5));
+  background-size: cover;
+  background-position: center;
+  filter: blur(40px) saturate(1.2);
+  opacity: 0.35;
+  transform: scale(1.2);
+  pointer-events: none;
+}
+
+.media__backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(9, 9, 9, 0.35), rgba(9, 9, 9, 0.85));
+}
+
+.media .nd-module {
+  position: relative;
+}
+
+.media__body {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.media__art {
+  flex: none;
+  width: 132px;
+  height: 132px;
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-island);
+  display: grid;
+  place-items: center;
+}
+
+.media__art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.media__art-fallback {
+  font-size: 40px;
+  color: var(--text-muted);
+}
+
+.media__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.media__main p {
+  margin: 0;
+}
+
+.media__title {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-headline);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.media__meta {
+  font-size: var(--text-md);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.media__timeline {
+  margin-top: var(--space-2);
+}
+
+.media__bar {
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.14);
+  overflow: hidden;
+}
+
+.media__bar--seekable {
+  cursor: pointer;
+}
+
+.media__bar--seekable:hover {
+  height: 6px;
+  margin: -1px 0;
+}
+
+.media__bar:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.media__bar-fill {
+  height: 100%;
+  background: var(--text-primary);
+  border-radius: inherit;
+}
+
+.media__times {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.media__main .nd-media-control {
+  justify-content: flex-start;
+  margin-left: calc(-1 * var(--space-2));
+}
+
+.media__note {
+  font-size: var(--text-sm);
+  color: var(--warning);
+}
+
+.media-compact {
+  color: var(--active);
+}

@@ -3,6 +3,7 @@ mod db;
 mod error;
 mod events;
 mod logging;
+mod media;
 mod settings;
 mod shell;
 mod state;
@@ -43,9 +44,29 @@ macro_rules! app_commands {
             commands::settings::open_settings_window,
             commands::diagnostics::diagnostics_open_log_dir,
             commands::diagnostics::diagnostics_export_logs,
+            commands::media::media_get_state,
+            commands::media::media_command,
             $($dev),*
         ]
     };
+}
+
+/// Dev builds only: `NOTCH_MOCK=media,git` swaps those adapters for mocks (plan.md Rule 9).
+#[cfg(debug_assertions)]
+fn mock_enabled(module: &str) -> bool {
+    std::env::var("NOTCH_MOCK")
+        .map(|v| v.split(',').any(|m| m.trim().eq_ignore_ascii_case(module)))
+        .unwrap_or(false)
+}
+
+fn media_port(app: &tauri::AppHandle) -> Result<Box<dyn media::MediaPort>, Box<dyn std::error::Error>> {
+    #[cfg(debug_assertions)]
+    if mock_enabled("media") {
+        tracing::info!("using mock media adapter");
+        return Ok(Box::new(media::mock::MockMediaPort::default()));
+    }
+    let artwork_dir = app.path().app_cache_dir()?.join("artwork");
+    Ok(Box::new(media::windows::WindowsMediaPort::new(artwork_dir)))
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -89,6 +110,11 @@ pub fn run() {
                 settings: std::sync::Mutex::new(settings),
             });
             app.manage(ShellState::new(INITIAL_WINDOW_SIZE));
+
+            // Integrations connect in the background; a failing adapter never blocks the island.
+            let media = media::MediaService::new(media_port(handle)?);
+            media.start(media::bus_publisher(handle.clone()));
+            app.manage(media);
             shell::init(handle)?;
             Ok(())
         })

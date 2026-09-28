@@ -85,3 +85,11 @@
 .activity--critical .activity__title {
   font-size: var(--text-lg);
 }
+
+.activity__image {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+}
