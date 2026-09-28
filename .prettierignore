@@ -1,0 +1,8 @@
+dist
+src-tauri/target
+src-tauri/gen
+src/core/generated
+pnpm-lock.yaml
+docs
+.node_modules-partial-move
+.git-partial-move

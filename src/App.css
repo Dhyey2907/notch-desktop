@@ -1,0 +1,58 @@
+:root {
+  font-family: Inter, "Segoe UI", system-ui, sans-serif;
+  color: #f5f5f5;
+  background: #090909;
+}
+
+body {
+  margin: 0;
+}
+
+.foundation {
+  padding: 32px;
+}
+
+.foundation h1 {
+  margin: 0;
+  font-weight: 700;
+  font-size: 22px;
+}
+
+.muted {
+  color: #a3a3a3;
+}
+
+.error {
+  color: #f87171;
+}
+
+.foundation dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 16px;
+  font-size: 13px;
+}
+
+.foundation dt {
+  color: #666666;
+}
+
+.foundation dd {
+  margin: 0;
+  word-break: break-all;
+}
+
+.foundation button {
+  margin-top: 16px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: #171717;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.foundation button:hover {
+  background: #202020;
+}
