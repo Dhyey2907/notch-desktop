@@ -336,3 +336,68 @@ export function Dot({ tone = "neutral", label }: { tone?: Tone | "active"; label
     <span className={cx("nd-dot", `nd-dot--${tone}`)} role={label ? "img" : undefined} aria-label={label} />
   );
 }
+
+/** On/off control with a visible label; announces as a switch to assistive tech. */
+export function Switch({
+  checked,
+  onChange,
+  label,
+  description,
+  disabled,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  label: string;
+  description?: string;
+  disabled?: boolean;
+}) {
+  return (
+    <label className={cx("nd-switch-row", disabled && "nd-switch-row--disabled")}>
+      <span className="nd-switch-row__text">
+        <span className="nd-switch-row__label">{label}</span>
+        {description && <span className="nd-switch-row__description">{description}</span>}
+      </span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
+        className={cx("nd-switch", checked && "nd-switch--on")}
+        disabled={disabled}
+        onClick={() => onChange(!checked)}
+      >
+        <span className="nd-switch__thumb" />
+      </button>
+    </label>
+  );
+}
+
+/** A small set of mutually exclusive options. */
+export function SegmentedControl<T extends string>({
+  value,
+  options,
+  onChange,
+  label,
+}: {
+  value: T;
+  options: { value: T; label: string }[];
+  onChange: (value: T) => void;
+  label: string;
+}) {
+  return (
+    <div className="nd-segmented" role="radiogroup" aria-label={label}>
+      {options.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          role="radio"
+          aria-checked={option.value === value}
+          className={cx("nd-segmented__option", option.value === value && "nd-segmented__option--active")}
+          onClick={() => onChange(option.value)}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}

@@ -1,10 +1,11 @@
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { Component, Suspense, type ErrorInfo, type ReactNode } from "react";
 
 import { Button, ErrorState } from "../design/components";
 import { CONTENT_SWAP, INSTANT } from "../design/motion";
+import { useReduceMotion } from "../design/useReduceMotion";
 import { findModule, MODULES } from "../modules/registry";
-import { useModuleNav } from "./useModules";
+import { useEnabledModules, useModuleNav } from "./useModules";
 
 /** Isolates a module's render errors so the shell and other modules keep working. */
 export class ModuleErrorBoundary extends Component<
@@ -38,7 +39,7 @@ export class ModuleErrorBoundary extends Component<
 /** Expanded view of the active module, with a direction-aware slide between modules. */
 export function ModuleHost() {
   const activeId = useModuleNav((s) => s.activeId);
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useReduceMotion();
   const module = findModule(activeId);
   if (!module) return null;
   const { Expanded } = module;
@@ -72,7 +73,7 @@ export function PeekHost() {
 
 /** Collapsed indicators contributed by modules; each renders null when idle. */
 export function CompactHost() {
-  const withCompact = MODULES.filter((m) => m.Compact);
+  const withCompact = useEnabledModules().filter((m) => m.Compact);
   return (
     <div className="compact-host">
       {withCompact.map(({ id, Compact }) => Compact && <Compact key={id} />)}

@@ -1,5 +1,5 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, type WheelEvent } from "react";
 
 import { useActivities } from "../activity";
@@ -7,10 +7,12 @@ import { isPersistent, type Activity } from "../activity/activityStore";
 import { ActivityView } from "../activity/ActivityView";
 import { eventBus } from "../core/eventBus";
 import { contentEnter, INSTANT, ISLAND_SPRING, SERIOUS_SPRING } from "../design/motion";
+import { useReduceMotion } from "../design/useReduceMotion";
 import { findModule } from "../modules/registry";
 import { Dock } from "./Dock";
 import { activityIslandSize, islandRadius, WINDOW_MARGIN, type IslandMode } from "./geometry";
 import { CompactHost, ModuleHost, PeekHost } from "./ModuleHost";
+import { useFirstRunPrompt } from "./useFirstRunPrompt";
 import { useIsland } from "./useIsland";
 import { useModuleLifecycle, useModuleNav } from "./useModules";
 import "./island.css";
@@ -46,11 +48,12 @@ export function Island() {
   const settle = useIsland((s) => s.settle);
   const activity = useActivities((s) => s.activities[0] ?? null);
   const queued = useActivities((s) => Math.max(0, s.activities.length - 1));
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useReduceMotion();
   const hoverTimer = useRef<number | undefined>(undefined);
   const swipe = useRef({ distance: 0, lockedUntil: 0 });
 
   useModuleLifecycle();
+  useFirstRunPrompt();
 
   // Sync the window to the initial mode once the webview is up.
   useEffect(() => {

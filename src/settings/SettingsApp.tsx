@@ -1,0 +1,243 @@
+// Settings window (design.md §21): a short list of sections, not a dashboard. Sections for
+// Media, Calendar, Git and AI are added alongside those modules.
+import { useEffect, useState, type ReactNode } from "react";
+
+import type { AnimationPreference } from "../core/generated/AnimationPreference";
+import type { AppInfo } from "../core/generated/AppInfo";
+import { ipc } from "../core/ipc";
+import { Button, MockBadge, Pill, SegmentedControl, Surface, Switch } from "../design/components";
+import { MODULES } from "../modules/registry";
+import { useSettings } from ".";
+import { moduleSettings } from "./settingsStore";
+import "./settings.css";
+
+type SectionId = "general" | "appearance" | "modules" | "diagnostics";
+
+const SECTIONS: { id: SectionId; label: string }[] = [
+  { id: "general", label: "General" },
+  { id: "appearance", label: "Appearance" },
+  { id: "modules", label: "Modules" },
+  { id: "diagnostics", label: "Diagnostics & About" },
+];
+
+export function SettingsApp() {
+  const [section, setSection] = useState<SectionId>("general");
+  const loaded = useSettings((s) => s.settings !== null);
+
+  return (
+    <div className="settings">
+      <nav className="settings__nav" aria-label="Settings sections">
+        <p className="settings__app-name">Notch Desktop</p>
+        {SECTIONS.map((s) => (
+          <button
+            key={s.id}
+            type="button"
+            className={`settings__nav-item${s.id === section ? " settings__nav-item--active" : ""}`}
+            aria-current={s.id === section ? "page" : undefined}
+            onClick={() => setSection(s.id)}
+          >
+            {s.label}
+          </button>
+        ))}
+      </nav>
+      <main className="settings__content">
+        {!loaded ? null : (
+          <>
+            {section === "general" && <GeneralSection />}
+            {section === "appearance" && <AppearanceSection />}
+            {section === "modules" && <ModulesSection />}
+            {section === "diagnostics" && <DiagnosticsSection />}
+          </>
+        )}
+      </main>
+    </div>
+  );
+}
+
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="settings__section" aria-labelledby={`section-${title}`}>
+      <h1 id={`section-${title}`} className="settings__title">
+        {title}
+      </h1>
+      {children}
+    </section>
+  );
+}
+
+function GeneralSection() {
+  const [launchAtLogin, setLaunchAtLogin] = useState<boolean | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    ipc
+      .autostartGet()
+      .then(setLaunchAtLogin)
+      .catch(() => setFailed(true));
+  }, []);
+
+  const toggle = async (enabled: boolean) => {
+    try {
+      setLaunchAtLogin(await ipc.autostartSet(enabled));
+      setFailed(false);
+    } catch {
+      setFailed(true);
+    }
+  };
+
+  return (
+    <Section title="General">
+      <Surface>
+        <Switch
+          label="Start with Windows"
+          description="Open Notch Desktop when you sign in."
+          checked={launchAtLogin ?? false}
+          disabled={launchAtLogin === null}
+          onChange={(v) => void toggle(v)}
+        />
+        {failed && (
+          <p className="settings__note settings__note--warning">
+            Couldn't read or change the Windows startup setting. Try again, or check the logs.
+          </p>
+        )}
+      </Surface>
+      <Surface>
+        <div className="settings__row">
+          <span className="settings__row-text">
+            <span className="settings__row-label">Open or close the notch</span>
+            <span className="settings__row-description">Works from any app.</span>
+          </span>
+          <kbd className="settings__kbd">Ctrl + Alt + N</kbd>
+        </div>
+        <p className="settings__note">Custom shortcuts aren't available yet.</p>
+      </Surface>
+    </Section>
+  );
+}
+
+function AppearanceSection() {
+  const animation = useSettings((s) => s.settings?.animation ?? "system");
+  const update = useSettings((s) => s.update);
+
+  return (
+    <Section title="Appearance">
+      <Surface>
+        <div className="settings__row">
+          <span className="settings__row-text">
+            <span className="settings__row-label">Animation</span>
+            <span className="settings__row-description">
+              “Match Windows” follows Settings → Accessibility → Visual effects.
+            </span>
+          </span>
+          <SegmentedControl<AnimationPreference>
+            label="Animation"
+            value={animation}
+            options={[
+              { value: "system", label: "Match Windows" },
+              { value: "reduced", label: "Reduced" },
+            ]}
+            onChange={(value) => void update((s) => ({ ...s, animation: value }))}
+          />
+        </div>
+      </Surface>
+    </Section>
+  );
+}
+
+function ModulesSection() {
+  const settings = useSettings((s) => s.settings);
+  const setModule = useSettings((s) => s.setModule);
+
+  return (
+    <Section title="Modules">
+      <p className="settings__lead">
+        Turn modules off to remove them from the dock and stop their background work.
+      </p>
+      {MODULES.map((module) => {
+        const prefs = moduleSettings(settings, module.id);
+        const Icon = module.icon;
+        return (
+          <Surface key={module.id}>
+            <div className="settings__module-head">
+              <Icon aria-hidden size={16} />
+              <span className="settings__row-label">{module.name}</span>
+              {module.devOnly && <MockBadge />}
+              {module.alwaysOn && <Pill>Always on</Pill>}
+            </div>
+            {prefs.autoDisabled && !prefs.enabled && (
+              <p className="settings__note settings__note--warning" role="alert">
+                Turned off after failing to start three times in a row. Turn it back on to try again.
+              </p>
+            )}
+            <Switch
+              label="Enabled"
+              checked={module.alwaysOn || prefs.enabled}
+              disabled={module.alwaysOn}
+              onChange={(enabled) =>
+                void setModule(module.id, { enabled, autoDisabled: false, initFailures: 0 })
+              }
+            />
+            <Switch
+              label="Can interrupt"
+              description="Show its notifications in the notch. Agent approvals always appear."
+              checked={prefs.mayPeek}
+              disabled={!(module.alwaysOn || prefs.enabled)}
+              onChange={(mayPeek) => void setModule(module.id, { mayPeek })}
+            />
+          </Surface>
+        );
+      })}
+    </Section>
+  );
+}
+
+function DiagnosticsSection() {
+  const [info, setInfo] = useState<AppInfo | null>(null);
+  const [exported, setExported] = useState<string | null>(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    ipc.appInfo().then(setInfo, () => setError(true));
+  }, []);
+
+  const exportLogs = async () => {
+    try {
+      setExported(await ipc.diagnosticsExportLogs());
+      setError(false);
+    } catch {
+      setError(true);
+    }
+  };
+
+  return (
+    <Section title="Diagnostics & About">
+      <Surface>
+        <p className="settings__lead">
+          Logs stay on this PC. They record what happened, never message contents, commands, or passwords.
+        </p>
+        <div className="settings__buttons">
+          <Button onClick={() => void ipc.diagnosticsOpenLogDir().catch(() => setError(true))}>
+            Open log folder
+          </Button>
+          <Button onClick={() => void exportLogs()}>Export logs</Button>
+        </div>
+        {exported && <p className="settings__note">Saved to {exported}</p>}
+        {error && (
+          <p className="settings__note settings__note--warning">That didn't work. Please try again.</p>
+        )}
+      </Surface>
+      {info && (
+        <Surface>
+          <dl className="settings__facts">
+            <dt>Version</dt>
+            <dd>{info.version}</dd>
+            <dt>Data folder</dt>
+            <dd>{info.dataDir}</dd>
+            <dt>Log folder</dt>
+            <dd>{info.logDir}</dd>
+          </dl>
+        </Surface>
+      )}
+    </Section>
+  );
+}

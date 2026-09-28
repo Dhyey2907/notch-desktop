@@ -7,6 +7,8 @@ export interface ModuleNavState {
   setActive: (id: string) => void;
   /** Move by `delta` positions, wrapping around (horizontal swipe / arrow keys). */
   step: (delta: number) => void;
+  /** Replace the navigable modules (e.g. after enabling/disabling one in Settings). */
+  setIds: (ids: readonly string[]) => void;
 }
 
 export function createModuleStore(ids: readonly string[]) {
@@ -21,6 +23,11 @@ export function createModuleStore(ids: readonly string[]) {
       const { ids, activeId } = get();
       const index = ids.indexOf(activeId);
       set({ activeId: ids[(index + delta + ids.length * 10) % ids.length] });
+    },
+    setIds: (next) => {
+      if (next.length === 0) return;
+      const { activeId } = get();
+      set({ ids: next, activeId: next.includes(activeId) ? activeId : next[0] });
     },
   }));
 }

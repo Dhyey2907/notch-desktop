@@ -1,20 +1,23 @@
-import { motion, useReducedMotion } from "motion/react";
+import { Settings } from "lucide-react";
+import { motion } from "motion/react";
 import type { KeyboardEvent } from "react";
 
+import { ipc } from "../core/ipc";
 import { IconButton } from "../design/components";
 import { contentEnter } from "../design/motion";
-import { MODULES } from "../modules/registry";
-import { useModuleNav } from "./useModules";
+import { useReduceMotion } from "../design/useReduceMotion";
+import { useEnabledModules, useModuleNav } from "./useModules";
 
 /**
  * Compact module switcher shown beneath the expanded island (design.md §17).
  * Arrow keys move between modules; the active one gets a raised treatment.
  */
 export function Dock() {
+  const modules = useEnabledModules();
   const activeId = useModuleNav((s) => s.activeId);
   const setActive = useModuleNav((s) => s.setActive);
   const step = useModuleNav((s) => s.step);
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useReduceMotion();
 
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
@@ -34,7 +37,7 @@ export function Dock() {
       animate={{ opacity: 1, y: 0, transition: contentEnter("expanded", reduceMotion) }}
       exit={{ opacity: 0, transition: { duration: 0.08 } }}
     >
-      {MODULES.map((module) => (
+      {modules.map((module) => (
         <span key={module.id} data-module={module.id}>
           <IconButton
             icon={module.icon}
@@ -44,6 +47,8 @@ export function Dock() {
           />
         </span>
       ))}
+      <span className="dock__divider" aria-hidden />
+      <IconButton icon={Settings} label="Settings" onClick={() => void ipc.openSettingsWindow()} />
     </motion.div>
   );
 }

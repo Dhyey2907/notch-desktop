@@ -4,4 +4,6 @@
 pub mod app;
 #[cfg(debug_assertions)]
 pub mod dev;
+pub mod diagnostics;
+pub mod settings;
 pub mod shell;

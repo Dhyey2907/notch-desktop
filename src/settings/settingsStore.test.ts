@@ -1,0 +1,57 @@
+import { describe, expect, it, vi } from "vitest";
+
+import { EventBus } from "../core/eventBus";
+import type { Settings } from "../core/generated/Settings";
+import { createSettingsStore, moduleSettings } from "./settingsStore";
+
+const defaults: Settings = { firstRunCompleted: false, animation: "system", modules: {} };
+
+function setup(initial: Settings = defaults) {
+  let stored = initial;
+  const backend = {
+    get: vi.fn(async () => stored),
+    update: vi.fn(async (next: Settings) => (stored = next)),
+  };
+  const events = new EventBus();
+  return { store: createSettingsStore(backend, events), backend, events };
+}
+
+describe("settingsStore", () => {
+  it("fills in module defaults for modules with no stored preferences", () => {
+    expect(moduleSettings(defaults, "media")).toEqual({
+      enabled: true,
+      mayPeek: true,
+      initFailures: 0,
+      autoDisabled: false,
+    });
+  });
+
+  it("patches one module without touching the others", async () => {
+    const { store, backend } = setup({
+      ...defaults,
+      modules: { git: { enabled: false, mayPeek: true, initFailures: 0, autoDisabled: false } },
+    });
+    await store.getState().load();
+
+    await store.getState().setModule("media", { mayPeek: false });
+
+    const saved = backend.update.mock.calls[0][0];
+    expect(saved.modules.git.enabled).toBe(false);
+    expect(saved.modules.media).toMatchObject({ enabled: true, mayPeek: false });
+  });
+
+  it("adopts settings broadcast by another window", async () => {
+    const { store, events } = setup();
+    await store.getState().load();
+
+    events.dispatch({
+      id: "e1",
+      v: 1,
+      ts: "2026-09-28T00:00:00Z",
+      source: "settings",
+      event: { type: "SettingsChanged", payload: { ...defaults, animation: "reduced" } },
+    });
+
+    expect(store.getState().settings?.animation).toBe("reduced");
+  });
+});

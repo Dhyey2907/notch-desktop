@@ -43,9 +43,12 @@ powershell -File scripts/screen-capture.ps1 screen.png          # real screen pi
 ## Layout
 
 ```
-src-tauri/src/   commands/ db/ events/ shell/ error.rs logging.rs state.rs
+src-tauri/src/   commands/ db/ events/ settings/ shell/ error.rs logging.rs state.rs
 src/core/        ipc.ts (typed commands), eventBus.ts, generated/ (ts-rs types)
 src/design/      tokens.css (design.md tokens)
-src/shell/       Island (collapsed/peek/expanded), geometry, islandStore
+src/shell/       Island (collapsed/peek/activity/expanded), dock, module host
+src/activity/    Live activity engine (priorities, timeouts, replacement)
+src/modules/     Module contract, registry, and modules (home; dev-only gallery + dev events)
+src/settings/    Settings store and the settings window (index.html#settings)
 docs/            architecture, design, and plan documents
 ```

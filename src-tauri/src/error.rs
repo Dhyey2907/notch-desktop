@@ -15,6 +15,8 @@ pub enum AppError {
     Migration(String),
     #[error("invalid input: {0}")]
     InvalidInput(String),
+    #[error("platform error: {0}")]
+    Platform(String),
 }
 
 impl AppError {
@@ -25,6 +27,7 @@ impl AppError {
             AppError::Tauri(_) => "tauri",
             AppError::Migration(_) => "migration",
             AppError::InvalidInput(_) => "invalid_input",
+            AppError::Platform(_) => "platform",
         }
     }
 }

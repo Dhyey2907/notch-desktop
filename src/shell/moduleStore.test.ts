@@ -17,6 +17,15 @@ describe("moduleStore", () => {
     expect(store.getState().activeId).toBe("c");
   });
 
+  it("keeps the active module when ids change, or falls back to the first", () => {
+    const store = createModuleStore(["a", "b", "c"]);
+    store.getState().setActive("b");
+    store.getState().setIds(["a", "b"]);
+    expect(store.getState().activeId).toBe("b");
+    store.getState().setIds(["a", "c"]);
+    expect(store.getState().activeId).toBe("a");
+  });
+
   it("ignores unknown module ids", () => {
     const store = createModuleStore(["a", "b"]);
     store.getState().setActive("nope");

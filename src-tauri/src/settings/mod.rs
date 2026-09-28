@@ -1,0 +1,211 @@
+//! Typed, non-secret user preferences (architecture.md §9). Stored as one JSON document in
+//! the `settings` table; unknown or missing fields fall back to defaults, so adding a field
+//! never needs a migration. Secrets never live here — they go to Windows Credential Manager.
+
+use std::collections::BTreeMap;
+
+use rusqlite::{params, Connection, OptionalExtension};
+use serde::{Deserialize, Serialize};
+use ts_rs::TS;
+
+use crate::error::{AppError, AppResult};
+
+const SETTINGS_KEY: &str = "app";
+
+/// A module that fails to initialize this many times in a row is disabled automatically.
+pub const MAX_INIT_FAILURES: u32 = 3;
+const MAX_MODULES: usize = 100;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "lowercase")]
+#[ts(export)]
+pub enum AnimationPreference {
+    /// Follow the Windows "animation effects" setting.
+    #[default]
+    System,
+    /// Always use reduced motion.
+    Reduced,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export)]
+pub struct ModuleSettings {
+    pub enabled: bool,
+    /// Whether the module may interrupt with non-critical activities.
+    pub may_peek: bool,
+    /// Consecutive failed initializations; reset on success.
+    pub init_failures: u32,
+    /// Set when the app disabled the module after repeated failures, so Settings can say why.
+    pub auto_disabled: bool,
+}
+
+impl Default for ModuleSettings {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            may_peek: true,
+            init_failures: 0,
+            auto_disabled: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export)]
+pub struct Settings {
+    /// The first-run prompt (e.g. start with Windows) has been answered.
+    pub first_run_completed: bool,
+    pub animation: AnimationPreference,
+    /// Per-module preferences keyed by module id. Missing modules use defaults.
+    pub modules: BTreeMap<String, ModuleSettings>,
+}
+
+impl Settings {
+    /// Reject input that could only come from a bug or tampering.
+    pub fn validate(&self) -> AppResult<()> {
+        if self.modules.len() > MAX_MODULES {
+            return Err(AppError::InvalidInput("too many module entries".into()));
+        }
+        for id in self.modules.keys() {
+            let valid = !id.is_empty()
+                && id.len() <= 64
+                && id
+                    .chars()
+                    .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_');
+            if !valid {
+                return Err(AppError::InvalidInput(format!("invalid module id: {id:?}")));
+            }
+        }
+        Ok(())
+    }
+
+    /// Record the outcome of a module's initialization, auto-disabling it after repeated
+    /// consecutive failures (architecture.md §10: recoverable path for failing modules).
+    pub fn record_module_init(&mut self, module_id: &str, ok: bool) {
+        let entry = self.modules.entry(module_id.to_owned()).or_default();
+        if ok {
+            entry.init_failures = 0;
+            return;
+        }
+        entry.init_failures += 1;
+        if entry.init_failures >= MAX_INIT_FAILURES && entry.enabled {
+            entry.enabled = false;
+            entry.auto_disabled = true;
+            tracing::warn!(module = module_id, "module disabled after repeated init failures");
+        }
+    }
+}
+
+pub fn load(conn: &Connection) -> AppResult<Settings> {
+    let raw: Option<String> = conn
+        .query_row(
+            "SELECT value FROM settings WHERE key = ?1",
+            [SETTINGS_KEY],
+            |row| row.get(0),
+        )
+        .optional()?;
+    let Some(raw) = raw else {
+        return Ok(Settings::default());
+    };
+    match serde_json::from_str(&raw) {
+        Ok(settings) => Ok(settings),
+        Err(error) => {
+            // Don't crash the app over a corrupt row; start from defaults and say so.
+            tracing::warn!(%error, "stored settings are unreadable; using defaults");
+            Ok(Settings::default())
+        }
+    }
+}
+
+pub fn save(conn: &Connection, settings: &Settings) -> AppResult<()> {
+    let json = serde_json::to_string(settings).map_err(|e| AppError::InvalidInput(e.to_string()))?;
+    conn.execute(
+        "INSERT INTO settings (key, value, updated_at) VALUES (?1, ?2, ?3)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
+        params![SETTINGS_KEY, json, chrono::Utc::now().to_rfc3339()],
+    )?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::Db;
+
+    fn db() -> Db {
+        Db::open(std::path::Path::new(":memory:")).unwrap()
+    }
+
+    #[test]
+    fn defaults_when_nothing_is_stored() {
+        let db = db();
+        assert_eq!(db.with(load).unwrap(), Settings::default());
+    }
+
+    #[test]
+    fn round_trips_through_the_database() {
+        let db = db();
+        let mut settings = Settings {
+            animation: AnimationPreference::Reduced,
+            ..Default::default()
+        };
+        settings.modules.insert(
+            "media".into(),
+            ModuleSettings {
+                may_peek: false,
+                ..Default::default()
+            },
+        );
+        db.with(|c| save(c, &settings)).unwrap();
+        assert_eq!(db.with(load).unwrap(), settings);
+    }
+
+    #[test]
+    fn fills_missing_fields_with_defaults() {
+        let parsed: Settings = serde_json::from_str(r#"{"modules":{"git":{"mayPeek":false}}}"#).unwrap();
+        let git = &parsed.modules["git"];
+        assert!(git.enabled);
+        assert!(!git.may_peek);
+        assert_eq!(parsed.animation, AnimationPreference::System);
+    }
+
+    #[test]
+    fn falls_back_to_defaults_on_corrupt_json() {
+        let db = db();
+        db.with(|c| {
+            c.execute(
+                "INSERT INTO settings (key, value, updated_at) VALUES ('app', '{nope', 'now')",
+                [],
+            )?;
+            Ok(())
+        })
+        .unwrap();
+        assert_eq!(db.with(load).unwrap(), Settings::default());
+    }
+
+    #[test]
+    fn auto_disables_after_repeated_failures_and_resets_on_success() {
+        let mut settings = Settings::default();
+        settings.record_module_init("media", false);
+        settings.record_module_init("media", true);
+        assert_eq!(settings.modules["media"].init_failures, 0);
+
+        for _ in 0..MAX_INIT_FAILURES {
+            settings.record_module_init("media", false);
+        }
+        let media = &settings.modules["media"];
+        assert!(!media.enabled);
+        assert!(media.auto_disabled);
+    }
+
+    #[test]
+    fn rejects_bad_module_ids() {
+        let mut settings = Settings::default();
+        settings
+            .modules
+            .insert("../evil".into(), ModuleSettings::default());
+        assert!(settings.validate().is_err());
+    }
+}

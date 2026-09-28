@@ -14,7 +14,12 @@ if (!arg) {
 const expression = arg.endsWith(".js") && existsSync(arg) ? readFileSync(arg, "utf8") : arg;
 
 const targets = await (await fetch(`http://127.0.0.1:${port}/json`)).json();
-const page = targets.find((t) => t.type === "page" && t.url.includes("localhost:1420"));
+// CDP_WINDOW=settings targets the settings window; otherwise the island.
+const wantSettings = process.env.CDP_WINDOW === "settings";
+const page = targets.find(
+  (t) =>
+    t.type === "page" && t.url.includes("localhost:1420") && t.url.includes("#settings") === wantSettings,
+);
 if (!page) {
   console.error(
     "no Notch Desktop webview found; targets:",

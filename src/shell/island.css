@@ -98,6 +98,13 @@
   pointer-events: auto;
 }
 
+.dock__divider {
+  width: 1px;
+  height: 18px;
+  margin: 0 var(--space-1);
+  background: var(--border-strong);
+}
+
 /* Gallery (development only). */
 .gallery {
   height: 100%;

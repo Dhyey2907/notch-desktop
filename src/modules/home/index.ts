@@ -9,6 +9,7 @@ export const homeModule: NotchModule = {
   name: "Home",
   icon: House,
   order: 0,
+  alwaysOn: true,
   Peek: HomePeek,
   Expanded: lazy(() => import("./HomeExpanded")),
 };

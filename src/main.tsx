@@ -2,15 +2,23 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 
 import App from "./App";
+import { connectEventBus } from "./core/eventBus";
 import "./design/tokens.css";
 import "./index.css";
-import { connectEventBus } from "./core/eventBus";
+import { useSettings } from "./settings";
+import { SettingsApp } from "./settings/SettingsApp";
 
 // Start listening before the first render so no backend event is missed.
 connectEventBus().catch((error) => console.error("failed to connect event bus", error));
+useSettings
+  .getState()
+  .load()
+  .catch((error) => console.error("failed to load settings", error));
+
+// One bundle serves both windows: the island (default) and the settings window (#settings).
+const isSettingsWindow = window.location.hash === "#settings";
+if (isSettingsWindow) document.documentElement.classList.add("settings-window");
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
+  <React.StrictMode>{isSettingsWindow ? <SettingsApp /> : <App />}</React.StrictMode>,
 );

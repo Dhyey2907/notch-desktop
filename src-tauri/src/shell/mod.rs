@@ -9,7 +9,7 @@ use std::sync::Mutex;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Manager, WebviewWindow, WindowEvent,
+    AppHandle, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent,
 };
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 
@@ -17,6 +17,31 @@ use crate::{error::AppResult, events::AppEvent, state::AppState};
 use placement::{top_center_frame, WorkArea};
 
 pub const MAIN_WINDOW: &str = "main";
+pub const SETTINGS_WINDOW: &str = "settings";
+/// Passed by the Windows startup entry so a sign-in launch can be told apart from a manual one.
+pub const AUTOSTART_ARG: &str = "--autostart";
+
+/// Open the settings window, or focus it if it is already open. It is an ordinary
+/// decorated window, created on demand and destroyed on close (design.md §21).
+pub fn open_settings_window(app: &AppHandle) -> AppResult<()> {
+    if let Some(window) = app.get_webview_window(SETTINGS_WINDOW) {
+        window.unminimize()?;
+        window.show()?;
+        window.set_focus()?;
+        return Ok(());
+    }
+    WebviewWindowBuilder::new(
+        app,
+        SETTINGS_WINDOW,
+        WebviewUrl::App("index.html#settings".into()),
+    )
+    .title("Notch Desktop Settings")
+    .inner_size(760.0, 540.0)
+    .min_inner_size(640.0, 440.0)
+    .center()
+    .build()?;
+    Ok(())
+}
 
 /// Logical window size requested by the frontend, reused when the display changes.
 pub struct ShellState {
@@ -115,8 +140,9 @@ fn toggle_visibility(app: &AppHandle) {
 
 fn setup_tray(app: &AppHandle) -> AppResult<()> {
     let toggle = MenuItem::with_id(app, "toggle", "Show / hide notch", true, None::<&str>)?;
+    let settings = MenuItem::with_id(app, "settings", "Settings…", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Quit Notch Desktop", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&toggle, &quit])?;
+    let menu = Menu::with_items(app, &[&toggle, &settings, &quit])?;
 
     let mut tray = TrayIconBuilder::with_id("main")
         .tooltip("Notch Desktop")
@@ -124,6 +150,11 @@ fn setup_tray(app: &AppHandle) -> AppResult<()> {
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id.as_ref() {
             "toggle" => toggle_visibility(app),
+            "settings" => {
+                if let Err(error) = open_settings_window(app) {
+                    tracing::warn!(%error, "failed to open settings window");
+                }
+            }
             "quit" => app.exit(0),
             _ => {}
         })

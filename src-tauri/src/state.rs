@@ -1,6 +1,6 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Mutex};
 
-use crate::{db::Db, events::EventBus};
+use crate::{db::Db, events::EventBus, settings::Settings};
 
 /// Resolved per-user directories.
 pub struct AppPaths {
@@ -13,4 +13,6 @@ pub struct AppState {
     pub db: Db,
     pub bus: EventBus,
     pub paths: AppPaths,
+    /// In-memory copy of the persisted settings; writes go through `commands::settings`.
+    pub settings: Mutex<Settings>,
 }

@@ -349,3 +349,105 @@
 .nd-heatmap__cell--l4 {
   background: var(--heat-4);
 }
+
+/* Switch */
+.nd-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
+}
+
+.nd-switch-row--disabled {
+  opacity: 0.5;
+}
+
+.nd-switch-row__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nd-switch-row__label {
+  font-size: var(--text-md);
+  font-weight: var(--weight-label);
+}
+
+.nd-switch-row__description {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.nd-switch {
+  flex: none;
+  position: relative;
+  width: 36px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  background: var(--surface-hover);
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.nd-switch__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-pill);
+  background: var(--text-secondary);
+  transition:
+    transform 150ms ease,
+    background-color 150ms ease;
+}
+
+.nd-switch--on {
+  background: var(--info);
+  border-color: var(--info);
+}
+
+.nd-switch--on .nd-switch__thumb {
+  transform: translateX(16px);
+  background: var(--active);
+}
+
+.nd-switch:disabled {
+  cursor: default;
+}
+
+.nd-switch:focus-visible,
+.nd-segmented__option:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Segmented control */
+.nd-segmented {
+  display: inline-flex;
+  padding: 2px;
+  gap: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.nd-segmented__option {
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-label);
+  padding: 4px var(--space-3);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.nd-segmented__option--active {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}

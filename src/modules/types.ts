@@ -29,4 +29,6 @@ export interface NotchModule {
   init?: (ctx: ModuleContext) => void | (() => void);
   /** Development-only modules are excluded from release builds. */
   devOnly?: boolean;
+  /** Cannot be disabled in Settings (e.g. Home, which hosts first-run and guidance). */
+  alwaysOn?: boolean;
 }

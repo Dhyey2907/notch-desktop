@@ -3,6 +3,7 @@ mod db;
 mod error;
 mod events;
 mod logging;
+mod settings;
 mod shell;
 mod state;
 
@@ -34,6 +35,14 @@ macro_rules! app_commands {
             commands::app::app_info,
             commands::app::diagnostics_ping,
             commands::shell::shell_set_window_size,
+            commands::settings::settings_get,
+            commands::settings::settings_update,
+            commands::settings::settings_record_module_init,
+            commands::settings::autostart_get,
+            commands::settings::autostart_set,
+            commands::settings::open_settings_window,
+            commands::diagnostics::diagnostics_open_log_dir,
+            commands::diagnostics::diagnostics_export_logs,
             $($dev),*
         ]
     };
@@ -49,6 +58,11 @@ pub fn run() {
             }
         }))
         .plugin(tauri_plugin_opener::init())
+        .plugin(
+            tauri_plugin_autostart::Builder::new()
+                .args([shell::AUTOSTART_ARG])
+                .build(),
+        )
         .plugin(shell::shortcut_plugin())
         .setup(|app| {
             let handle = app.handle();
@@ -64,10 +78,16 @@ pub fn run() {
             tracing::info!(%version, "starting Notch Desktop");
 
             let db = Db::open(&paths.data_dir.join("notch.db"))?;
+            let settings = db.with(settings::load)?;
             let bus = EventBus::new(EventBus::tauri_emitter(handle.clone()));
             bus.emit("app", AppEvent::AppReady { version });
 
-            app.manage(AppState { db, bus, paths });
+            app.manage(AppState {
+                db,
+                bus,
+                paths,
+                settings: std::sync::Mutex::new(settings),
+            });
             app.manage(ShellState::new(INITIAL_WINDOW_SIZE));
             shell::init(handle)?;
             Ok(())
