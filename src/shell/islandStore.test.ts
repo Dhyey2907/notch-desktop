@@ -79,3 +79,19 @@ describe("islandStore", () => {
     spy.mockRestore();
   });
 });
+
+describe("islandStore sizes", () => {
+  it("resizes for a same-mode request with a different size", async () => {
+    const sizes: Size[] = [];
+    const store = createIslandStore(async (s) => {
+      sizes.push(s);
+    });
+
+    await store.getState().request("activity", { width: 380, height: 72 });
+    await store.getState().settle();
+    await store.getState().request("activity", { width: 420, height: 136 });
+
+    expect(store.getState().size).toEqual({ width: 420, height: 136 });
+    expect(sizes.at(-1)).toEqual(windowSizeFor("activity", { width: 420, height: 136 }));
+  });
+});

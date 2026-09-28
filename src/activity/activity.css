@@ -1,0 +1,87 @@
+.activity {
+  position: relative;
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+}
+
+/* The whole card opens its module; buttons sit above this layer. */
+.activity__open {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  border-radius: inherit;
+}
+
+.activity__open:focus-visible {
+  outline: none;
+  box-shadow: inset var(--focus-ring);
+}
+
+.activity__main {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  pointer-events: none;
+}
+
+.activity__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.activity__text p {
+  margin: 0;
+}
+
+.activity__eyebrow {
+  color: var(--warning);
+  margin-bottom: 2px !important;
+}
+
+.activity__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-md);
+  font-weight: var(--weight-emphasis);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.activity__body {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.activity__meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  flex: none;
+}
+
+.activity__actions {
+  position: relative; /* above .activity__open */
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.activity--critical .activity__title {
+  font-size: var(--text-lg);
+}

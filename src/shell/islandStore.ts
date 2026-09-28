@@ -5,16 +5,18 @@
 //   3. when the animation settles, shrink the window to the target state.
 import { create } from "zustand";
 
-import { sameSize, unionSize, windowSizeFor, type IslandMode, type Size } from "./geometry";
+import { ISLAND_SIZE, sameSize, unionSize, windowSizeFor, type IslandMode, type Size } from "./geometry";
 
 export type ResizeWindow = (size: Size) => Promise<void>;
 
 export interface IslandState {
   mode: IslandMode;
+  /** Current island size (logical px); defaults per mode, activities may override. */
+  size: Size;
   /** Ask for a mode change; resolves once the island has started animating toward it. */
-  request: (mode: IslandMode) => Promise<void>;
+  request: (mode: IslandMode, size?: Size) => Promise<void>;
   toggleExpanded: () => Promise<void>;
-  /** Call when the island's animation settles, to trim the window to the current mode. */
+  /** Call when the island's animation settles, to trim the window to the current state. */
   settle: () => Promise<void>;
 }
 
@@ -35,19 +37,20 @@ export function createIslandStore(resizeWindow: ResizeWindow, initialMode: Islan
 
   return create<IslandState>((set, get) => ({
     mode: initialMode,
+    size: ISLAND_SIZE[initialMode],
 
-    request: async (mode) => {
-      const current = get().mode;
-      if (mode === current) return;
+    request: async (mode, size = ISLAND_SIZE[mode]) => {
+      const current = get();
+      if (mode === current.mode && sameSize(current.size, size)) return;
       const requestId = ++latestRequest;
-      await resizeTo(unionSize(windowSizeFor(current), windowSizeFor(mode)));
+      await resizeTo(unionSize(windowSizeFor(current.mode, current.size), windowSizeFor(mode, size)));
       // A newer request arrived while we were resizing; let it win.
       if (requestId !== latestRequest) return;
-      set({ mode });
+      set({ mode, size });
     },
 
     toggleExpanded: () => get().request(get().mode === "expanded" ? "collapsed" : "expanded"),
 
-    settle: () => resizeTo(windowSizeFor(get().mode)),
+    settle: () => resizeTo(windowSizeFor(get().mode, get().size)),
   }));
 }

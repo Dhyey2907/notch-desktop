@@ -4,8 +4,15 @@
 //! wrapped in a versioned `EventEnvelope`, forwarded to the webview on the
 //! `app-event` channel, and broadcast to in-process Rust subscribers.
 
+use std::{
+    collections::HashMap,
+    hash::{DefaultHasher, Hash, Hasher},
+    sync::Mutex,
+    time::{Duration, Instant},
+};
+
 use chrono::{DateTime, Utc};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tokio::sync::broadcast;
 use ts_rs::TS;
 
@@ -14,6 +21,41 @@ pub const APP_EVENT_CHANNEL: &str = "app-event";
 
 /// Bump when an existing event's payload changes shape incompatibly.
 pub const EVENT_SCHEMA_VERSION: u32 = 1;
+
+/// Identical events with the same dedup key inside this window are dropped, absorbing
+/// bursts from chatty sources (e.g. media sessions firing several change callbacks).
+const DEDUP_WINDOW: Duration = Duration::from_millis(750);
+
+/// How urgently an activity should claim the island (plan.md Phase 5).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "lowercase")]
+#[ts(export)]
+#[cfg_attr(not(debug_assertions), allow(dead_code))] // release producers arrive with approvals (M9)
+pub enum ActivityPriority {
+    Critical,
+    High,
+    Normal,
+    Low,
+}
+
+/// Development-only fake activity, used to exercise the activity engine end to end
+/// without any real integration (plan.md Phase 4 acceptance). Debug builds only.
+#[cfg(debug_assertions)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct DevTestActivity {
+    pub priority: ActivityPriority,
+    pub title: String,
+    pub body: String,
+    #[ts(optional)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dedup_key: Option<String>,
+    #[serde(default)]
+    pub persistent: bool,
+    #[serde(default)]
+    pub actionable: bool,
+}
 
 #[derive(Debug, Clone, Serialize, TS)]
 #[serde(tag = "type", content = "payload")]
@@ -25,6 +67,9 @@ pub enum AppEvent {
     DiagnosticsPong { nonce: String },
     /// The global shortcut asked the island to toggle between collapsed and expanded.
     ShellToggleRequested,
+    /// Fake activity fired from the dev panel (debug builds only).
+    #[cfg(debug_assertions)]
+    DevTestActivity(DevTestActivity),
 }
 
 impl AppEvent {
@@ -34,6 +79,8 @@ impl AppEvent {
             AppEvent::AppReady { .. } => "AppReady",
             AppEvent::DiagnosticsPong { .. } => "DiagnosticsPong",
             AppEvent::ShellToggleRequested => "ShellToggleRequested",
+            #[cfg(debug_assertions)]
+            AppEvent::DevTestActivity(_) => "DevTestActivity",
         }
     }
 }
@@ -75,7 +122,7 @@ impl EventEnvelope {
         self
     }
 
-    #[allow(dead_code)] // first used by the activity engine (M3)
+    #[cfg_attr(not(debug_assertions), allow(dead_code))] // release callers arrive with Media (M5)
     pub fn with_dedup_key(mut self, key: impl Into<String>) -> Self {
         self.dedup_key = Some(key.into());
         self
@@ -88,12 +135,45 @@ pub type Emitter = Box<dyn Fn(&EventEnvelope) + Send + Sync>;
 pub struct EventBus {
     emit_to_frontend: Emitter,
     tx: broadcast::Sender<EventEnvelope>,
+    dedup_window: Duration,
+    /// dedup key -> (last published at, payload fingerprint)
+    recent: Mutex<HashMap<String, (Instant, u64)>>,
 }
 
 impl EventBus {
     pub fn new(emit_to_frontend: Emitter) -> Self {
+        Self::with_dedup_window(emit_to_frontend, DEDUP_WINDOW)
+    }
+
+    fn with_dedup_window(emit_to_frontend: Emitter, dedup_window: Duration) -> Self {
         let (tx, _) = broadcast::channel(256);
-        Self { emit_to_frontend, tx }
+        Self {
+            emit_to_frontend,
+            tx,
+            dedup_window,
+            recent: Mutex::new(HashMap::new()),
+        }
+    }
+
+    /// True when an identical event with the same dedup key was published within the window.
+    fn is_duplicate(&self, envelope: &EventEnvelope) -> bool {
+        let Some(key) = &envelope.dedup_key else {
+            return false;
+        };
+        let mut hasher = DefaultHasher::new();
+        serde_json::to_string(&envelope.event)
+            .unwrap_or_default()
+            .hash(&mut hasher);
+        let fingerprint = hasher.finish();
+        let now = Instant::now();
+
+        let mut recent = self.recent.lock().unwrap_or_else(|e| e.into_inner());
+        recent.retain(|_, (at, _)| now.duration_since(*at) < self.dedup_window);
+        let duplicate = recent
+            .get(key)
+            .is_some_and(|(_, previous)| *previous == fingerprint);
+        recent.insert(key.clone(), (now, fingerprint));
+        duplicate
     }
 
     pub fn tauri_emitter(app: tauri::AppHandle) -> Emitter {
@@ -106,6 +186,10 @@ impl EventBus {
     }
 
     pub fn publish(&self, envelope: EventEnvelope) {
+        if self.is_duplicate(&envelope) {
+            tracing::trace!(event = envelope.event.name(), "duplicate event suppressed");
+            return;
+        }
         tracing::debug!(
             id = %envelope.id,
             event = envelope.event.name(),
@@ -152,6 +236,63 @@ mod tests {
         let received = rx.try_recv().unwrap();
         assert_eq!(received.source, "test");
         assert_eq!(received.v, EVENT_SCHEMA_VERSION);
+    }
+
+    fn counting_bus(window: Duration) -> (EventBus, Arc<Mutex<usize>>) {
+        let count = Arc::new(Mutex::new(0));
+        let count_clone = count.clone();
+        let bus = EventBus::with_dedup_window(Box::new(move |_| *count_clone.lock().unwrap() += 1), window);
+        (bus, count)
+    }
+
+    fn pong(nonce: &str, key: Option<&str>) -> EventEnvelope {
+        let envelope = EventEnvelope::new("test", AppEvent::DiagnosticsPong { nonce: nonce.into() });
+        match key {
+            Some(key) => envelope.with_dedup_key(key),
+            None => envelope,
+        }
+    }
+
+    #[test]
+    fn suppresses_identical_events_with_the_same_dedup_key() {
+        let (bus, count) = counting_bus(Duration::from_secs(60));
+        bus.publish(pong("a", Some("k")));
+        bus.publish(pong("a", Some("k")));
+        assert_eq!(*count.lock().unwrap(), 1);
+    }
+
+    #[test]
+    fn delivers_changed_payloads_and_unkeyed_events() {
+        let (bus, count) = counting_bus(Duration::from_secs(60));
+        bus.publish(pong("a", Some("k")));
+        bus.publish(pong("b", Some("k"))); // same key, new content: a replacement, not a dup
+        bus.publish(pong("a", None));
+        bus.publish(pong("a", None));
+        assert_eq!(*count.lock().unwrap(), 4);
+    }
+
+    #[test]
+    fn delivers_repeats_after_the_window() {
+        let (bus, count) = counting_bus(Duration::ZERO);
+        bus.publish(pong("a", Some("k")));
+        bus.publish(pong("a", Some("k")));
+        assert_eq!(*count.lock().unwrap(), 2);
+    }
+
+    #[cfg(debug_assertions)]
+    #[test]
+    fn dev_activity_uses_camel_case_and_lowercase_priority() {
+        let event = AppEvent::DevTestActivity(DevTestActivity {
+            priority: ActivityPriority::Critical,
+            title: "t".into(),
+            body: "b".into(),
+            dedup_key: Some("k".into()),
+            persistent: true,
+            actionable: false,
+        });
+        let json = serde_json::to_value(&event).unwrap();
+        assert_eq!(json["payload"]["priority"], "critical");
+        assert_eq!(json["payload"]["dedupKey"], "k");
     }
 
     #[test]

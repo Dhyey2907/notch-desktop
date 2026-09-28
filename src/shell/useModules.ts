@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 
+import { useActivities } from "../activity";
 import { eventBus } from "../core/eventBus";
 import { MODULES } from "../modules/registry";
 import type { ModuleContext } from "../modules/types";
@@ -11,7 +12,8 @@ export const useModuleNav = createModuleStore(MODULES.map((m) => m.id));
 /** Run each module's `init` once and dispose on unmount. One failing module can't stop the rest. */
 export function useModuleLifecycle() {
   useEffect(() => {
-    const ctx: ModuleContext = { events: eventBus };
+    const { push, dismiss } = useActivities.getState();
+    const ctx: ModuleContext = { events: eventBus, activities: { push, dismiss } };
     const disposers: (() => void)[] = [];
     for (const module of MODULES) {
       try {

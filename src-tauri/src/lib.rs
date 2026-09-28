@@ -19,6 +19,26 @@ use crate::{
 /// in `src/shell/geometry.ts` so the first frame is already the right size.
 const INITIAL_WINDOW_SIZE: (f64, f64) = (228.0, 66.0);
 
+/// Every command the webview may call. Dev-only commands are compiled into debug builds only.
+macro_rules! app_commands {
+    () => {{
+        #[cfg(debug_assertions)]
+        let handler: fn(tauri::ipc::Invoke<tauri::Wry>) -> bool =
+            app_commands!(@with commands::dev::dev_emit_test_activity);
+        #[cfg(not(debug_assertions))]
+        let handler: fn(tauri::ipc::Invoke<tauri::Wry>) -> bool = app_commands!(@with);
+        handler
+    }};
+    (@with $($dev:path),*) => {
+        tauri::generate_handler![
+            commands::app::app_info,
+            commands::app::diagnostics_ping,
+            commands::shell::shell_set_window_size,
+            $($dev),*
+        ]
+    };
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -52,11 +72,7 @@ pub fn run() {
             shell::init(handle)?;
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![
-            commands::app::app_info,
-            commands::app::diagnostics_ping,
-            commands::shell::shell_set_window_size,
-        ])
+        .invoke_handler(app_commands!())
         .run(tauri::generate_context!())
         .expect("error while running Notch Desktop");
 }

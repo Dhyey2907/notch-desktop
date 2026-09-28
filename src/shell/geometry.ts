@@ -2,18 +2,25 @@
 // plus a margin for its shadow, and is resized per state so it never blocks the
 // desktop beyond what is visible.
 
-export type IslandMode = "collapsed" | "peek" | "expanded";
+export type IslandMode = "collapsed" | "peek" | "activity" | "expanded";
 
 export interface Size {
   width: number;
   height: number;
 }
 
+/** Default island size per mode. Activities size themselves via `activityIslandSize`. */
 export const ISLAND_SIZE: Record<IslandMode, Size> = {
   collapsed: { width: 184, height: 30 },
   peek: { width: 340, height: 64 },
+  activity: { width: 380, height: 72 },
   expanded: { width: 540, height: 300 },
 };
+
+/** Island size for an activity: taller when it carries action buttons. */
+export function activityIslandSize(hasActions: boolean): Size {
+  return hasActions ? { width: 420, height: 136 } : ISLAND_SIZE.activity;
+}
 
 /**
  * Room around the island for `--shadow-island` (8px offset + 18px blur). Keep it small:
@@ -24,13 +31,17 @@ export const WINDOW_MARGIN = { x: 22, top: 6, bottom: 30 } as const;
 /** Module dock shown beneath the expanded island (design.md §17). */
 export const DOCK = { height: 40, gap: 8 } as const;
 
-export function windowSizeFor(mode: IslandMode): Size {
-  const island = ISLAND_SIZE[mode];
+export function windowSizeFor(mode: IslandMode, island: Size = ISLAND_SIZE[mode]): Size {
   const dock = mode === "expanded" ? DOCK.gap + DOCK.height : 0;
   return {
     width: island.width + WINDOW_MARGIN.x * 2,
     height: island.height + dock + WINDOW_MARGIN.top + WINDOW_MARGIN.bottom,
   };
+}
+
+/** Pill radius for short islands, a fixed corner once content gets taller (design.md §6). */
+export function islandRadius(size: Size): number {
+  return size.height <= 72 ? size.height / 2 : 24;
 }
 
 /** Smallest window that contains both sizes, used while animating between states. */

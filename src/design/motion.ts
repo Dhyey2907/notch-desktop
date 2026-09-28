@@ -1,12 +1,13 @@
 // Shared motion presets (design.md §8). Components use these instead of ad-hoc timings.
 import type { Transition } from "motion/react";
 
-export type IslandMotionState = "collapsed" | "peek" | "expanded";
+export type IslandMotionState = "collapsed" | "peek" | "activity" | "expanded";
 
 /** Island container springs: peek 180–250ms, expansion 350–500ms, collapse 250–400ms. */
 export const ISLAND_SPRING: Record<IslandMotionState, Transition> = {
   collapsed: { type: "spring", visualDuration: 0.32, bounce: 0 },
   peek: { type: "spring", visualDuration: 0.22, bounce: 0.1 },
+  activity: { type: "spring", visualDuration: 0.28, bounce: 0.12 },
   expanded: { type: "spring", visualDuration: 0.42, bounce: 0.18 },
 };
 

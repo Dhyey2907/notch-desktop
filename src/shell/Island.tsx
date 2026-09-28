@@ -2,10 +2,14 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useRef, type WheelEvent } from "react";
 
+import { useActivities } from "../activity";
+import { isPersistent, type Activity } from "../activity/activityStore";
+import { ActivityView } from "../activity/ActivityView";
 import { eventBus } from "../core/eventBus";
-import { contentEnter, INSTANT, ISLAND_SPRING } from "../design/motion";
+import { contentEnter, INSTANT, ISLAND_SPRING, SERIOUS_SPRING } from "../design/motion";
+import { findModule } from "../modules/registry";
 import { Dock } from "./Dock";
-import { ISLAND_SIZE, WINDOW_MARGIN, type IslandMode } from "./geometry";
+import { activityIslandSize, islandRadius, WINDOW_MARGIN, type IslandMode } from "./geometry";
 import { CompactHost, ModuleHost, PeekHost } from "./ModuleHost";
 import { useIsland } from "./useIsland";
 import { useModuleLifecycle, useModuleNav } from "./useModules";
@@ -19,12 +23,6 @@ const PEEK_LEAVE_MS = 200;
 const SWIPE_THRESHOLD = 60;
 const SWIPE_COOLDOWN_MS = 350;
 
-const ISLAND_RADIUS: Record<IslandMode, number> = {
-  collapsed: ISLAND_SIZE.collapsed.height / 2,
-  peek: ISLAND_SIZE.peek.height / 2,
-  expanded: 24,
-};
-
 function focusActiveDockItem() {
   const id = useModuleNav.getState().activeId;
   requestAnimationFrame(() =>
@@ -32,10 +30,22 @@ function focusActiveDockItem() {
   );
 }
 
+/** Critical and high-priority activities are serious: they never bounce (design.md §8). */
+function isSerious(activity: Activity | null) {
+  return activity?.priority === "critical" || activity?.priority === "high";
+}
+
+function currentActivity() {
+  return useActivities.getState().activities[0] ?? null;
+}
+
 export function Island() {
   const mode = useIsland((s) => s.mode);
+  const size = useIsland((s) => s.size);
   const request = useIsland((s) => s.request);
   const settle = useIsland((s) => s.settle);
+  const activity = useActivities((s) => s.activities[0] ?? null);
+  const queued = useActivities((s) => Math.max(0, s.activities.length - 1));
   const reduceMotion = useReducedMotion();
   const hoverTimer = useRef<number | undefined>(undefined);
   const swipe = useRef({ distance: 0, lockedUntil: 0 });
@@ -46,6 +56,17 @@ export function Island() {
   useEffect(() => {
     void settle();
   }, [settle]);
+
+  // Activities claim the island unless the user has it expanded; once none remain, it
+  // returns to collapsed. Expanded is never interrupted — queued activities wait.
+  useEffect(() => {
+    const { mode: current, request } = useIsland.getState();
+    if (activity && current !== "expanded") {
+      void request("activity", activityIslandSize(Boolean(activity.actions?.length)));
+    } else if (!activity && current === "activity") {
+      void request("collapsed");
+    }
+  }, [activity, mode]);
 
   // Keyboard path (Ctrl+Alt+N): after expanding, move focus to the dock so arrows/Tab work.
   // Pointer opens don't move focus, so no focus ring appears on click.
@@ -58,14 +79,21 @@ export function Island() {
     [],
   );
 
-  // Clicking elsewhere (window blur) or pressing Escape collapses the island.
+  // Clicking elsewhere (window blur) collapses; Escape collapses or dismisses the activity.
   useEffect(() => {
     const unlisten = getCurrentWindow().onFocusChanged(({ payload: focused }) => {
       if (!focused && useIsland.getState().mode === "expanded")
         void useIsland.getState().request("collapsed");
     });
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") void useIsland.getState().request("collapsed");
+      if (e.key !== "Escape") return;
+      const current = currentActivity();
+      if (useIsland.getState().mode === "activity" && current) {
+        // Persistent activities (e.g. approvals) need an explicit answer.
+        if (!isPersistent(current)) useActivities.getState().dismiss(current.id);
+        return;
+      }
+      void useIsland.getState().request("collapsed");
     };
     window.addEventListener("keydown", onKey);
     return () => {
@@ -80,17 +108,31 @@ export function Island() {
   };
 
   const onPointerEnter = () => {
-    if (useIsland.getState().mode === "collapsed") scheduleHover("peek", PEEK_INTENT_MS);
+    const current = useIsland.getState().mode;
+    if (current === "collapsed") scheduleHover("peek", PEEK_INTENT_MS);
     else window.clearTimeout(hoverTimer.current);
+    // Don't let an activity vanish while the pointer is on it.
+    const shown = currentActivity();
+    if (current === "activity" && shown) useActivities.getState().hold(shown.id);
   };
 
   const onPointerLeave = () => {
-    if (useIsland.getState().mode === "peek") scheduleHover("collapsed", PEEK_LEAVE_MS);
+    const current = useIsland.getState().mode;
+    if (current === "peek") scheduleHover("collapsed", PEEK_LEAVE_MS);
     else window.clearTimeout(hoverTimer.current);
+    const shown = currentActivity();
+    if (current === "activity" && shown) useActivities.getState().release(shown.id);
   };
 
   const expand = () => {
     window.clearTimeout(hoverTimer.current);
+    void request("expanded");
+  };
+
+  /** Clicking an activity opens its module; transient activities are consumed by that. */
+  const openActivity = (shown: Activity) => {
+    if (findModule(shown.moduleId)) useModuleNav.getState().setActive(shown.moduleId);
+    if (!isPersistent(shown)) useActivities.getState().dismiss(shown.id);
     void request("expanded");
   };
 
@@ -106,7 +148,8 @@ export function Island() {
     }
   };
 
-  const size = ISLAND_SIZE[mode];
+  const shownActivity = mode === "activity" ? activity : null;
+  const transition = reduceMotion ? INSTANT : isSerious(shownActivity) ? SERIOUS_SPRING : ISLAND_SPRING[mode];
 
   return (
     <div className="island-frame" style={{ paddingTop: WINDOW_MARGIN.top }}>
@@ -115,19 +158,19 @@ export function Island() {
         data-mode={mode}
         aria-label="Notch"
         initial={false}
-        animate={{ width: size.width, height: size.height, borderRadius: ISLAND_RADIUS[mode] }}
-        transition={reduceMotion ? INSTANT : ISLAND_SPRING[mode]}
+        animate={{ width: size.width, height: size.height, borderRadius: islandRadius(size) }}
+        transition={transition}
         onAnimationComplete={() => void settle()}
         onPointerEnter={onPointerEnter}
         onPointerLeave={onPointerLeave}
         onWheel={onWheel}
       >
-        {mode !== "expanded" && (
+        {(mode === "collapsed" || mode === "peek") && (
           <button className="island-hit" aria-label="Open Notch" aria-expanded={false} onClick={expand} />
         )}
         <AnimatePresence mode="popLayout" initial={false}>
           <motion.div
-            key={mode}
+            key={shownActivity ? `activity-${shownActivity.id}` : mode}
             className={`island-content island-content--${mode}`}
             initial={{ opacity: 0, scale: 0.97 }}
             animate={{ opacity: 1, scale: 1, transition: contentEnter(mode, reduceMotion) }}
@@ -135,6 +178,16 @@ export function Island() {
           >
             {mode === "collapsed" && <CompactHost />}
             {mode === "peek" && <PeekHost />}
+            {shownActivity && (
+              <ActivityView
+                activity={shownActivity}
+                queued={queued}
+                onRunAction={(actionId) =>
+                  void useActivities.getState().runAction(shownActivity.id, actionId)
+                }
+                onOpen={() => openActivity(shownActivity)}
+              />
+            )}
             {mode === "expanded" && <ModuleHost />}
           </motion.div>
         </AnimatePresence>

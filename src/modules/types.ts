@@ -3,10 +3,13 @@
 import type { LucideIcon } from "lucide-react";
 import type { ComponentType } from "react";
 
+import type { ActivityState } from "../activity/activityStore";
 import type { EventBus } from "../core/eventBus";
 
 export interface ModuleContext {
   events: Pick<EventBus, "on" | "onAny">;
+  /** Ask the shell to show something; the activity engine decides when and how. */
+  activities: Pick<ActivityState, "push" | "dismiss">;
 }
 
 export interface NotchModule {
