@@ -1,0 +1,123 @@
+.usage {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 0;
+}
+
+.usage p {
+  margin: 0;
+}
+
+/* Six small metric cards in a two-row grid; labels subdued, values prominent. */
+.usage__cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.usage-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  min-width: 0;
+}
+
+.usage-card__label {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.usage-card__value {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-emphasis);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.usage .nd-heatmap {
+  flex: none; /* never shrink: the last row was clipped */
+  padding-bottom: 2px;
+}
+
+.usage .nd-heatmap__grid {
+  grid-template-rows: repeat(7, 8px);
+  grid-auto-columns: 8px;
+  gap: 3px;
+}
+
+.usage__caption {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  margin-top: auto !important;
+}
+
+.usage__source {
+  color: var(--text-muted);
+}
+
+/* Models tab */
+.usage-models {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.usage-models__row {
+  display: grid;
+  grid-template-columns: 110px 1fr 56px 64px;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.usage-models__name {
+  font-weight: var(--weight-label);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.usage-models__value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.usage-models__meta {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  text-align: right;
+}
+
+/* Collapsed indicator */
+.claude-compact {
+  display: inline-flex;
+  color: var(--info);
+  animation: claude-pulse 1.6s ease-in-out infinite;
+}
+
+.claude-compact--waiting {
+  color: var(--warning);
+}
+
+@keyframes claude-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .claude-compact {
+    animation: none;
+  }
+}

@@ -12,6 +12,8 @@ pub enum Credential {
     GoogleClientSecret,
     GoogleRefreshToken,
     SpotifyRefreshToken,
+    /// Shared secret Claude Code presents to Notch's local hook server.
+    ClaudeHookToken,
     #[cfg(test)]
     Test,
 }
@@ -22,6 +24,7 @@ impl Credential {
             Credential::GoogleClientSecret => "google-calendar/client-secret",
             Credential::GoogleRefreshToken => "google-calendar/refresh-token",
             Credential::SpotifyRefreshToken => "spotify/refresh-token",
+            Credential::ClaudeHookToken => "claude-code/hook-token",
             #[cfg(test)]
             Credential::Test => "test/round-trip",
         }

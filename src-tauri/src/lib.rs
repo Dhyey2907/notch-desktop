@@ -1,4 +1,5 @@
 mod calendar;
+mod claude;
 mod commands;
 mod db;
 mod error;
@@ -71,6 +72,11 @@ macro_rules! app_commands {
             commands::git::git_run,
             commands::git::git_pull_requests,
             commands::git::git_open_folder,
+            commands::claude::claude_status,
+            commands::claude::claude_usage,
+            commands::claude::claude_hooks_preview,
+            commands::claude::claude_connect,
+            commands::claude::claude_disconnect,
             $($dev),*
         ]
     };
@@ -125,7 +131,8 @@ pub fn run() {
             let version = handle.package_info().version.to_string();
             tracing::info!(%version, "starting Notch Desktop");
 
-            let db = Db::open(&paths.data_dir.join("notch.db"))?;
+            let paths_db = paths.data_dir.join("notch.db");
+            let db = Db::open(&paths_db)?;
             let settings = db.with(settings::load)?;
             let bus = EventBus::new(EventBus::tauri_emitter(handle.clone()));
             bus.emit("app", AppEvent::AppReady { version });
@@ -154,6 +161,10 @@ pub fn run() {
             let git = git::service::GitService::new(handle.clone(), mock_enabled("git"));
             git.start();
             app.manage(git);
+
+            let claude = claude::service::ClaudeService::new(handle.clone(), paths_db.clone())?;
+            claude.start();
+            app.manage(claude);
             shell::init(handle)?;
             Ok(())
         })

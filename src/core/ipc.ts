@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 import type { AppInfo } from "./generated/AppInfo";
 import type { CalendarSnapshot } from "./generated/CalendarSnapshot";
+import type { ClaudeStatus } from "./generated/ClaudeStatus";
 import type { DevTestActivity } from "./generated/DevTestActivity";
 import type { GitOperation } from "./generated/GitOperation";
 import type { GitSnapshot } from "./generated/GitSnapshot";
@@ -14,6 +15,8 @@ import type { MediaState } from "./generated/MediaState";
 import type { PlayOutcome } from "./generated/PlayOutcome";
 import type { Settings } from "./generated/Settings";
 import type { SpotifySnapshot } from "./generated/SpotifySnapshot";
+import type { UsageRange } from "./generated/UsageRange";
+import type { UsageSummary } from "./generated/UsageSummary";
 
 /** Shape of `AppError` as serialized by the backend. */
 export interface IpcError {
@@ -73,5 +76,12 @@ export const ipc = {
     invoke<void>("git_run", { operation, message, includeUntracked }),
   gitPullRequests: () => invoke<PullRequests>("git_pull_requests"),
   gitOpenFolder: () => invoke<void>("git_open_folder"),
+  claudeStatus: () => invoke<ClaudeStatus>("claude_status"),
+  /** Local usage estimate for a range, from Claude Code transcripts on this PC. */
+  claudeUsage: (range: UsageRange) => invoke<UsageSummary>("claude_usage", { range }),
+  /** What connecting will add to Claude Code's settings (token masked). */
+  claudeHooksPreview: () => invoke<string>("claude_hooks_preview"),
+  claudeConnect: () => invoke<void>("claude_connect"),
+  claudeDisconnect: () => invoke<void>("claude_disconnect"),
   setWindowSize: (width: number, height: number) => invoke<void>("shell_set_window_size", { width, height }),
 };

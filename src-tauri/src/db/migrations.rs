@@ -4,7 +4,10 @@ use crate::error::{AppError, AppResult};
 
 /// Ordered, append-only list of migrations. Migration N sets `user_version = N`.
 /// Never edit a shipped migration; add a new one.
-const MIGRATIONS: &[&str] = &[include_str!("migrations/001_init.sql")];
+const MIGRATIONS: &[&str] = &[
+    include_str!("migrations/001_init.sql"),
+    include_str!("migrations/002_claude_usage.sql"),
+];
 
 pub fn schema_version(conn: &Connection) -> AppResult<u32> {
     Ok(conn.pragma_query_value(None, "user_version", |row| row.get(0))?)

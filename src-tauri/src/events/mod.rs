@@ -18,6 +18,7 @@ use ts_rs::TS;
 
 use crate::{
     calendar::{CalendarEvent, CalendarSnapshot},
+    claude::ClaudeStatus,
     git::GitSnapshot,
     media::MediaState,
     settings::Settings,
@@ -87,6 +88,10 @@ pub enum AppEvent {
     SpotifyChanged(SpotifySnapshot),
     /// Repository status, history, or a running operation changed.
     GitChanged(GitSnapshot),
+    /// Live Claude Code activity, hook connection, or index status changed.
+    ClaudeStatusChanged(ClaudeStatus),
+    /// New transcript data was indexed; views re-query the usage range they show.
+    ClaudeUsageChanged,
     /// Fake activity fired from the dev panel (debug builds only).
     #[cfg(debug_assertions)]
     DevTestActivity(DevTestActivity),
@@ -105,6 +110,8 @@ impl AppEvent {
             AppEvent::ReminderDue { .. } => "ReminderDue",
             AppEvent::SpotifyChanged(_) => "SpotifyChanged",
             AppEvent::GitChanged(_) => "GitChanged",
+            AppEvent::ClaudeStatusChanged(_) => "ClaudeStatusChanged",
+            AppEvent::ClaudeUsageChanged => "ClaudeUsageChanged",
             #[cfg(debug_assertions)]
             AppEvent::DevTestActivity(_) => "DevTestActivity",
         }

@@ -25,10 +25,22 @@ impl Db {
         Ok(Self(Mutex::new(conn)))
     }
 
+    /// Run `f` with mutable access, e.g. to open a transaction.
+    pub fn with_mut<T>(&self, f: impl FnOnce(&mut Connection) -> AppResult<T>) -> AppResult<T> {
+        let mut conn = self.0.lock().unwrap_or_else(|e| e.into_inner());
+        f(&mut conn)
+    }
+
     /// Run `f` with exclusive access to the connection.
     pub fn with<T>(&self, f: impl FnOnce(&Connection) -> AppResult<T>) -> AppResult<T> {
         // A poisoned lock only means a previous holder panicked; the connection itself is still valid.
         let conn = self.0.lock().unwrap_or_else(|e| e.into_inner());
         f(&conn)
     }
+}
+
+/// Apply all migrations to a scratch connection (tests only).
+#[cfg(test)]
+pub fn migrate_for_tests(conn: &mut Connection) {
+    migrations::migrate(conn).expect("migrations apply");
 }
