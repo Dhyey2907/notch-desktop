@@ -13,6 +13,7 @@ import type { GitOperation } from "./generated/GitOperation";
 import type { GitSnapshot } from "./generated/GitSnapshot";
 import type { PullRequests } from "./generated/PullRequests";
 import type { Note } from "./generated/Note";
+import type { PhoneSnapshot } from "./generated/PhoneSnapshot";
 import type { ScreenInfo } from "./generated/ScreenInfo";
 import type { Task } from "./generated/Task";
 import type { TodoSnapshot } from "./generated/TodoSnapshot";
@@ -98,6 +99,13 @@ export const ipc = {
   claudeStatusLinePreview: () => invoke<string>("claude_status_line_preview"),
   claudeStatusLineEnable: () => invoke<void>("claude_status_line_enable"),
   claudeStatusLineDisable: () => invoke<void>("claude_status_line_disable"),
+  /** Phone Link notifications in Action Center, plus whether Notch may read them. */
+  phoneSnapshot: () => invoke<PhoneSnapshot>("phone_snapshot"),
+  /** Clear a phone notification from Action Center. */
+  phoneDismiss: (id: number) => invoke<void>("phone_dismiss", { id }),
+  /** Bring up Phone Link (replies happen there). */
+  phoneOpen: () => invoke<void>("phone_open"),
+  phoneOpenAccessSettings: () => invoke<void>("phone_open_access_settings"),
   todoSnapshot: () => invoke<TodoSnapshot>("todo_snapshot"),
   /** Add a task; with `timerMinutes` its timer starts right away (`ring`: sound when done). */
   todoAddTask: (title: string, timerMinutes: number | null, ring: boolean) =>

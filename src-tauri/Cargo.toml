@@ -57,9 +57,13 @@ strip = true
 windows-core = "0.61"
 # Same major as Tauri's own `windows` dependency so HWND types line up.
 windows = { version = "0.61", features = [
+    "ApplicationModel",
     "Foundation",
+    "Foundation_Collections",
     "Media_Control",
     "Storage_Streams",
+    "UI_Notifications",
+    "UI_Notifications_Management",
     "Win32_Foundation",
     "Win32_Graphics_Gdi",
     "Win32_Media_Audio",

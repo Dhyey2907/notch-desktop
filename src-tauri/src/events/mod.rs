@@ -21,6 +21,7 @@ use crate::{
     claude::{approvals::ApprovalRequest, ClaudeStatus},
     git::GitSnapshot,
     media::MediaState,
+    phone::{PhoneNotification, PhoneSnapshot},
     settings::Settings,
     spotify::SpotifySnapshot,
     todo::{Task, TodoSnapshot},
@@ -96,6 +97,10 @@ pub enum AppEvent {
     ClaudeStatusChanged(ClaudeStatus),
     /// New transcript data was indexed; views re-query the usage range they show.
     ClaudeUsageChanged,
+    /// Phone Link notifications in Action Center (or access to them) changed.
+    PhoneChanged(PhoneSnapshot),
+    /// A new phone notification arrived through Phone Link.
+    PhoneNotification(PhoneNotification),
     /// Tasks, notes, or finished-timer alerts changed.
     TodoChanged(TodoSnapshot),
     /// A task's timer ran out (`late`: it ran out while Notch wasn't running).
@@ -125,6 +130,8 @@ impl AppEvent {
             AppEvent::ClaudeUsageChanged => "ClaudeUsageChanged",
             AppEvent::ApprovalsChanged(_) => "ApprovalsChanged",
             AppEvent::TodoChanged(_) => "TodoChanged",
+            AppEvent::PhoneChanged(_) => "PhoneChanged",
+            AppEvent::PhoneNotification(_) => "PhoneNotification",
             AppEvent::TimerDone { .. } => "TimerDone",
             #[cfg(debug_assertions)]
             AppEvent::DevTestActivity(_) => "DevTestActivity",

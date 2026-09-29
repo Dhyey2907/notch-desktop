@@ -8,6 +8,7 @@ mod git;
 mod logging;
 mod media;
 mod oauth;
+mod phone;
 mod secrets;
 mod settings;
 mod shell;
@@ -98,6 +99,10 @@ macro_rules! app_commands {
             commands::todo::note_add,
             commands::todo::note_update,
             commands::todo::note_delete,
+            commands::phone::phone_snapshot,
+            commands::phone::phone_dismiss,
+            commands::phone::phone_open,
+            commands::phone::phone_open_access_settings,
             $($dev),*
         ]
     };
@@ -174,6 +179,10 @@ pub fn run() {
             let calendar = calendar::service::CalendarService::new(handle.clone(), mock_enabled("calendar"));
             calendar.start();
             app.manage(calendar);
+
+            let phone = phone::service::PhoneService::new(handle.clone());
+            phone.start();
+            app.manage(phone);
 
             let todo = todo::service::TodoService::new(handle.clone());
             todo.start();

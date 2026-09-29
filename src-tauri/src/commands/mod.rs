@@ -9,6 +9,7 @@ pub mod dev;
 pub mod diagnostics;
 pub mod git;
 pub mod media;
+pub mod phone;
 pub mod settings;
 pub mod shell;
 pub mod spotify;
