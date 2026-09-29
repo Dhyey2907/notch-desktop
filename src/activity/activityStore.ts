@@ -7,6 +7,7 @@
 //  - An activity with the same `dedupKey` (from the same module) replaces the old one in
 //    place, keeping its id and counting repeats, instead of stacking.
 //  - Everything not in front is summarized as a count, never flooded onto the desktop.
+import type { LucideIcon } from "lucide-react";
 import { create } from "zustand";
 
 import type { ActivityPriority } from "../core/generated/ActivityPriority";
@@ -29,7 +30,12 @@ export const MAX_ACTIVITIES = 50;
 
 export interface ActivityAction {
   id: string;
+  /** Visible text, or the accessible name when `icon` is set. */
   label: string;
+  /** Render as a compact icon button (e.g. media controls) instead of a text button. */
+  icon?: LucideIcon;
+  /** Shown but not clickable (e.g. the source doesn't support "next"). */
+  disabled?: boolean;
   variant?: "primary" | "secondary" | "warning" | "danger";
   /** When set, the action needs a second confirming click showing this label. */
   confirmLabel?: string;
@@ -53,6 +59,8 @@ export interface ActivityInput {
   persistent?: boolean;
   timeoutMs?: number;
   actions?: ActivityAction[];
+  /** Show a "×N" count when replaced via `dedupKey` (default true). Off for e.g. track changes. */
+  countRepeats?: boolean;
 }
 
 export interface Activity extends ActivityInput {
@@ -72,7 +80,7 @@ export interface ActivityState {
   /** Refresh an activity's content in place (e.g. artwork arrived) without counting a repeat or restarting its timer. */
   update: (
     id: string,
-    patch: Partial<Pick<ActivityInput, "title" | "body" | "avatar" | "imageUrl" | "tone">>,
+    patch: Partial<Pick<ActivityInput, "title" | "body" | "avatar" | "imageUrl" | "tone" | "actions">>,
   ) => void;
   runAction: (id: string, actionId: string) => Promise<void>;
   /** Pause an activity's timeout, e.g. while the pointer rests on it. */
@@ -144,7 +152,7 @@ export function createActivityStore({
             createdAt: existing.createdAt,
             updatedAt: t,
             expiresAt,
-            repeats: existing.repeats + 1,
+            repeats: input.countRepeats === false ? 1 : existing.repeats + 1,
           };
           commit(get().activities.map((a) => (a.id === existing.id ? replaced : a)));
           return existing.id;

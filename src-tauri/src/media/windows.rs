@@ -65,6 +65,9 @@ struct Inner {
     generation: AtomicU64,
     /// App id of the session most recently seen playing; kept on screen after it pauses.
     sticky: Mutex<Option<String>>,
+    /// Play/pause watchers on *every* session, so one that starts playing while another is
+    /// shown is noticed (Windows doesn't always raise `CurrentSessionChanged` for that).
+    watchers: Mutex<Vec<(Session, i64)>>,
 }
 
 pub struct WindowsMediaPort {
@@ -83,6 +86,7 @@ impl WindowsMediaPort {
                 read_lock: Mutex::new(()),
                 generation: AtomicU64::new(0),
                 sticky: Mutex::new(None),
+                watchers: Mutex::new(Vec::new()),
             }),
         }
     }
@@ -156,14 +160,40 @@ impl Inner {
         manager
             .SessionsChanged(&TypedEventHandler::new(move |_, _| {
                 if let Some(inner) = added_removed.upgrade() {
+                    inner.watch_all_sessions();
                     inner.rebind();
                 }
                 Ok(())
             }))
             .map_err(platform)?;
         let _ = self.manager.set(manager);
+        self.watch_all_sessions();
         self.rebind();
         Ok(())
+    }
+
+    /// Re-attach a play/pause watcher to every live session (called when sessions come and go).
+    fn watch_all_sessions(self: &Arc<Self>) {
+        let mut watchers = self.watchers.lock().unwrap_or_else(|e| e.into_inner());
+        for (session, token) in watchers.drain(..) {
+            let _ = session.RemovePlaybackInfoChanged(token);
+        }
+        let Some(sessions) = self.manager.get().and_then(|m| m.GetSessions().ok()) else {
+            return;
+        };
+        for session in sessions {
+            let weak = Arc::downgrade(self);
+            let token = session.PlaybackInfoChanged(&TypedEventHandler::new(move |_, _| {
+                if let Some(inner) = weak.upgrade() {
+                    inner.rebind();
+                }
+                Ok(())
+            }));
+            match token {
+                Ok(token) => watchers.push((session, token)),
+                Err(error) => tracing::debug!(error = %error.message(), "could not watch a media session"),
+            }
+        }
     }
 
     fn bound_session(&self) -> Option<Session> {

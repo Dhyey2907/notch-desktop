@@ -65,7 +65,9 @@ export function Island() {
   useEffect(() => {
     const { mode: current, request } = useIsland.getState();
     if (activity && current !== "expanded") {
-      void request("activity", activityIslandSize(Boolean(activity.actions?.length)));
+      const actions = activity.actions ?? [];
+      const layout = actions.length === 0 ? "none" : actions.every((a) => a.icon) ? "inline" : "row";
+      void request("activity", activityIslandSize(layout));
     } else if (!activity && current === "activity") {
       void request("collapsed");
     }

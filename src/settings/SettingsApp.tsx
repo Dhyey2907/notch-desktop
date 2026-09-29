@@ -1,6 +1,6 @@
 // Settings window (design.md §21): a short list of sections, not a dashboard. Sections for
 // Media, Calendar, Git and AI are added alongside those modules.
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 
 import type { AnimationPreference } from "../core/generated/AnimationPreference";
 import type { AppInfo } from "../core/generated/AppInfo";
@@ -8,21 +8,39 @@ import { ipc } from "../core/ipc";
 import { Button, MockBadge, Pill, SegmentedControl, Surface, Switch } from "../design/components";
 import { MODULES } from "../modules/registry";
 import { useSettings } from ".";
+import { CalendarSection } from "./CalendarSection";
+import { MediaSection } from "./MediaSection";
+import { Section } from "./Section";
 import { moduleSettings } from "./settingsStore";
 import "./settings.css";
 
-type SectionId = "general" | "appearance" | "modules" | "diagnostics";
+type SectionId = "general" | "appearance" | "modules" | "media" | "calendar" | "diagnostics";
 
 const SECTIONS: { id: SectionId; label: string }[] = [
   { id: "general", label: "General" },
   { id: "appearance", label: "Appearance" },
   { id: "modules", label: "Modules" },
+  { id: "media", label: "Media" },
+  { id: "calendar", label: "Calendar" },
   { id: "diagnostics", label: "Diagnostics & About" },
 ];
 
+/** `#settings/calendar` → "calendar"; anything unknown falls back to General. */
+function sectionFromHash(): SectionId {
+  const id = window.location.hash.split("/")[1];
+  return SECTIONS.find((s) => s.id === id)?.id ?? "general";
+}
+
 export function SettingsApp() {
-  const [section, setSection] = useState<SectionId>("general");
+  const [section, setSection] = useState<SectionId>(sectionFromHash);
   const loaded = useSettings((s) => s.settings !== null);
+
+  // Other windows can deep-link to a section (e.g. the island's "Connect Calendar").
+  useEffect(() => {
+    const onHash = () => setSection(sectionFromHash());
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
 
   return (
     <div className="settings">
@@ -46,22 +64,13 @@ export function SettingsApp() {
             {section === "general" && <GeneralSection />}
             {section === "appearance" && <AppearanceSection />}
             {section === "modules" && <ModulesSection />}
+            {section === "media" && <MediaSection />}
+            {section === "calendar" && <CalendarSection />}
             {section === "diagnostics" && <DiagnosticsSection />}
           </>
         )}
       </main>
     </div>
-  );
-}
-
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="settings__section" aria-labelledby={`section-${title}`}>
-      <h1 id={`section-${title}`} className="settings__title">
-        {title}
-      </h1>
-      {children}
-    </section>
   );
 }
 

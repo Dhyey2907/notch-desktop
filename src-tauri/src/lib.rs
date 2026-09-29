@@ -1,11 +1,15 @@
+mod calendar;
 mod commands;
 mod db;
 mod error;
 mod events;
 mod logging;
 mod media;
+mod oauth;
+mod secrets;
 mod settings;
 mod shell;
+mod spotify;
 mod state;
 
 use tauri::Manager;
@@ -46,17 +50,29 @@ macro_rules! app_commands {
             commands::diagnostics::diagnostics_export_logs,
             commands::media::media_get_state,
             commands::media::media_command,
+            commands::calendar::calendar_get_snapshot,
+            commands::calendar::calendar_connect,
+            commands::calendar::calendar_disconnect,
+            commands::calendar::calendar_sync_now,
+            commands::calendar::calendar_open_link,
+            commands::spotify::spotify_get_snapshot,
+            commands::spotify::spotify_connect,
+            commands::spotify::spotify_disconnect,
+            commands::spotify::spotify_refresh_playlists,
+            commands::spotify::spotify_play_playlist,
+            commands::spotify::spotify_set_pinned,
             $($dev),*
         ]
     };
 }
 
-/// Dev builds only: `NOTCH_MOCK=media,git` swaps those adapters for mocks (plan.md Rule 9).
-#[cfg(debug_assertions)]
+/// Dev builds only: `NOTCH_MOCK=media,calendar` swaps those adapters for mocks (plan.md
+/// Rule 9). Always false in release builds.
 fn mock_enabled(module: &str) -> bool {
-    std::env::var("NOTCH_MOCK")
-        .map(|v| v.split(',').any(|m| m.trim().eq_ignore_ascii_case(module)))
-        .unwrap_or(false)
+    cfg!(debug_assertions)
+        && std::env::var("NOTCH_MOCK")
+            .map(|v| v.split(',').any(|m| m.trim().eq_ignore_ascii_case(module)))
+            .unwrap_or(false)
 }
 
 fn media_port(app: &tauri::AppHandle) -> Result<Box<dyn media::MediaPort>, Box<dyn std::error::Error>> {
@@ -115,6 +131,14 @@ pub fn run() {
             let media = media::MediaService::new(media_port(handle)?);
             media.start(media::bus_publisher(handle.clone()));
             app.manage(media);
+
+            let calendar = calendar::service::CalendarService::new(handle.clone(), mock_enabled("calendar"));
+            calendar.start();
+            app.manage(calendar);
+
+            let spotify = spotify::service::SpotifyService::new(handle.clone(), mock_enabled("spotify"));
+            spotify.start();
+            app.manage(spotify);
             shell::init(handle)?;
             Ok(())
         })

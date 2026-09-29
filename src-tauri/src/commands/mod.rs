@@ -2,9 +2,11 @@
 //! commands only validate input, call into state, and map results.
 
 pub mod app;
+pub mod calendar;
 #[cfg(debug_assertions)]
 pub mod dev;
 pub mod diagnostics;
 pub mod media;
 pub mod settings;
 pub mod shell;
+pub mod spotify;

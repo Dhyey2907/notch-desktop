@@ -1,6 +1,9 @@
-import { Music2 } from "lucide-react";
+import { convertFileSrc } from "@tauri-apps/api/core";
+import { Music2, Pause, Play, SkipBack, SkipForward } from "lucide-react";
 
-import { MockBadge } from "../../design/components";
+import type { MediaCommand } from "../../core/generated/MediaCommand";
+import { ipc } from "../../core/ipc";
+import { IconButton, MockBadge } from "../../design/components";
 import { useMedia } from "./mediaStore";
 import "./media.css";
 
@@ -21,12 +24,44 @@ export function MediaPeek() {
       </div>
     );
   }
+  const playing = media.status === "playing";
+  const send = (command: MediaCommand) => void ipc.mediaCommand(command).catch(() => {});
   return (
-    <div className="module-peek">
-      <span className="module-peek__title">
-        {media.title || media.sourceApp} {media.mock && <MockBadge />}
-      </span>
-      <span className="module-peek__meta">{[media.artist, media.sourceApp].filter(Boolean).join(" · ")}</span>
+    <div className="media-peek">
+      {media.artworkPath ? (
+        <img className="media-peek__art" src={convertFileSrc(media.artworkPath)} alt="" />
+      ) : (
+        <Music2 className="media-peek__art media-peek__art--empty" size={18} aria-hidden />
+      )}
+      <div className="media-peek__text">
+        <span className="module-peek__title">
+          {media.title || media.sourceApp} {media.mock && <MockBadge />}
+        </span>
+        <span className="module-peek__meta">
+          {[media.artist, media.sourceApp].filter(Boolean).join(" · ")}
+        </span>
+      </div>
+      {/* Above the island's click-to-open layer, so these act on playback instead. */}
+      <div className="media-peek__controls" role="group" aria-label="Playback controls">
+        <IconButton
+          icon={SkipBack}
+          label="Previous track"
+          disabled={!media.capabilities.previous}
+          onClick={() => send({ kind: "previous" })}
+        />
+        <IconButton
+          icon={playing ? Pause : Play}
+          label={playing ? "Pause" : "Play"}
+          disabled={!media.capabilities.playPause}
+          onClick={() => send({ kind: "playPause" })}
+        />
+        <IconButton
+          icon={SkipForward}
+          label="Next track"
+          disabled={!media.capabilities.next}
+          onClick={() => send({ kind: "next" })}
+        />
+      </div>
     </div>
   );
 }

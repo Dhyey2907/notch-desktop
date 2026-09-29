@@ -12,14 +12,19 @@ export interface Size {
 /** Default island size per mode. Activities size themselves via `activityIslandSize`. */
 export const ISLAND_SIZE: Record<IslandMode, Size> = {
   collapsed: { width: 184, height: 30 },
-  peek: { width: 340, height: 64 },
+  peek: { width: 400, height: 64 },
   activity: { width: 380, height: 72 },
   expanded: { width: 540, height: 300 },
 };
 
-/** Island size for an activity: taller when it carries action buttons. */
-export function activityIslandSize(hasActions: boolean): Size {
-  return hasActions ? { width: 420, height: 136 } : ISLAND_SIZE.activity;
+/**
+ * Island size for an activity: taller when it has a row of text buttons, wider when it has
+ * inline icon controls.
+ */
+export function activityIslandSize(actions: "none" | "inline" | "row"): Size {
+  if (actions === "row") return { width: 420, height: 136 };
+  if (actions === "inline") return { width: 440, height: 72 };
+  return ISLAND_SIZE.activity;
 }
 
 /**

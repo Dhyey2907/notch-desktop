@@ -1,4 +1,4 @@
-import { Button, ConfirmButton, Dot, Pill } from "../design/components";
+import { Button, ConfirmButton, Dot, IconButton, Pill } from "../design/components";
 import { findModule } from "../modules/registry";
 import type { Activity } from "./activityStore";
 import "./activity.css";
@@ -27,6 +27,9 @@ export function ActivityView({
   onOpen: () => void;
 }) {
   const moduleName = findModule(activity.moduleId)?.name ?? activity.moduleId;
+  const actions = activity.actions ?? [];
+  // Icon-only actions (media controls) sit inline on the main row; text actions get their own row.
+  const inline = actions.length > 0 && actions.every((a) => a.icon);
   const critical = activity.priority === "critical";
   const tone = activity.tone ?? (critical ? "warning" : "neutral");
 
@@ -55,14 +58,31 @@ export function ActivityView({
           </p>
           {activity.body && <p className="activity__body">{activity.body}</p>}
         </div>
-        <div className="activity__meta">
-          <time>{relativeTime(activity.createdAt, activity.updatedAt)}</time>
-          {queued > 0 && <Pill>+{queued} more</Pill>}
-        </div>
+        {inline ? (
+          <div className="activity__inline-actions" role="group" aria-label={`${moduleName} controls`}>
+            {actions.map(
+              (action) =>
+                action.icon && (
+                  <IconButton
+                    key={action.id}
+                    icon={action.icon}
+                    label={action.label}
+                    disabled={action.disabled}
+                    onClick={() => onRunAction(action.id)}
+                  />
+                ),
+            )}
+          </div>
+        ) : (
+          <div className="activity__meta">
+            <time>{relativeTime(activity.createdAt, activity.updatedAt)}</time>
+            {queued > 0 && <Pill>+{queued} more</Pill>}
+          </div>
+        )}
       </div>
-      {activity.actions && activity.actions.length > 0 && (
+      {!inline && actions.length > 0 && (
         <div className="activity__actions">
-          {activity.actions.map((action) =>
+          {actions.map((action) =>
             action.confirmLabel ? (
               <ConfirmButton
                 key={action.id}
@@ -73,7 +93,12 @@ export function ActivityView({
                 {action.label}
               </ConfirmButton>
             ) : (
-              <Button key={action.id} variant={action.variant} onClick={() => onRunAction(action.id)}>
+              <Button
+                key={action.id}
+                variant={action.variant}
+                disabled={action.disabled}
+                onClick={() => onRunAction(action.id)}
+              >
                 {action.label}
               </Button>
             ),

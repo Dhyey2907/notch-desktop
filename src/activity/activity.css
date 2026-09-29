@@ -93,3 +93,13 @@
   border-radius: var(--radius-sm);
   object-fit: cover;
 }
+
+/* Icon controls on the main row; above the whole-card "open" layer. */
+.activity__inline-actions {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  pointer-events: auto;
+}

@@ -9,7 +9,7 @@ use crate::{
     state::AppState,
 };
 
-fn persist_and_broadcast(state: &AppState, next: Settings) -> AppResult<Settings> {
+pub(crate) fn persist_and_broadcast(state: &AppState, next: Settings) -> AppResult<Settings> {
     next.validate()?;
     state.db.with(|conn| settings::save(conn, &next))?;
     *state.settings.lock().unwrap_or_else(|e| e.into_inner()) = next.clone();
@@ -71,6 +71,6 @@ pub fn autostart_set(enabled: bool, app: AppHandle) -> AppResult<bool> {
 /// Must be `async`: creating a webview from a synchronous command deadlocks on Windows
 /// (WebView2 initializes on the main thread, which a sync command is blocking).
 #[tauri::command]
-pub async fn open_settings_window(app: AppHandle) -> AppResult<()> {
-    shell::open_settings_window(&app)
+pub async fn open_settings_window(app: AppHandle, section: Option<String>) -> AppResult<()> {
+    shell::open_settings_window(&app, section.as_deref())
 }

@@ -27,7 +27,8 @@
 }
 
 .media__body {
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   display: flex;
   align-items: center;
   gap: var(--space-5);
@@ -35,8 +36,8 @@
 
 .media__art {
   flex: none;
-  width: 132px;
-  height: 132px;
+  width: 112px;
+  height: 112px;
   border-radius: var(--radius-card);
   overflow: hidden;
   background: var(--surface-elevated);
@@ -136,4 +137,162 @@
 
 .media-compact {
   color: var(--active);
+}
+
+/* Hover preview: art, title, controls */
+.media-peek {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-3) 0 var(--space-4);
+}
+
+.media-peek__art {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+}
+
+.media-peek__art--empty {
+  padding: 11px;
+  box-sizing: border-box;
+  background: var(--surface-elevated);
+  color: var(--text-muted);
+}
+
+.media-peek__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.media-peek__text > span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.media-peek__controls {
+  position: relative;
+  z-index: 2; /* above .island-hit */
+  flex: none;
+  display: flex;
+  gap: 2px;
+}
+
+.media .nd-module__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.media__empty {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.media__empty .nd-state {
+  flex: 1;
+}
+
+/* Pinned Spotify playlists */
+.playlists {
+  position: relative;
+  flex: none;
+}
+
+.playlists__row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.playlists__tile {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.playlists__tile:hover {
+  background: var(--surface-hover);
+}
+
+.playlists__tile:focus-visible,
+.playlists__cta:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.playlists__tile--pending {
+  opacity: 0.6;
+}
+
+.playlists__art {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.playlists__art--empty {
+  display: grid;
+  place-items: center;
+  background: var(--surface-elevated);
+  color: var(--text-muted);
+}
+
+.playlists__name {
+  min-width: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-label);
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.playlists__note {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.playlists__cta {
+  flex: none;
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 4px var(--space-3);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.playlists__cta:hover {
+  color: var(--text-primary);
+  border-color: var(--text-muted);
 }

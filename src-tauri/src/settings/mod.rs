@@ -51,6 +51,49 @@ impl Default for ModuleSettings {
     }
 }
 
+/// Calendar preferences. The OAuth client ID is not secret (it ships inside installed apps);
+/// the client secret and tokens live in Credential Manager.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export)]
+pub struct CalendarSettings {
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub client_id: Option<String>,
+    /// Display label for the connected Google account.
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub account_email: Option<String>,
+    /// Minutes before a meeting to show the countdown; 0 turns reminders off.
+    pub reminder_minutes: u32,
+}
+
+impl Default for CalendarSettings {
+    fn default() -> Self {
+        Self {
+            client_id: None,
+            account_email: None,
+            reminder_minutes: 5,
+        }
+    }
+}
+
+/// Spotify preferences. The client ID is public (PKCE, no secret); the refresh token lives in
+/// Credential Manager.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export)]
+pub struct SpotifySettings {
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub client_id: Option<String>,
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub account_name: Option<String>,
+    /// Up to four playlist ids shown in the Media module, in order.
+    pub pinned_playlists: Vec<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", default)]
 #[ts(export)]
@@ -60,6 +103,8 @@ pub struct Settings {
     pub animation: AnimationPreference,
     /// Per-module preferences keyed by module id. Missing modules use defaults.
     pub modules: BTreeMap<String, ModuleSettings>,
+    pub calendar: CalendarSettings,
+    pub spotify: SpotifySettings,
 }
 
 impl Settings {
@@ -67,6 +112,18 @@ impl Settings {
     pub fn validate(&self) -> AppResult<()> {
         if self.modules.len() > MAX_MODULES {
             return Err(AppError::InvalidInput("too many module entries".into()));
+        }
+        if self.spotify.pinned_playlists.len() > crate::spotify::MAX_PINNED
+            || !self
+                .spotify
+                .pinned_playlists
+                .iter()
+                .all(|id| crate::spotify::valid_id(id))
+        {
+            return Err(AppError::InvalidInput("invalid pinned playlists".into()));
+        }
+        if self.calendar.reminder_minutes > 120 {
+            return Err(AppError::InvalidInput("reminder lead is too long".into()));
         }
         for id in self.modules.keys() {
             let valid = !id.is_empty()

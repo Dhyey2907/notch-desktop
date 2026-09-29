@@ -16,7 +16,7 @@ useSettings
   .catch((error) => console.error("failed to load settings", error));
 
 // One bundle serves both windows: the island (default) and the settings window (#settings).
-const isSettingsWindow = window.location.hash === "#settings";
+const isSettingsWindow = window.location.hash.startsWith("#settings");
 if (isSettingsWindow) document.documentElement.classList.add("settings-window");
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(

@@ -167,3 +167,127 @@ html.settings-window #root {
   margin: 0;
   word-break: break-all;
 }
+
+.settings__steps {
+  margin: 0 0 var(--space-2);
+  padding-left: var(--space-5);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.settings__steps strong {
+  color: var(--text-primary);
+  font-weight: var(--weight-label);
+}
+
+.settings__code {
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: var(--text-xs);
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--surface-elevated);
+  user-select: all;
+}
+
+/* Playlist picker */
+.picker {
+  list-style: none;
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.picker__item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.picker__item:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+
+.picker__item:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.picker__item:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.picker__item--selected {
+  border-color: var(--success);
+  background: rgba(74, 222, 128, 0.06);
+}
+
+.picker__art {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.picker__art--empty {
+  display: grid;
+  place-items: center;
+  background: var(--surface-elevated);
+  color: var(--text-muted);
+}
+
+.picker__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.picker__name,
+.picker__meta {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.picker__name {
+  font-size: var(--text-md);
+  font-weight: var(--weight-label);
+}
+
+.picker__meta {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.picker__mark {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-emphasis);
+  color: var(--background);
+  background: transparent;
+}
+
+.picker__item--selected .picker__mark {
+  background: var(--success);
+}

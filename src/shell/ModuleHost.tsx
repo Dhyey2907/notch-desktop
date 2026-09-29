@@ -65,9 +65,23 @@ export function ModuleHost() {
 }
 
 /** Peek content: the active module's preview, or Home's as a fallback. */
+// Every registered module's claim hook, in a fixed order that never changes at runtime.
+const CLAIM_HOOKS = MODULES.map((m) => m.usePeekClaim ?? (() => false));
+
+/** Which registered modules currently claim the peek (same index order as `MODULES`). */
+function usePeekClaims(): boolean[] {
+  // CLAIM_HOOKS is a module-level constant, so these hooks run in the same order on every
+  // render — the invariant the rules of hooks protect.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  return CLAIM_HOOKS.map((useClaim) => useClaim());
+}
+
 export function PeekHost() {
   const activeId = useModuleNav((s) => s.activeId);
-  const Peek = findModule(activeId)?.Peek ?? MODULES[0].Peek;
+  const enabled = useEnabledModules();
+  const claims = usePeekClaims();
+  const claimant = MODULES.find((m, i) => claims[i] && enabled.includes(m));
+  const Peek = claimant?.Peek ?? findModule(activeId)?.Peek ?? MODULES[0].Peek;
   return Peek ? <Peek /> : null;
 }
 

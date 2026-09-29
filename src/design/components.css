@@ -451,3 +451,40 @@
   background: var(--surface-hover);
   color: var(--text-primary);
 }
+
+/* Text field */
+.nd-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) 0;
+}
+
+.nd-field__label {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-label);
+}
+
+.nd-field__input {
+  font: inherit;
+  font-size: var(--text-md);
+  padding: 7px var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--background);
+  color: var(--text-primary);
+}
+
+.nd-field__input:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.nd-field__input:disabled {
+  opacity: 0.5;
+}
+
+.nd-field__description {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}

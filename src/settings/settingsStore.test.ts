@@ -4,7 +4,13 @@ import { EventBus } from "../core/eventBus";
 import type { Settings } from "../core/generated/Settings";
 import { createSettingsStore, moduleSettings } from "./settingsStore";
 
-const defaults: Settings = { firstRunCompleted: false, animation: "system", modules: {} };
+const defaults: Settings = {
+  firstRunCompleted: false,
+  animation: "system",
+  modules: {},
+  calendar: { reminderMinutes: 5 },
+  spotify: { pinnedPlaylists: [] },
+};
 
 function setup(initial: Settings = defaults) {
   let stored = initial;

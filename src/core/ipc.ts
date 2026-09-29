@@ -3,10 +3,13 @@
 import { invoke } from "@tauri-apps/api/core";
 
 import type { AppInfo } from "./generated/AppInfo";
+import type { CalendarSnapshot } from "./generated/CalendarSnapshot";
 import type { DevTestActivity } from "./generated/DevTestActivity";
 import type { MediaCommand } from "./generated/MediaCommand";
 import type { MediaState } from "./generated/MediaState";
+import type { PlayOutcome } from "./generated/PlayOutcome";
 import type { Settings } from "./generated/Settings";
+import type { SpotifySnapshot } from "./generated/SpotifySnapshot";
 
 /** Shape of `AppError` as serialized by the backend. */
 export interface IpcError {
@@ -31,11 +34,27 @@ export const ipc = {
     invoke<Settings>("settings_record_module_init", { moduleId, ok }),
   autostartGet: () => invoke<boolean>("autostart_get"),
   autostartSet: (enabled: boolean) => invoke<boolean>("autostart_set", { enabled }),
-  openSettingsWindow: () => invoke<void>("open_settings_window"),
+  /** Open (or focus) the settings window, optionally at a section such as "calendar". */
+  openSettingsWindow: (section?: string) => invoke<void>("open_settings_window", { section }),
   diagnosticsOpenLogDir: () => invoke<void>("diagnostics_open_log_dir"),
   /** Copies logs into a new folder under Downloads, reveals it, and returns its path. */
   diagnosticsExportLogs: () => invoke<string>("diagnostics_export_logs"),
   mediaGetState: () => invoke<MediaState | null>("media_get_state"),
   mediaCommand: (command: MediaCommand) => invoke<void>("media_command", { command }),
+  calendarGetSnapshot: () => invoke<CalendarSnapshot>("calendar_get_snapshot"),
+  /** Opens Google sign-in in the browser; resolves when sign-in finishes. Empty secret = keep saved one. */
+  calendarConnect: (clientId: string, clientSecret: string) =>
+    invoke<void>("calendar_connect", { clientId, clientSecret }),
+  calendarDisconnect: () => invoke<void>("calendar_disconnect"),
+  calendarSyncNow: () => invoke<void>("calendar_sync_now"),
+  /** Open an https meeting or event link in the default browser. */
+  calendarOpenLink: (url: string) => invoke<void>("calendar_open_link", { url }),
+  spotifyGetSnapshot: () => invoke<SpotifySnapshot>("spotify_get_snapshot"),
+  /** Opens Spotify sign-in in the browser; resolves when sign-in finishes. */
+  spotifyConnect: (clientId: string) => invoke<void>("spotify_connect", { clientId }),
+  spotifyDisconnect: () => invoke<void>("spotify_disconnect"),
+  spotifyRefreshPlaylists: () => invoke<void>("spotify_refresh_playlists"),
+  spotifyPlayPlaylist: (playlistId: string) => invoke<PlayOutcome>("spotify_play_playlist", { playlistId }),
+  spotifySetPinned: (playlistIds: string[]) => invoke<void>("spotify_set_pinned", { playlistIds }),
   setWindowSize: (width: number, height: number) => invoke<void>("shell_set_window_size", { width, height }),
 };

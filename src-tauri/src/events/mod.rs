@@ -16,7 +16,12 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::broadcast;
 use ts_rs::TS;
 
-use crate::{media::MediaState, settings::Settings};
+use crate::{
+    calendar::{CalendarEvent, CalendarSnapshot},
+    media::MediaState,
+    settings::Settings,
+    spotify::SpotifySnapshot,
+};
 
 /// Name of the single Tauri channel that carries every `EventEnvelope` to the frontend.
 pub const APP_EVENT_CHANNEL: &str = "app-event";
@@ -73,6 +78,12 @@ pub enum AppEvent {
     SettingsChanged(Settings),
     /// The active media session changed (`None` when nothing is playing).
     MediaStateChanged { state: Option<MediaState> },
+    /// Calendar status or events changed.
+    CalendarChanged(CalendarSnapshot),
+    /// A meeting is about to start (reminder lead time reached).
+    ReminderDue { event: CalendarEvent },
+    /// Spotify connection or playlists changed.
+    SpotifyChanged(SpotifySnapshot),
     /// Fake activity fired from the dev panel (debug builds only).
     #[cfg(debug_assertions)]
     DevTestActivity(DevTestActivity),
@@ -87,6 +98,9 @@ impl AppEvent {
             AppEvent::ShellToggleRequested => "ShellToggleRequested",
             AppEvent::SettingsChanged(_) => "SettingsChanged",
             AppEvent::MediaStateChanged { .. } => "MediaStateChanged",
+            AppEvent::CalendarChanged(_) => "CalendarChanged",
+            AppEvent::ReminderDue { .. } => "ReminderDue",
+            AppEvent::SpotifyChanged(_) => "SpotifyChanged",
             #[cfg(debug_assertions)]
             AppEvent::DevTestActivity(_) => "DevTestActivity",
         }

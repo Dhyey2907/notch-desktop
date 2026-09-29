@@ -23,6 +23,11 @@ export interface NotchModule {
   Compact?: ComponentType;
   /** Short preview for the peek state. */
   Peek?: ComponentType;
+  /**
+   * Hook: true while the module has something live (e.g. music playing). Hovering the notch
+   * then previews this module instead of the last one opened.
+   */
+  usePeekClaim?: () => boolean;
   /** Main view. Prefer `React.lazy` so module code loads on first open. */
   Expanded: ComponentType;
   /** Start background subscriptions once the module is enabled; return a disposer. */

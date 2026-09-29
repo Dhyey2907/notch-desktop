@@ -401,3 +401,41 @@ export function SegmentedControl<T extends string>({
     </div>
   );
 }
+
+/** Labelled single-line text input. */
+export function TextField({
+  label,
+  value,
+  onChange,
+  type = "text",
+  placeholder,
+  description,
+  disabled,
+  autoComplete = "off",
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  type?: "text" | "password";
+  placeholder?: string;
+  description?: string;
+  disabled?: boolean;
+  autoComplete?: string;
+}) {
+  return (
+    <label className="nd-field">
+      <span className="nd-field__label">{label}</span>
+      <input
+        className="nd-field__input"
+        type={type}
+        value={value}
+        placeholder={placeholder}
+        disabled={disabled}
+        autoComplete={autoComplete}
+        spellCheck={false}
+        onChange={(e) => onChange(e.currentTarget.value)}
+      />
+      {description && <span className="nd-field__description">{description}</span>}
+    </label>
+  );
+}

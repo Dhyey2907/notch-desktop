@@ -6,6 +6,7 @@ import type { MediaState } from "../../core/generated/MediaState";
 import { ipc } from "../../core/ipc";
 import { EmptyState, MediaControl, MockBadge, ModuleContainer, Pill } from "../../design/components";
 import { currentPositionMs, formatTime, useMedia } from "./mediaStore";
+import { PlaylistTiles } from "./PlaylistTiles";
 import "./media.css";
 
 /** Re-render twice a second while playing, to move the progress bar. Local only — no IPC. */
@@ -35,10 +36,13 @@ export default function MediaExpanded() {
   if (media === null) {
     return (
       <ModuleContainer title="Media">
-        <EmptyState
-          title="Nothing playing"
-          body="Play something in Spotify, a browser, or Media Player and it shows up here."
-        />
+        <div className="media__empty">
+          <EmptyState
+            title="Nothing playing"
+            body="Play something in Spotify, a browser, or Media Player — or start one of your playlists."
+          />
+          <PlaylistTiles />
+        </div>
       </ModuleContainer>
     );
   }
@@ -138,6 +142,7 @@ function NowPlaying({
             {failed && <p className="media__note">{media.sourceApp} didn't respond to that. Try again.</p>}
           </div>
         </div>
+        <PlaylistTiles />
       </ModuleContainer>
     </div>
   );

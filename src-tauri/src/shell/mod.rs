@@ -23,8 +23,18 @@ pub const AUTOSTART_ARG: &str = "--autostart";
 
 /// Open the settings window, or focus it if it is already open. It is an ordinary
 /// decorated window, created on demand and destroyed on close (design.md §21).
-pub fn open_settings_window(app: &AppHandle) -> AppResult<()> {
+pub fn open_settings_window(app: &AppHandle, section: Option<&str>) -> AppResult<()> {
+    // Section ids end up in a URL fragment and a script; allow only lowercase ASCII letters.
+    let section =
+        section.filter(|s| !s.is_empty() && s.len() <= 32 && s.chars().all(|c| c.is_ascii_lowercase()));
+    let hash = match section {
+        Some(section) => format!("#settings/{section}"),
+        None => "#settings".to_owned(),
+    };
     if let Some(window) = app.get_webview_window(SETTINGS_WINDOW) {
+        if section.is_some() {
+            window.eval(format!("window.location.hash = '{hash}'"))?;
+        }
         window.unminimize()?;
         window.show()?;
         window.set_focus()?;
@@ -33,7 +43,7 @@ pub fn open_settings_window(app: &AppHandle) -> AppResult<()> {
     WebviewWindowBuilder::new(
         app,
         SETTINGS_WINDOW,
-        WebviewUrl::App("index.html#settings".into()),
+        WebviewUrl::App(format!("index.html{hash}").into()),
     )
     .title("Notch Desktop Settings")
     .inner_size(760.0, 540.0)
@@ -151,7 +161,7 @@ fn setup_tray(app: &AppHandle) -> AppResult<()> {
         .on_menu_event(|app, event| match event.id.as_ref() {
             "toggle" => toggle_visibility(app),
             "settings" => {
-                if let Err(error) = open_settings_window(app) {
+                if let Err(error) = open_settings_window(app, None) {
                     tracing::warn!(%error, "failed to open settings window");
                 }
             }
