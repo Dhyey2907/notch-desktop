@@ -59,6 +59,8 @@ export interface ActivityInput {
   persistent?: boolean;
   timeoutMs?: number;
   actions?: ActivityAction[];
+  /** Exact text to show verbatim in a monospace block (e.g. the command being approved). */
+  code?: string;
   /** Show a "×N" count when replaced via `dedupKey` (default true). Off for e.g. track changes. */
   countRepeats?: boolean;
 }

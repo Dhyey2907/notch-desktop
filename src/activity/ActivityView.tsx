@@ -80,6 +80,11 @@ export function ActivityView({
           </div>
         )}
       </div>
+      {activity.code && (
+        <pre className="activity__code" tabIndex={0} aria-label="Exact command">
+          {activity.code}
+        </pre>
+      )}
       {!inline && actions.length > 0 && (
         <div className="activity__actions">
           {actions.map((action) =>

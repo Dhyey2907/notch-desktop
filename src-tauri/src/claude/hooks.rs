@@ -96,6 +96,7 @@ impl LiveSessions {
             "SessionStart" | "Stop" | "SubagentStop" => (AgentState::Idle, None),
             "UserPromptSubmit" | "PostToolUse" => (AgentState::Working, None),
             "PreToolUse" => (AgentState::Working, payload.tool_name.clone()),
+            "PermissionRequest" => (AgentState::Waiting, payload.tool_name.clone()),
             "Notification" => match payload.notification_type.as_deref() {
                 Some("permission_prompt") | Some("agent_needs_input") | Some("elicitation_dialog") => {
                     (AgentState::Waiting, None)
@@ -192,7 +193,9 @@ fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
 }
 
 /// Called for every accepted hook with the parsed payload. Returns the JSON response body.
-pub type HookHandler = Arc<dyn Fn(HookPayload) -> String + Send + Sync>;
+/// Handles one hook: the parsed common fields plus the raw body (permission requests need
+/// the tool input). Returns the JSON response body.
+pub type HookHandler = Arc<dyn Fn(HookPayload, &[u8]) -> String + Send + Sync>;
 
 /// A running hook server. Dropping it stops accepting requests.
 pub struct HookServer {
@@ -274,7 +277,7 @@ fn handle(mut request: tiny_http::Request, token: &str, handler: &HookHandler, p
     }
     match serde_json::from_slice::<HookPayload>(&body) {
         Ok(payload) => {
-            let response = handler(payload);
+            let response = handler(payload, &body);
             respond(request, 200, response);
         }
         Err(_) => respond(request, 400, "{}".into()),
@@ -308,7 +311,7 @@ mod tests {
             .port();
         let seen = Arc::new(Mutex::new(Vec::<String>::new()));
         let seen_by_handler = seen.clone();
-        let handler: HookHandler = Arc::new(move |p: HookPayload| {
+        let handler: HookHandler = Arc::new(move |p: HookPayload, _: &[u8]| {
             seen_by_handler.lock().unwrap().push(p.hook_event_name);
             "{}".into()
         });

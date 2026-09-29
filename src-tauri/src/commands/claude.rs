@@ -2,6 +2,7 @@ use tauri::State;
 
 use crate::{
     claude::{
+        approvals::{ApprovalChoice, ApprovalRequest, AuditEntry},
         service::ClaudeService,
         usage::{UsageRange, UsageSummary},
         ClaudeStatus,
@@ -34,4 +35,28 @@ pub fn claude_connect(claude: State<'_, ClaudeService>) -> AppResult<()> {
 #[tauri::command]
 pub fn claude_disconnect(claude: State<'_, ClaudeService>) -> AppResult<()> {
     claude.disconnect()
+}
+
+/// Permission requests currently waiting for you.
+#[tauri::command]
+pub fn claude_approvals_pending(claude: State<'_, ClaudeService>) -> Vec<ApprovalRequest> {
+    claude.pending_approvals()
+}
+
+#[tauri::command]
+pub fn claude_approval_decide(
+    id: String,
+    choice: ApprovalChoice,
+    claude: State<'_, ClaudeService>,
+) -> AppResult<()> {
+    claude.decide(&id, choice)
+}
+
+/// Recent decisions made through Notch, newest first.
+#[tauri::command]
+pub async fn claude_approval_audit(
+    limit: u32,
+    claude: State<'_, ClaudeService>,
+) -> AppResult<Vec<AuditEntry>> {
+    claude.approval_audit(limit)
 }

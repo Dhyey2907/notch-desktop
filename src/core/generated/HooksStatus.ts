@@ -8,4 +8,8 @@ installed: boolean,
 /**
  * The local hook server is accepting events.
  */
-listening: boolean, };
+listening: boolean, 
+/**
+ * Installed by an older Notch; reconnect to add newer events (e.g. approvals).
+ */
+outdated: boolean, };

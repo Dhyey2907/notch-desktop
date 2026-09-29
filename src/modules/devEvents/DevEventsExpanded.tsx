@@ -113,6 +113,24 @@ export default function DevEventsExpanded() {
               {preset.label}
             </Button>
           ))}
+          <Button
+            onClick={() => {
+              void ipc.devEmitTestApproval("Bash", { command: "pnpm test" }, DELAY_MS);
+              setSent("Approval");
+              void useIsland.getState().request("collapsed");
+            }}
+          >
+            Approval
+          </Button>
+          <Button
+            onClick={() => {
+              void ipc.devEmitTestApproval("Bash", { command: "git push --force origin main" }, DELAY_MS);
+              setSent("Destructive approval");
+              void useIsland.getState().request("collapsed");
+            }}
+          >
+            Destructive approval
+          </Button>
           <Button variant="danger" onClick={() => useActivities.getState().clear()}>
             Clear all
           </Button>

@@ -6,6 +6,7 @@
 //!
 //! Official account quotas aren't available to local apps, so none are shown or invented.
 
+pub mod approvals;
 pub mod connect;
 pub mod hooks;
 pub mod service;
@@ -26,6 +27,8 @@ pub struct HooksStatus {
     pub installed: bool,
     /// The local hook server is accepting events.
     pub listening: bool,
+    /// Installed by an older Notch; reconnect to add newer events (e.g. approvals).
+    pub outdated: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]

@@ -12,6 +12,7 @@ use notify::{RecursiveMode, Watcher};
 use tauri::{AppHandle, Manager};
 
 use super::{
+    approvals::{self, ApprovalChoice, ApprovalRequest, Approvals, AuditEntry, PermissionPayload},
     connect,
     hooks::{HookPayload, HookServer, LiveSessions},
     transcripts::{self, IndexStats, QuotaLimits},
@@ -43,6 +44,7 @@ struct Inner {
     projects_dir: PathBuf,
     settings_path: PathBuf,
     live: Mutex<LiveSessions>,
+    approvals: Approvals,
     index: Mutex<IndexState>,
     server: Mutex<Option<HookServer>>,
     watcher: Mutex<Option<notify::RecommendedWatcher>>,
@@ -83,6 +85,7 @@ impl ClaudeService {
                 projects_dir: home.join(".claude").join("projects"),
                 settings_path: connect::settings_path(&home),
                 live: Mutex::new(LiveSessions::default()),
+                approvals: Approvals::default(),
                 index: Mutex::new(IndexState {
                     ready: false,
                     last_indexed_at: None,
@@ -162,6 +165,40 @@ impl ClaudeService {
         Ok(())
     }
 
+    pub fn pending_approvals(&self) -> Vec<ApprovalRequest> {
+        self.inner.approvals.pending()
+    }
+
+    /// Deliver your answer to a waiting permission request.
+    pub fn decide(&self, id: &str, choice: ApprovalChoice) -> AppResult<()> {
+        if self.inner.approvals.decide(id, choice) {
+            Ok(())
+        } else {
+            Err(AppError::InvalidInput(
+                "That request already expired; answer it in the terminal".into(),
+            ))
+        }
+    }
+
+    pub fn approval_audit(&self, limit: u32) -> AppResult<Vec<AuditEntry>> {
+        self.inner.db.with(|conn| approvals::recent(conn, limit))
+    }
+
+    /// Run a fake permission request through the real approval flow (dev builds only).
+    #[cfg(debug_assertions)]
+    pub fn dev_test_approval(&self, tool: String, input: serde_json::Value) {
+        let inner = self.inner.clone();
+        std::thread::spawn(move || {
+            let payload = PermissionPayload {
+                session_id: "dev-test".into(),
+                cwd: Some("C:/dev/notch-desktop".into()),
+                tool_name: tool,
+                tool_input: input,
+            };
+            inner.handle_permission(&payload);
+        });
+    }
+
     pub fn disconnect(&self) -> AppResult<()> {
         let mut settings = connect::read(&self.inner.settings_path)?;
         if connect::is_installed(&settings) {
@@ -199,6 +236,9 @@ impl Inner {
             live,
             hooks: HooksStatus {
                 installed: self.hooks_installed(),
+                outdated: connect::read(&self.settings_path)
+                    .map(|s| connect::is_outdated(&s))
+                    .unwrap_or(false),
                 listening: self.server.lock().unwrap_or_else(|e| e.into_inner()).is_some(),
             },
             index: IndexStatus {
@@ -306,22 +346,68 @@ impl Inner {
             .ok();
     }
 
+    /// Ask you about one permission request and return the hook response. Blocks this
+    /// request's thread until you answer or the wait runs out.
+    fn handle_permission(&self, payload: &PermissionPayload) -> String {
+        let request = Approvals::request(payload, Utc::now());
+        let outcome = if self.approvals.allowed_by_session_rule(&request) {
+            approvals::Outcome {
+                behavior: Some("allow"),
+                decided_by: "session_rule",
+            }
+        } else {
+            self.approvals
+                .wait_for_decision(request.clone(), approvals::DECISION_WAIT, &|| {
+                    self.publish_approvals()
+                })
+        };
+        // Only the decision is logged; the command itself goes to the audit table.
+        tracing::info!(
+            decision = outcome.behavior.unwrap_or("ask"),
+            decided_by = outcome.decided_by,
+            destructive = request.destructive,
+            "permission request answered"
+        );
+        if let Err(error) = self.db.with(|conn| approvals::record(conn, &request, &outcome)) {
+            tracing::warn!(kind = error.kind(), "could not record approval audit");
+        }
+        approvals::response_body(outcome.behavior)
+    }
+
+    fn publish_approvals(&self) {
+        self.app
+            .state::<AppState>()
+            .bus
+            .emit("claude", AppEvent::ApprovalsChanged(self.approvals.pending()));
+    }
+
     fn start_server(self: &Arc<Self>) -> AppResult<()> {
         let token = secrets::get(Credential::ClaudeHookToken)?
             .ok_or_else(|| AppError::InvalidInput("Claude Code isn't connected".into()))?;
         let weak = Arc::downgrade(self);
-        let handler = Arc::new(move |payload: HookPayload| {
-            if let Some(inner) = weak.upgrade() {
-                let changed = inner
-                    .live
-                    .lock()
-                    .unwrap_or_else(|e| e.into_inner())
-                    .apply(&payload, Utc::now());
-                if changed {
-                    inner.publish_status();
-                }
+        let handler = Arc::new(move |payload: HookPayload, body: &[u8]| {
+            let Some(inner) = weak.upgrade() else {
+                return approvals::response_body(None);
+            };
+            let changed = inner
+                .live
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .apply(&payload, Utc::now());
+            if changed {
+                inner.publish_status();
             }
-            "{}".to_owned()
+            match payload.hook_event_name.as_str() {
+                "PermissionRequest" => match serde_json::from_slice::<PermissionPayload>(body) {
+                    Ok(request) => inner.handle_permission(&request),
+                    Err(_) => approvals::response_body(None),
+                },
+                "SessionEnd" => {
+                    inner.approvals.end_session(&payload.session_id);
+                    "{}".to_owned()
+                }
+                _ => "{}".to_owned(),
+            }
         });
         let server = HookServer::start(super::hooks::HOOK_PORT, token, handler).map_err(|e| {
             AppError::InvalidInput(format!(

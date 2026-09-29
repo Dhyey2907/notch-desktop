@@ -3,6 +3,9 @@
 import { invoke } from "@tauri-apps/api/core";
 
 import type { AppInfo } from "./generated/AppInfo";
+import type { ApprovalChoice } from "./generated/ApprovalChoice";
+import type { ApprovalRequest } from "./generated/ApprovalRequest";
+import type { AuditEntry } from "./generated/AuditEntry";
 import type { CalendarSnapshot } from "./generated/CalendarSnapshot";
 import type { ClaudeStatus } from "./generated/ClaudeStatus";
 import type { DevTestActivity } from "./generated/DevTestActivity";
@@ -83,5 +86,13 @@ export const ipc = {
   claudeHooksPreview: () => invoke<string>("claude_hooks_preview"),
   claudeConnect: () => invoke<void>("claude_connect"),
   claudeDisconnect: () => invoke<void>("claude_disconnect"),
+  claudeApprovalsPending: () => invoke<ApprovalRequest[]>("claude_approvals_pending"),
+  /** Answer a waiting Claude Code permission request. Fails if it already expired. */
+  claudeApprovalDecide: (id: string, choice: ApprovalChoice) =>
+    invoke<void>("claude_approval_decide", { id, choice }),
+  claudeApprovalAudit: (limit: number) => invoke<AuditEntry[]>("claude_approval_audit", { limit }),
+  /** Debug builds only: run a fake permission request through the real approval flow. */
+  devEmitTestApproval: (tool: string, input: unknown, delayMs?: number) =>
+    invoke<void>("dev_emit_test_approval", { tool, input, delayMs }),
   setWindowSize: (width: number, height: number) => invoke<void>("shell_set_window_size", { width, height }),
 };

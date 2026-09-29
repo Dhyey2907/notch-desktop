@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { eventBus } from "../core/eventBus";
+import type { AuditEntry } from "../core/generated/AuditEntry";
 import type { ClaudeStatus } from "../core/generated/ClaudeStatus";
 import { ipc, isIpcError } from "../core/ipc";
 import { Button, ConfirmButton, Pill, Surface } from "../design/components";
@@ -13,6 +14,67 @@ function useClaudeStatus() {
     return eventBus.on("ClaudeStatusChanged", ({ event }) => setStatus(event.payload));
   }, []);
   return status;
+}
+
+function useApprovalAudit() {
+  const [entries, setEntries] = useState<AuditEntry[] | null>(null);
+  useEffect(() => {
+    const load = () => ipc.claudeApprovalAudit(20).then(setEntries, () => setEntries(null));
+    void load();
+    // Pending list shrinking means something was just decided and audited.
+    return eventBus.on("ApprovalsChanged", () => void load());
+  }, []);
+  return entries;
+}
+
+const DECISION_LABEL: Record<string, string> = { allow: "Allowed", deny: "Denied", ask: "In terminal" };
+const DECIDED_BY_LABEL: Record<string, string> = {
+  you: "by you",
+  session_rule: "for this session",
+  timeout: "no answer in time",
+  app_closed: "Notch closed",
+};
+
+function RecentApprovals() {
+  const entries = useApprovalAudit();
+  return (
+    <Surface>
+      <div className="settings__row">
+        <span className="settings__row-text">
+          <span className="settings__row-label">Recent approvals</span>
+          <span className="settings__row-description">
+            Permission requests answered through Notch, kept on this PC only (last 500).
+          </span>
+        </span>
+      </div>
+      {entries && entries.length > 0 ? (
+        <ul className="settings__audit">
+          {entries.map((e) => (
+            <li key={e.id} className="settings__audit-row">
+              <Pill tone={e.decision === "allow" ? "success" : e.decision === "deny" ? "danger" : "neutral"}>
+                {DECISION_LABEL[e.decision] ?? e.decision}
+              </Pill>
+              <code className="settings__audit-code" title={e.summary}>
+                {e.summary}
+              </code>
+              <span className="settings__audit-meta">
+                {[
+                  e.tool,
+                  e.project,
+                  DECIDED_BY_LABEL[e.decidedBy] ?? e.decidedBy,
+                  new Date(e.at).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" }),
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="settings__note">Nothing yet.</p>
+      )}
+    </Surface>
+  );
 }
 
 export function AiSection() {
@@ -66,13 +128,19 @@ export function AiSection() {
           <span className="settings__row-text">
             <span className="settings__row-label">Live activity</span>
             <span className="settings__row-description">
-              Show when Claude Code is working or waiting for you. Adds hooks to Claude Code's settings that
-              send events to Notch on this PC only.
+              Show when Claude Code is working or waiting for you, and answer its permission requests from the
+              notch. Adds hooks to Claude Code's settings that send events to Notch on this PC only. If Notch
+              doesn't answer, Claude Code asks in the terminal as usual — nothing is ever allowed without your
+              click.
             </span>
           </span>
           {installed ? (
-            <Pill tone={status?.hooks.listening ? "success" : "warning"}>
-              {status?.hooks.listening ? "Connected" : "Not listening"}
+            <Pill tone={status?.hooks.listening && !status.hooks.outdated ? "success" : "warning"}>
+              {status?.hooks.outdated
+                ? "Update needed"
+                : status?.hooks.listening
+                  ? "Connected"
+                  : "Not listening"}
             </Pill>
           ) : (
             <Pill>Off</Pill>
@@ -81,6 +149,14 @@ export function AiSection() {
 
         {installed ? (
           <div className="settings__buttons">
+            {status?.hooks.outdated && (
+              <ConfirmButton
+                confirmLabel="Update Notch's hooks in Claude Code settings?"
+                onConfirm={() => void run(ipc.claudeConnect)}
+              >
+                Update hooks (adds approvals)
+              </ConfirmButton>
+            )}
             <ConfirmButton
               variant="danger"
               confirmLabel="Remove Notch's hooks from Claude Code?"
@@ -115,6 +191,8 @@ export function AiSection() {
         {error && <p className="settings__note settings__note--warning">{error}</p>}
         <p className="settings__note">New Claude Code sessions pick up the change; restart open ones.</p>
       </Surface>
+
+      {installed && <RecentApprovals />}
 
       <Surface>
         <p className="settings__lead">Want to see the numbers? Open the Claude Code module in the notch.</p>

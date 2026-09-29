@@ -32,7 +32,7 @@ macro_rules! app_commands {
     () => {{
         #[cfg(debug_assertions)]
         let handler: fn(tauri::ipc::Invoke<tauri::Wry>) -> bool =
-            app_commands!(@with commands::dev::dev_emit_test_activity);
+            app_commands!(@with commands::dev::dev_emit_test_activity, commands::dev::dev_emit_test_approval);
         #[cfg(not(debug_assertions))]
         let handler: fn(tauri::ipc::Invoke<tauri::Wry>) -> bool = app_commands!(@with);
         handler
@@ -77,6 +77,9 @@ macro_rules! app_commands {
             commands::claude::claude_hooks_preview,
             commands::claude::claude_connect,
             commands::claude::claude_disconnect,
+            commands::claude::claude_approvals_pending,
+            commands::claude::claude_approval_decide,
+            commands::claude::claude_approval_audit,
             $($dev),*
         ]
     };

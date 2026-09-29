@@ -61,13 +61,14 @@ export function Island() {
   }, [settle]);
 
   // Activities claim the island unless the user has it expanded; once none remain, it
-  // returns to collapsed. Expanded is never interrupted — queued activities wait.
+  // returns to collapsed. Expanded is only interrupted by critical activities (an agent
+  // blocked on a permission request) — everything else waits in the queue.
   useEffect(() => {
     const { mode: current, request } = useIsland.getState();
-    if (activity && current !== "expanded") {
+    if (activity && (current !== "expanded" || activity.priority === "critical")) {
       const actions = activity.actions ?? [];
       const layout = actions.length === 0 ? "none" : actions.every((a) => a.icon) ? "inline" : "row";
-      void request("activity", activityIslandSize(layout));
+      void request("activity", activityIslandSize(layout, Boolean(activity.code)));
     } else if (!activity && current === "activity") {
       void request("collapsed");
     }

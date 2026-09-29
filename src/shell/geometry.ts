@@ -19,9 +19,10 @@ export const ISLAND_SIZE: Record<IslandMode, Size> = {
 
 /**
  * Island size for an activity: taller when it has a row of text buttons, wider when it has
- * inline icon controls.
+ * inline icon controls, and wider and taller still when it shows an exact command.
  */
-export function activityIslandSize(actions: "none" | "inline" | "row"): Size {
+export function activityIslandSize(actions: "none" | "inline" | "row", code = false): Size {
+  if (code) return { width: 480, height: actions === "row" ? 212 : 160 };
   if (actions === "row") return { width: 420, height: 136 };
   if (actions === "inline") return { width: 440, height: 72 };
   return ISLAND_SIZE.activity;

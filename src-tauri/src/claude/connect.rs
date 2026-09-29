@@ -12,11 +12,12 @@ use super::hooks::hook_url;
 use crate::error::{AppError, AppResult};
 
 /// Events Notch listens to. Tool events match every tool.
-pub const EVENTS: [(&str, bool); 7] = [
+pub const EVENTS: [(&str, bool); 8] = [
     ("SessionStart", false),
     ("UserPromptSubmit", false),
     ("PreToolUse", true),
     ("PostToolUse", true),
+    ("PermissionRequest", true),
     ("Notification", false),
     ("Stop", false),
     ("SessionEnd", false),
@@ -24,16 +25,25 @@ pub const EVENTS: [(&str, bool); 7] = [
 /// Seconds Claude Code waits for Notch before carrying on without it.
 const HOOK_TIMEOUT_SECS: u64 = 5;
 
+/// Permission requests wait for you; everything else must answer immediately.
+fn timeout_for(event: &str) -> u64 {
+    if event == "PermissionRequest" {
+        super::approvals::HOOK_TIMEOUT_SECS
+    } else {
+        HOOK_TIMEOUT_SECS
+    }
+}
+
 pub fn settings_path(home: &Path) -> PathBuf {
     home.join(".claude").join("settings.json")
 }
 
-fn our_group(token: &str, tool_event: bool) -> Value {
+fn our_group(event: &str, token: &str, tool_event: bool) -> Value {
     let hook = json!({
         "type": "http",
         "url": hook_url(),
         "headers": { "Authorization": format!("Bearer {token}") },
-        "timeout": HOOK_TIMEOUT_SECS,
+        "timeout": timeout_for(event),
     });
     if tool_event {
         json!({ "matcher": "*", "hooks": [hook] })
@@ -83,7 +93,7 @@ pub fn add_ours(settings: &mut Value, token: &str) -> AppResult<()> {
         let list = groups
             .as_array_mut()
             .ok_or_else(|| AppError::InvalidInput(format!("\"hooks.{event}\" isn't a list")))?;
-        list.push(our_group(token, tool_event));
+        list.push(our_group(event, token, tool_event));
     }
     Ok(())
 }
@@ -95,6 +105,20 @@ pub fn is_installed(settings: &Value) -> bool {
         .is_some_and(|hooks| hooks.values().filter_map(Value::as_array).flatten().any(is_ours))
 }
 
+/// Installed by an older Notch that didn't register every event (e.g. before approvals).
+pub fn is_outdated(settings: &Value) -> bool {
+    let Some(hooks) = settings.get("hooks").and_then(Value::as_object) else {
+        return false;
+    };
+    is_installed(settings)
+        && EVENTS.iter().any(|(event, _)| {
+            !hooks
+                .get(*event)
+                .and_then(Value::as_array)
+                .is_some_and(|groups| groups.iter().any(is_ours))
+        })
+}
+
 /// What connecting will add, with the token masked, for the confirmation screen.
 pub fn preview() -> String {
     let mut hooks = Map::new();
@@ -102,6 +126,7 @@ pub fn preview() -> String {
         hooks.insert(
             event.into(),
             json!([our_group(
+                event,
                 "•••••• (stored in Windows Credential Manager)",
                 tool_event
             )]),
@@ -171,6 +196,24 @@ mod tests {
         assert_eq!(pre[1]["matcher"], "*");
         assert_eq!(pre[1]["hooks"][0]["headers"]["Authorization"], "Bearer tok");
         assert!(settings["hooks"]["SessionEnd"].as_array().unwrap().len() == 1);
+    }
+
+    #[test]
+    fn permission_requests_get_a_long_timeout_and_old_installs_are_outdated() {
+        let mut settings = existing();
+        add_ours(&mut settings, "tok").unwrap();
+        assert!(!is_outdated(&settings));
+        assert_eq!(
+            settings["hooks"]["PermissionRequest"][0]["hooks"][0]["timeout"],
+            120
+        );
+        assert_eq!(settings["hooks"]["Stop"][1]["hooks"][0]["timeout"], 5);
+        settings["hooks"]
+            .as_object_mut()
+            .unwrap()
+            .remove("PermissionRequest");
+        assert!(is_outdated(&settings));
+        assert!(!is_outdated(&existing()));
     }
 
     #[test]

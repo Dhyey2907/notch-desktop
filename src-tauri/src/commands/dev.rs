@@ -5,6 +5,7 @@ use std::time::Duration;
 use tauri::State;
 
 use crate::{
+    claude::service::ClaudeService,
     events::{AppEvent, DevTestActivity, EventEnvelope},
     state::AppState,
 };
@@ -28,5 +29,21 @@ pub async fn dev_emit_test_activity(
         envelope = envelope.with_dedup_key(key);
     }
     state.bus.publish(envelope);
+    Ok(())
+}
+
+/// Send a fake Claude Code permission request through the real approval flow, so the
+/// approval UI can be tested without running Claude Code.
+#[tauri::command]
+pub async fn dev_emit_test_approval(
+    tool: String,
+    input: serde_json::Value,
+    delay_ms: Option<u64>,
+    claude: State<'_, ClaudeService>,
+) -> Result<(), ()> {
+    if let Some(delay) = delay_ms {
+        tokio::time::sleep(Duration::from_millis(delay.min(MAX_DELAY_MS))).await;
+    }
+    claude.dev_test_approval(tool, input);
     Ok(())
 }
