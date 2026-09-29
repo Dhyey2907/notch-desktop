@@ -229,18 +229,81 @@ pub fn init(app: &AppHandle) -> AppResult<()> {
                 let _ = window.hide();
             }
         }
-        WindowEvent::ScaleFactorChanged { .. } => {
-            if let Some(window) = main_window(&handle) {
-                let size = handle.state::<ShellState>().window_size();
-                if let Err(error) = place(&window, size) {
-                    tracing::warn!(%error, "failed to re-place island after scale change");
-                }
-            }
-        }
+        WindowEvent::ScaleFactorChanged { .. } => replace_island(&handle),
         _ => {}
     });
 
     place(&window, app.state::<ShellState>().window_size())?;
+    #[cfg(windows)]
+    watch_display_changes(&window);
     show_island(&window)?;
     Ok(())
+}
+
+/// Put the island back at top-center of the (possibly new) primary monitor at its current size.
+fn replace_island(app: &AppHandle) {
+    if let Some(window) = main_window(app) {
+        let size = app.state::<ShellState>().window_size();
+        if let Err(error) = place(&window, size) {
+            tracing::warn!(%error, "failed to re-place island after a display change");
+        }
+    }
+}
+
+/// Re-place the island when the display layout changes: resolution, monitors added or
+/// removed, the primary monitor switched, or the taskbar moved (work area). Windows
+/// broadcasts these to top-level windows; Tauri doesn't surface them, so the island's
+/// window procedure is subclassed to listen. Bursts are coalesced and handled after the
+/// layout settles.
+#[cfg(windows)]
+fn watch_display_changes(window: &WebviewWindow) {
+    use std::sync::{
+        atomic::{AtomicBool, Ordering},
+        OnceLock,
+    };
+    use windows::Win32::{
+        Foundation::{HWND, LPARAM, LRESULT, WPARAM},
+        UI::{
+            Shell::{DefSubclassProc, SetWindowSubclass},
+            WindowsAndMessaging::{SPI_SETWORKAREA, WM_DISPLAYCHANGE, WM_SETTINGCHANGE},
+        },
+    };
+
+    const SETTLE: std::time::Duration = std::time::Duration::from_millis(400);
+    static APP: OnceLock<AppHandle> = OnceLock::new();
+    static PENDING: AtomicBool = AtomicBool::new(false);
+
+    unsafe extern "system" fn subclass(
+        hwnd: HWND,
+        msg: u32,
+        wparam: WPARAM,
+        lparam: LPARAM,
+        _id: usize,
+        _data: usize,
+    ) -> LRESULT {
+        let layout_changed =
+            msg == WM_DISPLAYCHANGE || (msg == WM_SETTINGCHANGE && wparam.0 == SPI_SETWORKAREA.0 as usize);
+        if layout_changed && !PENDING.swap(true, Ordering::SeqCst) {
+            if let Some(app) = APP.get().cloned() {
+                std::thread::spawn(move || {
+                    std::thread::sleep(SETTLE);
+                    PENDING.store(false, Ordering::SeqCst);
+                    replace_island(&app);
+                });
+            } else {
+                PENDING.store(false, Ordering::SeqCst);
+            }
+        }
+        // SAFETY: forwarding the unmodified message to the next window procedure.
+        unsafe { DefSubclassProc(hwnd, msg, wparam, lparam) }
+    }
+
+    let _ = APP.set(window.app_handle().clone());
+    let Ok(raw) = window.hwnd() else { return };
+    // SAFETY: called on the main thread that owns this live window; the callback only reads
+    // statics and forwards every message unchanged.
+    let installed = unsafe { SetWindowSubclass(HWND(raw.0), Some(subclass), 1, 0) };
+    if !installed.as_bool() {
+        tracing::warn!("could not watch for display changes; the island may drift until restart");
+    }
 }

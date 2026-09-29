@@ -16,8 +16,8 @@ export default function HomeExpanded() {
   return (
     <ModuleContainer title="Notch Desktop" trailing={version && <Pill>v{version}</Pill>}>
       <EmptyState
-        title="Your modules live here"
-        body="Media, Calendar, Git and Claude will join the dock below as they are built. Press Ctrl+Alt+N anytime to open or close the notch."
+        title="Everything in one place"
+        body="Pick Media, Calendar, Git or Claude Code from the dock below. Press Ctrl+Alt+N anytime to open or close the notch."
       />
     </ModuleContainer>
   );

@@ -3,5 +3,5 @@
   "identifier": "default",
   "description": "Capability for the island and settings windows",
   "windows": ["main", "settings"],
-  "permissions": ["core:default", "opener:default"]
+  "permissions": ["core:default"]
 }
