@@ -6,6 +6,7 @@ pub mod calendar;
 #[cfg(debug_assertions)]
 pub mod dev;
 pub mod diagnostics;
+pub mod git;
 pub mod media;
 pub mod settings;
 pub mod shell;

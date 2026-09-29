@@ -5,6 +5,10 @@ import { invoke } from "@tauri-apps/api/core";
 import type { AppInfo } from "./generated/AppInfo";
 import type { CalendarSnapshot } from "./generated/CalendarSnapshot";
 import type { DevTestActivity } from "./generated/DevTestActivity";
+import type { GitOperation } from "./generated/GitOperation";
+import type { GitSnapshot } from "./generated/GitSnapshot";
+import type { PullRequests } from "./generated/PullRequests";
+import type { RepoInfo } from "./generated/RepoInfo";
 import type { MediaCommand } from "./generated/MediaCommand";
 import type { MediaState } from "./generated/MediaState";
 import type { PlayOutcome } from "./generated/PlayOutcome";
@@ -56,5 +60,18 @@ export const ipc = {
   spotifyRefreshPlaylists: () => invoke<void>("spotify_refresh_playlists"),
   spotifyPlayPlaylist: (playlistId: string) => invoke<PlayOutcome>("spotify_play_playlist", { playlistId }),
   spotifySetPinned: (playlistIds: string[]) => invoke<void>("spotify_set_pinned", { playlistIds }),
+  /** Open an https link (e.g. a pull request) in the default browser. */
+  openExternal: (url: string) => invoke<void>("open_external", { url }),
+  gitGetSnapshot: () => invoke<GitSnapshot>("git_get_snapshot"),
+  gitRefresh: () => invoke<void>("git_refresh"),
+  /** Folder picker; resolves `null` if cancelled. */
+  gitPickRepo: () => invoke<RepoInfo | null>("git_pick_repo"),
+  gitSelectRepo: (path: string) => invoke<RepoInfo>("git_select_repo", { path }),
+  gitForgetRepo: (path: string) => invoke<void>("git_forget_repo", { path }),
+  /** Commit / push / pull. Call only after the user has confirmed. */
+  gitRun: (operation: GitOperation, message?: string, includeUntracked?: boolean) =>
+    invoke<void>("git_run", { operation, message, includeUntracked }),
+  gitPullRequests: () => invoke<PullRequests>("git_pull_requests"),
+  gitOpenFolder: () => invoke<void>("git_open_folder"),
   setWindowSize: (width: number, height: number) => invoke<void>("shell_set_window_size", { width, height }),
 };

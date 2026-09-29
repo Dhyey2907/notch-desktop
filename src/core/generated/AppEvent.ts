@@ -2,8 +2,9 @@
 import type { CalendarEvent } from "./CalendarEvent";
 import type { CalendarSnapshot } from "./CalendarSnapshot";
 import type { DevTestActivity } from "./DevTestActivity";
+import type { GitSnapshot } from "./GitSnapshot";
 import type { MediaState } from "./MediaState";
 import type { Settings } from "./Settings";
 import type { SpotifySnapshot } from "./SpotifySnapshot";
 
-export type AppEvent = { "type": "AppReady", "payload": { version: string, } } | { "type": "DiagnosticsPong", "payload": { nonce: string, } } | { "type": "ShellToggleRequested" } | { "type": "SettingsChanged", "payload": Settings } | { "type": "MediaStateChanged", "payload": { state: MediaState | null, } } | { "type": "CalendarChanged", "payload": CalendarSnapshot } | { "type": "ReminderDue", "payload": { event: CalendarEvent, } } | { "type": "SpotifyChanged", "payload": SpotifySnapshot } | { "type": "DevTestActivity", "payload": DevTestActivity };
+export type AppEvent = { "type": "AppReady", "payload": { version: string, } } | { "type": "DiagnosticsPong", "payload": { nonce: string, } } | { "type": "ShellToggleRequested" } | { "type": "SettingsChanged", "payload": Settings } | { "type": "MediaStateChanged", "payload": { state: MediaState | null, } } | { "type": "CalendarChanged", "payload": CalendarSnapshot } | { "type": "ReminderDue", "payload": { event: CalendarEvent, } } | { "type": "SpotifyChanged", "payload": SpotifySnapshot } | { "type": "GitChanged", "payload": GitSnapshot } | { "type": "DevTestActivity", "payload": DevTestActivity };

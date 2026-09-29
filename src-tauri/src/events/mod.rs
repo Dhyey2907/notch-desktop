@@ -18,6 +18,7 @@ use ts_rs::TS;
 
 use crate::{
     calendar::{CalendarEvent, CalendarSnapshot},
+    git::GitSnapshot,
     media::MediaState,
     settings::Settings,
     spotify::SpotifySnapshot,
@@ -84,6 +85,8 @@ pub enum AppEvent {
     ReminderDue { event: CalendarEvent },
     /// Spotify connection or playlists changed.
     SpotifyChanged(SpotifySnapshot),
+    /// Repository status, history, or a running operation changed.
+    GitChanged(GitSnapshot),
     /// Fake activity fired from the dev panel (debug builds only).
     #[cfg(debug_assertions)]
     DevTestActivity(DevTestActivity),
@@ -101,6 +104,7 @@ impl AppEvent {
             AppEvent::CalendarChanged(_) => "CalendarChanged",
             AppEvent::ReminderDue { .. } => "ReminderDue",
             AppEvent::SpotifyChanged(_) => "SpotifyChanged",
+            AppEvent::GitChanged(_) => "GitChanged",
             #[cfg(debug_assertions)]
             AppEvent::DevTestActivity(_) => "DevTestActivity",
         }

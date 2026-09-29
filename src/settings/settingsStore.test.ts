@@ -10,6 +10,7 @@ const defaults: Settings = {
   modules: {},
   calendar: { reminderMinutes: 5 },
   spotify: { pinnedPlaylists: [] },
+  git: { repos: [] },
 };
 
 function setup(initial: Settings = defaults) {

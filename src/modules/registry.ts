@@ -3,6 +3,7 @@
 import { calendarModule } from "./calendar";
 import { devEventsModule } from "./devEvents";
 import { galleryModule } from "./gallery";
+import { gitModule } from "./git";
 import { homeModule } from "./home";
 import { mediaModule } from "./media";
 import type { NotchModule } from "./types";
@@ -16,7 +17,7 @@ export function sortModules(modules: NotchModule[], includeDev: boolean): NotchM
 const devModules: NotchModule[] = import.meta.env.DEV ? [galleryModule, devEventsModule] : [];
 
 export const MODULES: readonly NotchModule[] = sortModules(
-  [homeModule, mediaModule, calendarModule, ...devModules],
+  [homeModule, mediaModule, calendarModule, gitModule, ...devModules],
   import.meta.env.DEV,
 );
 

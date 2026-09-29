@@ -3,6 +3,7 @@ mod commands;
 mod db;
 mod error;
 mod events;
+mod git;
 mod logging;
 mod media;
 mod oauth;
@@ -39,6 +40,7 @@ macro_rules! app_commands {
         tauri::generate_handler![
             commands::app::app_info,
             commands::app::diagnostics_ping,
+            commands::app::open_external,
             commands::shell::shell_set_window_size,
             commands::settings::settings_get,
             commands::settings::settings_update,
@@ -61,6 +63,14 @@ macro_rules! app_commands {
             commands::spotify::spotify_refresh_playlists,
             commands::spotify::spotify_play_playlist,
             commands::spotify::spotify_set_pinned,
+            commands::git::git_get_snapshot,
+            commands::git::git_refresh,
+            commands::git::git_pick_repo,
+            commands::git::git_select_repo,
+            commands::git::git_forget_repo,
+            commands::git::git_run,
+            commands::git::git_pull_requests,
+            commands::git::git_open_folder,
             $($dev),*
         ]
     };
@@ -95,6 +105,7 @@ pub fn run() {
             }
         }))
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(
             tauri_plugin_autostart::Builder::new()
                 .args([shell::AUTOSTART_ARG])
@@ -139,6 +150,10 @@ pub fn run() {
             let spotify = spotify::service::SpotifyService::new(handle.clone(), mock_enabled("spotify"));
             spotify.start();
             app.manage(spotify);
+
+            let git = git::service::GitService::new(handle.clone(), mock_enabled("git"));
+            git.start();
+            app.manage(git);
             shell::init(handle)?;
             Ok(())
         })

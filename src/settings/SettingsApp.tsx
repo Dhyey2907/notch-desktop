@@ -9,12 +9,13 @@ import { Button, MockBadge, Pill, SegmentedControl, Surface, Switch } from "../d
 import { MODULES } from "../modules/registry";
 import { useSettings } from ".";
 import { CalendarSection } from "./CalendarSection";
+import { GitSection } from "./GitSection";
 import { MediaSection } from "./MediaSection";
 import { Section } from "./Section";
 import { moduleSettings } from "./settingsStore";
 import "./settings.css";
 
-type SectionId = "general" | "appearance" | "modules" | "media" | "calendar" | "diagnostics";
+type SectionId = "general" | "appearance" | "modules" | "media" | "calendar" | "git" | "diagnostics";
 
 const SECTIONS: { id: SectionId; label: string }[] = [
   { id: "general", label: "General" },
@@ -22,6 +23,7 @@ const SECTIONS: { id: SectionId; label: string }[] = [
   { id: "modules", label: "Modules" },
   { id: "media", label: "Media" },
   { id: "calendar", label: "Calendar" },
+  { id: "git", label: "Git" },
   { id: "diagnostics", label: "Diagnostics & About" },
 ];
 
@@ -66,6 +68,7 @@ export function SettingsApp() {
             {section === "modules" && <ModulesSection />}
             {section === "media" && <MediaSection />}
             {section === "calendar" && <CalendarSection />}
+            {section === "git" && <GitSection />}
             {section === "diagnostics" && <DiagnosticsSection />}
           </>
         )}

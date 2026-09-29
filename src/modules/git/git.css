@@ -1,0 +1,213 @@
+.git {
+  height: 100%;
+  display: flex;
+  gap: var(--space-5);
+  min-height: 0;
+}
+
+.git p,
+.git-compose p {
+  margin: 0;
+}
+
+.git__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.git__branch {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-emphasis);
+  min-width: 0;
+}
+
+.git__branch > span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.git__repo {
+  font-weight: var(--weight-headline);
+}
+
+.git__slash,
+.git__muted {
+  color: var(--text-muted);
+  font-weight: var(--weight-body);
+}
+
+.git__stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-md);
+  color: var(--text-secondary);
+}
+
+.git__commits {
+  list-style: none;
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.git__last {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.git__last code {
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: var(--text-xs);
+  color: var(--info);
+}
+
+.git__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: auto;
+}
+
+.git__note {
+  font-size: var(--text-sm);
+  color: var(--warning);
+}
+
+.git__activity {
+  flex: none;
+  width: 196px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.git__label {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.git__loading {
+  padding-top: var(--space-4);
+  text-align: center;
+}
+
+.git__repo-select {
+  max-width: 150px;
+  font: inherit;
+  font-size: var(--text-xs);
+  padding: 3px var(--space-2);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-secondary);
+  color-scheme: dark;
+}
+
+.git__repo-select:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Commit composer */
+.git-compose {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.git-compose .nd-switch-row {
+  padding: var(--space-1) 0;
+}
+
+/* Pull requests */
+.git-prs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+  max-height: 100%;
+}
+
+.git-prs__row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--text-md);
+  text-align: left;
+  cursor: pointer;
+}
+
+.git-prs__row:hover {
+  background: var(--surface-hover);
+}
+
+.git-prs__row:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.git-prs__number {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.git-prs__title {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Collapsed indicator */
+.git-compact {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-emphasis);
+  color: var(--info);
+}
+
+.git-compact__spin {
+  animation: git-spin 1s linear infinite;
+}
+
+@keyframes git-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .git-compact__spin {
+    animation: none;
+  }
+}

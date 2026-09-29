@@ -94,6 +94,17 @@ pub struct SpotifySettings {
     pub pinned_playlists: Vec<String>,
 }
 
+/// Repositories the Git module knows about (most recent first) and the one shown.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export)]
+pub struct GitSettings {
+    pub repos: Vec<String>,
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub active: Option<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", default)]
 #[ts(export)]
@@ -105,6 +116,7 @@ pub struct Settings {
     pub modules: BTreeMap<String, ModuleSettings>,
     pub calendar: CalendarSettings,
     pub spotify: SpotifySettings,
+    pub git: GitSettings,
 }
 
 impl Settings {
@@ -121,6 +133,16 @@ impl Settings {
                 .all(|id| crate::spotify::valid_id(id))
         {
             return Err(AppError::InvalidInput("invalid pinned playlists".into()));
+        }
+        if self.git.repos.len() > crate::git::service::MAX_RECENT_REPOS
+            || self
+                .git
+                .repos
+                .iter()
+                .chain(self.git.active.iter())
+                .any(|p| p.len() > 400)
+        {
+            return Err(AppError::InvalidInput("invalid repository list".into()));
         }
         if self.calendar.reminder_minutes > 120 {
             return Err(AppError::InvalidInput("reminder lead is too long".into()));
