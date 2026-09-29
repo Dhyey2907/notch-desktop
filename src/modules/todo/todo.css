@@ -1,0 +1,187 @@
+.todo-compact {
+  display: inline-flex;
+  color: var(--info);
+}
+
+.todo {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.todo p {
+  margin: 0;
+}
+
+/* Quick add */
+.todo-add {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 2px 4px 2px var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.todo-add:focus-within {
+  border-color: var(--border-strong, rgba(255, 255, 255, 0.24));
+}
+
+.todo-add__input {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--text-sm);
+}
+
+.todo-add__input::placeholder {
+  color: var(--text-muted);
+}
+
+.todo-hint {
+  min-height: 1.2em;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.todo-hint--error {
+  color: var(--warning);
+}
+
+/* Lists */
+.todo-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 2px 0 0;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.todo-list__section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--space-2);
+  padding: 0 var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.todo-task {
+  border-radius: var(--radius-sm);
+}
+
+.todo-task:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.todo-task__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 32px;
+}
+
+.todo-task__title {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.todo-task--done .todo-task__title {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.todo-task__timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--info);
+}
+
+.todo-task__countdown {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-emphasis);
+  font-variant-numeric: tabular-nums;
+}
+
+.todo-task__picker {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  padding: 0 0 var(--space-2) 34px;
+}
+
+.todo-chip {
+  height: 26px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+
+.todo-chip:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.todo-chip:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Notes */
+.todo-notes__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.todo-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+
+.todo-note__body {
+  flex: 1;
+  min-width: 0;
+  resize: none;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--text-sm);
+  line-height: 1.4;
+  outline: none;
+}
+
+.todo-note__body:focus {
+  border-color: var(--border-strong, rgba(255, 255, 255, 0.24));
+}
+
+.todo-note__body::placeholder {
+  color: var(--text-muted);
+}

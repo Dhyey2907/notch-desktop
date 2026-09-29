@@ -13,6 +13,7 @@ mod settings;
 mod shell;
 mod spotify;
 mod state;
+mod todo;
 
 use tauri::Manager;
 
@@ -85,6 +86,18 @@ macro_rules! app_commands {
             commands::claude::claude_status_line_preview,
             commands::claude::claude_status_line_enable,
             commands::claude::claude_status_line_disable,
+            commands::todo::todo_snapshot,
+            commands::todo::todo_add_task,
+            commands::todo::todo_set_done,
+            commands::todo::todo_rename,
+            commands::todo::todo_delete,
+            commands::todo::todo_clear_done,
+            commands::todo::todo_start_timer,
+            commands::todo::todo_cancel_timer,
+            commands::todo::todo_acknowledge,
+            commands::todo::note_add,
+            commands::todo::note_update,
+            commands::todo::note_delete,
             $($dev),*
         ]
     };
@@ -161,6 +174,10 @@ pub fn run() {
             let calendar = calendar::service::CalendarService::new(handle.clone(), mock_enabled("calendar"));
             calendar.start();
             app.manage(calendar);
+
+            let todo = todo::service::TodoService::new(handle.clone());
+            todo.start();
+            app.manage(todo);
 
             let spotify = spotify::service::SpotifyService::new(handle.clone(), mock_enabled("spotify"));
             spotify.start();

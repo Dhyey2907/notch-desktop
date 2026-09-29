@@ -12,7 +12,10 @@ import type { DevTestActivity } from "./generated/DevTestActivity";
 import type { GitOperation } from "./generated/GitOperation";
 import type { GitSnapshot } from "./generated/GitSnapshot";
 import type { PullRequests } from "./generated/PullRequests";
+import type { Note } from "./generated/Note";
 import type { ScreenInfo } from "./generated/ScreenInfo";
+import type { Task } from "./generated/Task";
+import type { TodoSnapshot } from "./generated/TodoSnapshot";
 import type { RepoInfo } from "./generated/RepoInfo";
 import type { MediaCommand } from "./generated/MediaCommand";
 import type { MediaState } from "./generated/MediaState";
@@ -95,6 +98,22 @@ export const ipc = {
   claudeStatusLinePreview: () => invoke<string>("claude_status_line_preview"),
   claudeStatusLineEnable: () => invoke<void>("claude_status_line_enable"),
   claudeStatusLineDisable: () => invoke<void>("claude_status_line_disable"),
+  todoSnapshot: () => invoke<TodoSnapshot>("todo_snapshot"),
+  /** Add a task; with `timerMinutes` its timer starts right away (`ring`: sound when done). */
+  todoAddTask: (title: string, timerMinutes: number | null, ring: boolean) =>
+    invoke<Task>("todo_add_task", { title, timerMinutes, ring }),
+  todoSetDone: (id: string, done: boolean) => invoke<void>("todo_set_done", { id, done }),
+  todoRename: (id: string, title: string) => invoke<void>("todo_rename", { id, title }),
+  todoDelete: (id: string) => invoke<void>("todo_delete", { id }),
+  todoClearDone: () => invoke<void>("todo_clear_done"),
+  todoStartTimer: (id: string, minutes: number, ring: boolean) =>
+    invoke<void>("todo_start_timer", { id, minutes, ring }),
+  todoCancelTimer: (id: string) => invoke<void>("todo_cancel_timer", { id }),
+  /** Dismiss a finished timer: stops the ring and clears the alert on every screen. */
+  todoAcknowledge: (id: string) => invoke<void>("todo_acknowledge", { id }),
+  noteAdd: (body: string) => invoke<Note>("note_add", { body }),
+  noteUpdate: (id: string, body: string) => invoke<void>("note_update", { id, body }),
+  noteDelete: (id: string) => invoke<void>("note_delete", { id }),
   claudeApprovalsPending: () => invoke<ApprovalRequest[]>("claude_approvals_pending"),
   /** Answer a waiting Claude Code permission request. Fails if it already expired. */
   claudeApprovalDecide: (id: string, choice: ApprovalChoice) =>

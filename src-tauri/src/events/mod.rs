@@ -23,6 +23,7 @@ use crate::{
     media::MediaState,
     settings::Settings,
     spotify::SpotifySnapshot,
+    todo::{Task, TodoSnapshot},
 };
 
 /// Name of the single Tauri channel that carries every `EventEnvelope` to the frontend.
@@ -95,6 +96,10 @@ pub enum AppEvent {
     ClaudeStatusChanged(ClaudeStatus),
     /// New transcript data was indexed; views re-query the usage range they show.
     ClaudeUsageChanged,
+    /// Tasks, notes, or finished-timer alerts changed.
+    TodoChanged(TodoSnapshot),
+    /// A task's timer ran out (`late`: it ran out while Notch wasn't running).
+    TimerDone { task: Task, late: bool },
     /// Permission requests waiting for you changed (all pending, oldest first).
     ApprovalsChanged(Vec<ApprovalRequest>),
     /// Fake activity fired from the dev panel (debug builds only).
@@ -119,6 +124,8 @@ impl AppEvent {
             AppEvent::ClaudeStatusChanged(_) => "ClaudeStatusChanged",
             AppEvent::ClaudeUsageChanged => "ClaudeUsageChanged",
             AppEvent::ApprovalsChanged(_) => "ApprovalsChanged",
+            AppEvent::TodoChanged(_) => "TodoChanged",
+            AppEvent::TimerDone { .. } => "TimerDone",
             #[cfg(debug_assertions)]
             AppEvent::DevTestActivity(_) => "DevTestActivity",
         }

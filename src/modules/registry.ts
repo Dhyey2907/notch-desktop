@@ -7,6 +7,7 @@ import { galleryModule } from "./gallery";
 import { gitModule } from "./git";
 import { homeModule } from "./home";
 import { mediaModule } from "./media";
+import { todoModule } from "./todo";
 import type { NotchModule } from "./types";
 
 export function sortModules(modules: NotchModule[], includeDev: boolean): NotchModule[] {
@@ -14,11 +15,15 @@ export function sortModules(modules: NotchModule[], includeDev: boolean): NotchM
 }
 
 // `import.meta.env.DEV` is a compile-time constant, so dev-only modules are tree-shaken
-// out of release bundles entirely (not just hidden).
-const devModules: NotchModule[] = import.meta.env.DEV ? [galleryModule, devEventsModule] : [];
+// out of release bundles entirely (not just hidden). Even in dev builds they stay out of
+// the dock unless asked for with VITE_NOTCH_DEV_MODULES=1.
+const devModules: NotchModule[] =
+  import.meta.env.DEV && import.meta.env.VITE_NOTCH_DEV_MODULES === "1"
+    ? [galleryModule, devEventsModule]
+    : [];
 
 export const MODULES: readonly NotchModule[] = sortModules(
-  [homeModule, mediaModule, calendarModule, gitModule, claudeModule, ...devModules],
+  [homeModule, mediaModule, calendarModule, gitModule, claudeModule, todoModule, ...devModules],
   import.meta.env.DEV,
 );
 

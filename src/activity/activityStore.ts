@@ -61,6 +61,8 @@ export interface ActivityInput {
   actions?: ActivityAction[];
   /** Exact text to show verbatim in a monospace block (e.g. the command being approved). */
   code?: string;
+  /** Called when the user closes the card (× or Esc), before it's dismissed or put away. */
+  onClose?: () => void;
   /** Show a "×N" count when replaced via `dedupKey` (default true). Off for e.g. track changes. */
   countRepeats?: boolean;
 }
@@ -176,6 +178,11 @@ export function createActivityStore({
       close: (id) => {
         const activity = get().activities.find((a) => a.id === id);
         if (!activity) return;
+        try {
+          activity.onClose?.();
+        } catch (error) {
+          console.error("activity close handler failed", error);
+        }
         if (isPersistent(activity)) {
           commit(get().activities.map((a) => (a.id === id ? { ...a, minimized: true } : a)));
         } else {
