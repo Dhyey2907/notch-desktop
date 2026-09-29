@@ -94,6 +94,31 @@ pub struct SpotifySettings {
     pub pinned_playlists: Vec<String>,
 }
 
+/// Which screen(s) show the notch.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum DisplayMode {
+    /// The Windows main display.
+    #[default]
+    Primary,
+    /// One chosen screen (falls back to the main display while it's disconnected).
+    One,
+    /// Every connected screen.
+    All,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export)]
+pub struct DisplaySettings {
+    pub mode: DisplayMode,
+    /// Windows device name of the chosen screen (e.g. `\\.\DISPLAY2`) for `One`.
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub monitor: Option<String>,
+}
+
 /// Repositories the Git module knows about (most recent first) and the one shown.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", default)]
@@ -117,6 +142,7 @@ pub struct Settings {
     pub calendar: CalendarSettings,
     pub spotify: SpotifySettings,
     pub git: GitSettings,
+    pub display: DisplaySettings,
 }
 
 impl Settings {
@@ -143,6 +169,14 @@ impl Settings {
                 .any(|p| p.len() > 400)
         {
             return Err(AppError::InvalidInput("invalid repository list".into()));
+        }
+        if self
+            .display
+            .monitor
+            .as_ref()
+            .is_some_and(|m| m.is_empty() || m.len() > 64)
+        {
+            return Err(AppError::InvalidInput("invalid screen name".into()));
         }
         if self.calendar.reminder_minutes > 120 {
             return Err(AppError::InvalidInput("reminder lead is too long".into()));

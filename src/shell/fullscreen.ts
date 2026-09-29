@@ -4,6 +4,7 @@ import { create } from "zustand";
 
 import { eventBus } from "../core/eventBus";
 import { ipc } from "../core/ipc";
+import { windowLabel } from "../core/window";
 import type { Activity } from "../activity/activityStore";
 
 export const useFullscreen = create<{ active: boolean }>(() => ({ active: false }));
@@ -11,9 +12,10 @@ export const useFullscreen = create<{ active: boolean }>(() => ({ active: false 
 /** Start tracking; returns a cleanup function. */
 export function trackFullscreen(): () => void {
   let cancelled = false;
-  const off = eventBus.on("FullscreenChanged", ({ event }) =>
-    useFullscreen.setState({ active: event.payload.active }),
-  );
+  // Each screen has its own island; only this screen's fullscreen state matters here.
+  const off = eventBus.on("FullscreenChanged", ({ event }) => {
+    if (event.payload.label === windowLabel()) useFullscreen.setState({ active: event.payload.active });
+  });
   ipc.shellIsFullscreen().then(
     (active) => !cancelled && useFullscreen.setState({ active }),
     () => {},

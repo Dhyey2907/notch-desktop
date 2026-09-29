@@ -372,3 +372,15 @@ html.settings-window #root {
   font-size: var(--text-xs);
   color: var(--text-muted);
 }
+
+/* Label above its control, for controls too wide to share a row (e.g. a list of screens). */
+.settings__row--stacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-3);
+}
+
+.settings__row--stacked .nd-segmented {
+  align-self: flex-start;
+  flex-wrap: wrap;
+}

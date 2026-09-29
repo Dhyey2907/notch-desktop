@@ -11,6 +11,7 @@ const defaults: Settings = {
   calendar: { reminderMinutes: 5 },
   spotify: { pinnedPlaylists: [] },
   git: { repos: [] },
+  display: { mode: "primary" },
 };
 
 function setup(initial: Settings = defaults) {

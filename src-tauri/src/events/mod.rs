@@ -75,13 +75,14 @@ pub enum AppEvent {
     /// Reply to `diagnostics_ping`; proves the command → event round trip.
     DiagnosticsPong { nonce: String },
     /// The global shortcut asked the island to toggle between collapsed and expanded.
-    ShellToggleRequested,
+    /// Ctrl+Alt+N: toggle the island with this window label (the one on the pointer's screen).
+    ShellToggleRequested { label: String },
     /// Settings were saved; every window replaces its copy with this one.
     SettingsChanged(Settings),
     /// The active media session changed (`None` when nothing is playing).
     MediaStateChanged { state: Option<MediaState> },
-    /// A fullscreen app opened or closed on the island's monitor.
-    FullscreenChanged { active: bool },
+    /// A fullscreen app opened or closed on the screen of island `label`.
+    FullscreenChanged { label: String, active: bool },
     /// Calendar status or events changed.
     CalendarChanged(CalendarSnapshot),
     /// A meeting is about to start (reminder lead time reached).
@@ -107,7 +108,7 @@ impl AppEvent {
         match self {
             AppEvent::AppReady { .. } => "AppReady",
             AppEvent::DiagnosticsPong { .. } => "DiagnosticsPong",
-            AppEvent::ShellToggleRequested => "ShellToggleRequested",
+            AppEvent::ShellToggleRequested { .. } => "ShellToggleRequested",
             AppEvent::SettingsChanged(_) => "SettingsChanged",
             AppEvent::MediaStateChanged { .. } => "MediaStateChanged",
             AppEvent::FullscreenChanged { .. } => "FullscreenChanged",

@@ -2,9 +2,10 @@
 //! (architecture.md §3–4). The frontend decides *what size* the island needs; this
 //! module decides *where* that lands on the display.
 
+pub mod islands;
 mod placement;
 
-use std::sync::Mutex;
+use std::{collections::HashMap, sync::Mutex};
 
 use tauri::{
     menu::{Menu, MenuItem},
@@ -14,6 +15,7 @@ use tauri::{
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 
 use crate::{error::AppResult, events::AppEvent, state::AppState};
+pub use islands::ShellState;
 use placement::{top_center_frame, WorkArea};
 
 pub const MAIN_WINDOW: &str = "main";
@@ -53,30 +55,10 @@ pub fn open_settings_window(app: &AppHandle, section: Option<&str>) -> AppResult
     Ok(())
 }
 
-/// Logical window size requested by the frontend, reused when the display changes.
-pub struct ShellState {
-    window_size: Mutex<(f64, f64)>,
-}
-
-impl ShellState {
-    pub fn new(initial: (f64, f64)) -> Self {
-        Self {
-            window_size: Mutex::new(initial),
-        }
-    }
-
-    pub fn window_size(&self) -> (f64, f64) {
-        *self.window_size.lock().unwrap_or_else(|e| e.into_inner())
-    }
-
-    pub fn set_window_size(&self, size: (f64, f64)) {
-        *self.window_size.lock().unwrap_or_else(|e| e.into_inner()) = size;
-    }
-}
-
-/// Size and position the window top-center on the primary monitor (MVP: design.md §20).
+/// Size and position an island top-center on its screen (design.md §20).
 pub fn place(window: &WebviewWindow, (width, height): (f64, f64)) -> AppResult<()> {
-    let Some(monitor) = window.primary_monitor()?.or(window.current_monitor()?) else {
+    let shell = window.app_handle().state::<ShellState>();
+    let Some(monitor) = islands::monitor_for(window, &shell) else {
         tracing::warn!("no monitor available; skipping island placement");
         return Ok(());
     };
@@ -132,19 +114,19 @@ fn make_tool_window(window: &WebviewWindow) -> AppResult<()> {
     Ok(())
 }
 
-fn main_window(app: &AppHandle) -> Option<WebviewWindow> {
-    app.get_webview_window(MAIN_WINDOW)
-}
-
+/// Tray show/hide acts on every island together.
 fn toggle_visibility(app: &AppHandle) {
-    let Some(window) = main_window(app) else { return };
-    let result = if window.is_visible().unwrap_or(false) {
-        window.hide().map_err(Into::into)
-    } else {
-        show_island(&window)
-    };
-    if let Err(error) = result {
-        tracing::warn!(%error, "failed to toggle island visibility");
+    let windows = islands::all(app);
+    let hide = windows.iter().any(|w| w.is_visible().unwrap_or(false));
+    for window in windows {
+        let result = if hide {
+            window.hide().map_err(Into::into)
+        } else {
+            show_island(&window)
+        };
+        if let Err(error) = result {
+            tracing::warn!(%error, "failed to toggle island visibility");
+        }
     }
 }
 
@@ -197,13 +179,18 @@ pub fn shortcut_plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
             if shortcut != &toggle || event.state() != ShortcutState::Pressed {
                 return;
             }
-            if let Some(window) = main_window(app) {
-                let _ = show_island(&window);
-                let _ = window.set_focus();
-            }
-            app.state::<AppState>()
-                .bus
-                .emit("shell", AppEvent::ShellToggleRequested);
+            // The island on the screen the pointer is on.
+            let Some(window) = islands::under_cursor(app) else {
+                return;
+            };
+            let _ = show_island(&window);
+            let _ = window.set_focus();
+            app.state::<AppState>().bus.emit(
+                "shell",
+                AppEvent::ShellToggleRequested {
+                    label: window.label().to_owned(),
+                },
+            );
         })
         .build()
 }
@@ -217,52 +204,102 @@ pub fn init(app: &AppHandle) -> AppResult<()> {
         tracing::warn!(%error, "could not register the Ctrl+Alt+N shortcut");
     }
 
-    let Some(window) = main_window(app) else {
-        return Ok(());
-    };
+    // `main` comes from tauri.conf.json; other screens' islands are created by `sync`.
+    if let Some(window) = app.get_webview_window(MAIN_WINDOW) {
+        attach_island(app, &window)?;
+    }
+    islands::sync(app);
+    watch_display_setting(app);
+    Ok(())
+}
+
+/// Per-window setup shared by every island: events, placement, system watchers, show.
+fn attach_island(app: &AppHandle, window: &WebviewWindow) -> AppResult<()> {
+    let label = window.label().to_owned();
     let handle = app.clone();
     window.on_window_event(move |event| match event {
         // No decorations, but Alt+F4 still arrives: hide to tray instead of quitting.
         WindowEvent::CloseRequested { api, .. } => {
             api.prevent_close();
-            if let Some(window) = main_window(&handle) {
+            if let Some(window) = handle.get_webview_window(&label) {
                 let _ = window.hide();
             }
         }
-        WindowEvent::ScaleFactorChanged { .. } => replace_island(&handle),
+        WindowEvent::ScaleFactorChanged { .. } => {
+            if let Some(window) = handle.get_webview_window(&label) {
+                let size = handle.state::<ShellState>().window_size(&label);
+                if let Err(error) = place(&window, size) {
+                    tracing::warn!(%error, "failed to re-place island after a scale change");
+                }
+            }
+        }
         _ => {}
     });
-
-    place(&window, app.state::<ShellState>().window_size())?;
+    place(window, app.state::<ShellState>().window_size(window.label()))?;
     #[cfg(windows)]
-    watch_system_changes(&window);
-    show_island(&window)?;
+    watch_system_changes(window);
+    show_island(window)?;
     Ok(())
 }
 
-/// Put the island back at top-center of the (possibly new) primary monitor at its current size.
-fn replace_island(app: &AppHandle) {
-    if let Some(window) = main_window(app) {
-        let size = app.state::<ShellState>().window_size();
-        if let Err(error) = place(&window, size) {
-            tracing::warn!(%error, "failed to re-place island after a display change");
+/// Re-sync islands when the "Show the notch on" setting changes.
+fn watch_display_setting(app: &AppHandle) {
+    let app = app.clone();
+    let mut events = app.state::<AppState>().bus.subscribe();
+    tauri::async_runtime::spawn(async move {
+        let mut last = app
+            .state::<AppState>()
+            .settings
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .display
+            .clone();
+        loop {
+            match events.recv().await {
+                Ok(envelope) => {
+                    if let AppEvent::SettingsChanged(settings) = &envelope.event {
+                        if settings.display != last {
+                            last = settings.display.clone();
+                            islands::sync(&app);
+                        }
+                    }
+                }
+                Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => continue,
+                Err(_) => break,
+            }
         }
-    }
+    });
 }
 
-/// A fullscreen app (video, game, F11 browser) is in front on the island's monitor.
-static FULLSCREEN: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+/// Fullscreen state per island: Windows reports fullscreen apps per monitor.
+static FULLSCREEN: Mutex<Option<HashMap<String, bool>>> = Mutex::new(None);
 
-pub fn is_fullscreen() -> bool {
-    FULLSCREEN.load(std::sync::atomic::Ordering::SeqCst)
+pub fn is_fullscreen(label: &str) -> bool {
+    FULLSCREEN
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .as_ref()
+        .and_then(|map| map.get(label).copied())
+        .unwrap_or(false)
 }
 
-fn set_fullscreen(app: &AppHandle, active: bool) {
-    if FULLSCREEN.swap(active, std::sync::atomic::Ordering::SeqCst) != active {
+fn set_fullscreen(app: &AppHandle, label: &str, active: bool) {
+    let changed = {
+        let mut guard = FULLSCREEN.lock().unwrap_or_else(|e| e.into_inner());
+        guard
+            .get_or_insert_with(HashMap::new)
+            .insert(label.to_owned(), active)
+            != Some(active)
+    };
+    if changed {
         tracing::debug!(active, "fullscreen app changed");
-        app.state::<AppState>()
-            .bus
-            .emit("shell", AppEvent::FullscreenChanged { active });
+        app.state::<AppState>().bus.emit(
+            "shell",
+            AppEvent::FullscreenChanged {
+                label: label.to_owned(),
+                active,
+            },
+        );
     }
 }
 
@@ -281,6 +318,7 @@ fn watch_system_changes(window: &WebviewWindow) {
     };
     use windows::Win32::{
         Foundation::{HWND, LPARAM, LRESULT, WPARAM},
+        Graphics::Gdi::{MonitorFromWindow, MONITOR_DEFAULTTONEAREST},
         UI::{
             Shell::{
                 DefSubclassProc, SHAppBarMessage, SHQueryUserNotificationState, SetWindowSubclass, ABM_NEW,
@@ -288,7 +326,8 @@ fn watch_system_changes(window: &WebviewWindow) {
                 QUNS_RUNNING_D3D_FULL_SCREEN,
             },
             WindowsAndMessaging::{
-                SPI_SETWORKAREA, WM_APP, WM_DISPLAYCHANGE, WM_NCDESTROY, WM_SETTINGCHANGE,
+                GetForegroundWindow, SPI_SETWORKAREA, WM_APP, WM_DISPLAYCHANGE, WM_NCDESTROY,
+                WM_SETTINGCHANGE,
             },
         },
     };
@@ -297,6 +336,16 @@ fn watch_system_changes(window: &WebviewWindow) {
     const APPBAR_CALLBACK: u32 = WM_APP + 0x42;
     static APP: OnceLock<AppHandle> = OnceLock::new();
     static PENDING: AtomicBool = AtomicBool::new(false);
+    /// Island label for each subclassed window handle.
+    static LABELS: Mutex<Option<HashMap<isize, String>>> = Mutex::new(None);
+
+    fn label_of(hwnd: HWND) -> Option<String> {
+        LABELS
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .as_ref()
+            .and_then(|map| map.get(&(hwnd.0 as isize)).cloned())
+    }
 
     fn appbar(hwnd: HWND) -> APPBARDATA {
         APPBARDATA {
@@ -322,23 +371,27 @@ fn watch_system_changes(window: &WebviewWindow) {
                 std::thread::spawn(move || {
                     std::thread::sleep(SETTLE);
                     PENDING.store(false, Ordering::SeqCst);
-                    replace_island(&app);
+                    // Screens may have come or gone: open/close islands and re-place them all.
+                    islands::sync(&app);
                 });
             } else {
                 PENDING.store(false, Ordering::SeqCst);
             }
         }
         if msg == APPBAR_CALLBACK && wparam.0 == ABN_FULLSCREENAPP as usize {
-            if let Some(app) = APP.get().cloned() {
+            if let (Some(app), Some(label)) = (APP.get().cloned(), label_of(hwnd)) {
                 let active = lparam.0 != 0;
                 // Off the window procedure: emitting reaches into the webview.
-                std::thread::spawn(move || set_fullscreen(&app, active));
+                std::thread::spawn(move || set_fullscreen(&app, &label, active));
             }
         }
         if msg == WM_NCDESTROY {
             let mut data = appbar(hwnd);
             // SAFETY: unregistering the app bar this window registered.
             unsafe { SHAppBarMessage(ABM_REMOVE, &mut data) };
+            if let Some(map) = LABELS.lock().unwrap_or_else(|e| e.into_inner()).as_mut() {
+                map.remove(&(hwnd.0 as isize));
+            }
         }
         // SAFETY: forwarding the unmodified message to the next window procedure.
         unsafe { DefSubclassProc(hwnd, msg, wparam, lparam) }
@@ -347,6 +400,11 @@ fn watch_system_changes(window: &WebviewWindow) {
     let _ = APP.set(window.app_handle().clone());
     let Ok(raw) = window.hwnd() else { return };
     let hwnd = HWND(raw.0);
+    LABELS
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .get_or_insert_with(HashMap::new)
+        .insert(hwnd.0 as isize, window.label().to_owned());
     // SAFETY: called on the main thread that owns this live window; the callback only reads
     // statics and forwards every message unchanged.
     let installed = unsafe { SetWindowSubclass(hwnd, Some(subclass), 1, 0) };
@@ -359,13 +417,18 @@ fn watch_system_changes(window: &WebviewWindow) {
     if unsafe { SHAppBarMessage(ABM_NEW, &mut data) } == 0 {
         tracing::warn!("could not watch for fullscreen apps");
     }
-    // Notifications only report changes; ask once whether something is fullscreen already.
-    // SAFETY: plain query with no arguments.
-    if let Ok(state) = unsafe { SHQueryUserNotificationState() } {
-        let active = matches!(
+    // Notifications only report changes; ask once whether something is fullscreen already,
+    // and whether it's on this island's screen.
+    // SAFETY: plain queries with no arguments or with window handles owned by the system.
+    let busy = unsafe { SHQueryUserNotificationState() }.is_ok_and(|state| {
+        matches!(
             state,
             QUNS_BUSY | QUNS_RUNNING_D3D_FULL_SCREEN | QUNS_PRESENTATION_MODE
-        );
-        set_fullscreen(window.app_handle(), active);
-    }
+        )
+    });
+    let same_screen = unsafe {
+        MonitorFromWindow(GetForegroundWindow(), MONITOR_DEFAULTTONEAREST)
+            == MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST)
+    };
+    set_fullscreen(window.app_handle(), window.label(), busy && same_screen);
 }

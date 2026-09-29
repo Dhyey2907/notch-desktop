@@ -44,6 +44,7 @@ macro_rules! app_commands {
             commands::app::open_external,
             commands::shell::shell_set_window_size,
             commands::shell::shell_is_fullscreen,
+            commands::shell::shell_list_screens,
             commands::settings::settings_get,
             commands::settings::settings_update,
             commands::settings::settings_record_module_init,

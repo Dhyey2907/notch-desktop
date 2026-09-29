@@ -2,6 +2,7 @@ import { useEffect } from "react";
 
 import { useActivities } from "../activity";
 import { ipc } from "../core/ipc";
+import { isLeadIsland } from "../core/window";
 import { useSettings } from "../settings";
 
 /**
@@ -10,7 +11,8 @@ import { useSettings } from "../settings";
  * until changed in Settings → General.
  */
 export function useFirstRunPrompt() {
-  const pending = useSettings((s) => s.settings !== null && !s.settings.firstRunCompleted);
+  // Asked once, on the main screen's island only.
+  const pending = useSettings((s) => s.settings !== null && !s.settings.firstRunCompleted) && isLeadIsland();
 
   useEffect(() => {
     if (!pending) return;

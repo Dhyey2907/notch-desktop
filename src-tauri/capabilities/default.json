@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Capability for the island and settings windows",
-  "windows": ["main", "settings"],
+  "description": "Capability for the island windows (one per chosen screen) and the settings window",
+  "windows": ["main", "island-*", "settings"],
   "permissions": ["core:default"]
 }

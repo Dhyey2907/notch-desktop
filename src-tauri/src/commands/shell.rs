@@ -26,12 +26,18 @@ pub fn shell_set_window_size(
 ) -> AppResult<()> {
     validate_dimension("width", width)?;
     validate_dimension("height", height)?;
-    shell.set_window_size((width, height));
+    shell.set_window_size(window.label(), (width, height));
     shell::place(&window, (width, height))
 }
 
-/// Whether a fullscreen app is in front (the island rests as a bubble and stays quiet).
+/// Whether a fullscreen app is in front on this island's screen (it rests as a bubble).
 #[tauri::command]
-pub fn shell_is_fullscreen() -> bool {
-    crate::shell::is_fullscreen()
+pub fn shell_is_fullscreen(window: WebviewWindow) -> bool {
+    shell::is_fullscreen(window.label())
+}
+
+/// Connected screens, for "Show the notch on" in Settings.
+#[tauri::command]
+pub fn shell_list_screens(app: tauri::AppHandle) -> Vec<shell::islands::ScreenInfo> {
+    shell::islands::list_screens(&app)
 }

@@ -6,6 +6,7 @@ import { useActivities } from "../activity";
 import { isPersistent, type Activity } from "../activity/activityStore";
 import { ActivityView } from "../activity/ActivityView";
 import { eventBus } from "../core/eventBus";
+import { windowLabel } from "../core/window";
 import { contentEnter, INSTANT, ISLAND_SPRING, SERIOUS_SPRING } from "../design/motion";
 import { useReduceMotion } from "../design/useReduceMotion";
 import { findModule } from "../modules/registry";
@@ -90,7 +91,9 @@ export function Island() {
   // Pointer opens don't move focus, so no focus ring appears on click.
   useEffect(
     () =>
-      eventBus.on("ShellToggleRequested", async () => {
+      eventBus.on("ShellToggleRequested", async ({ event }) => {
+        // The shortcut targets the island on the screen under the pointer.
+        if (event.payload.label !== windowLabel()) return;
         await useIsland.getState().toggleExpanded();
         if (useIsland.getState().mode === "expanded") focusActiveDockItem();
       }),

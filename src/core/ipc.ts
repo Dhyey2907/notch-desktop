@@ -12,6 +12,7 @@ import type { DevTestActivity } from "./generated/DevTestActivity";
 import type { GitOperation } from "./generated/GitOperation";
 import type { GitSnapshot } from "./generated/GitSnapshot";
 import type { PullRequests } from "./generated/PullRequests";
+import type { ScreenInfo } from "./generated/ScreenInfo";
 import type { RepoInfo } from "./generated/RepoInfo";
 import type { MediaCommand } from "./generated/MediaCommand";
 import type { MediaState } from "./generated/MediaState";
@@ -44,7 +45,9 @@ export const ipc = {
     invoke<Settings>("settings_record_module_init", { moduleId, ok }),
   autostartGet: () => invoke<boolean>("autostart_get"),
   autostartSet: (enabled: boolean) => invoke<boolean>("autostart_set", { enabled }),
-  /** Whether a fullscreen app is in front; `FullscreenChanged` reports changes. */
+  /** Connected screens, for "Show the notch on". */
+  shellListScreens: () => invoke<ScreenInfo[]>("shell_list_screens"),
+  /** Whether a fullscreen app is in front on this island's screen; `FullscreenChanged` reports changes. */
   shellIsFullscreen: () => invoke<boolean>("shell_is_fullscreen"),
   /** Open (or focus) the settings window, optionally at a section such as "calendar". */
   openSettingsWindow: (section?: string) => invoke<void>("open_settings_window", { section }),

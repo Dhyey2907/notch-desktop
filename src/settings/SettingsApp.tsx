@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import type { AnimationPreference } from "../core/generated/AnimationPreference";
 import type { AppInfo } from "../core/generated/AppInfo";
+import type { ScreenInfo } from "../core/generated/ScreenInfo";
 import { ipc } from "../core/ipc";
 import { Button, MockBadge, Pill, SegmentedControl, Surface, Switch } from "../design/components";
 import { MODULES } from "../modules/registry";
@@ -116,6 +117,7 @@ function GeneralSection() {
           </p>
         )}
       </Surface>
+      <ScreensSetting />
       <Surface>
         <div className="settings__row">
           <span className="settings__row-text">
@@ -127,6 +129,64 @@ function GeneralSection() {
         <p className="settings__note">Custom shortcuts aren't available yet.</p>
       </Surface>
     </Section>
+  );
+}
+
+const ALL_SCREENS = "all";
+
+function ScreensSetting() {
+  const display = useSettings((s) => s.settings?.display);
+  const update = useSettings((s) => s.update);
+  const [screens, setScreens] = useState<ScreenInfo[] | null>(null);
+
+  useEffect(() => {
+    const load = () => ipc.shellListScreens().then(setScreens, () => setScreens([]));
+    void load();
+    // Screens can be plugged in while Settings is open.
+    window.addEventListener("focus", load);
+    return () => window.removeEventListener("focus", load);
+  }, []);
+
+  if (!display || !screens) return null;
+  const primary = screens.find((s) => s.primary) ?? screens[0];
+  const value =
+    display.mode === "all"
+      ? ALL_SCREENS
+      : display.mode === "one" && screens.some((s) => s.name === display.monitor)
+        ? display.monitor!
+        : (primary?.name ?? ALL_SCREENS);
+  const choose = (choice: string) =>
+    void update((s) => ({
+      ...s,
+      display: choice === ALL_SCREENS ? { mode: "all" } : { mode: "one", monitor: choice },
+    }));
+  const options = screens.map((s) => ({ value: s.name, label: s.primary ? `${s.label} (main)` : s.label }));
+  if (screens.length > 1) options.push({ value: ALL_SCREENS, label: "All screens" });
+
+  return (
+    <Surface>
+      <div className="settings__row settings__row--stacked">
+        <span className="settings__row-text">
+          <span className="settings__row-label">Show the notch on</span>
+          <span className="settings__row-description">
+            {screens.length > 1
+              ? "Each extra screen runs its own notch (about 30–40 MB of memory each)."
+              : "Connect another screen to choose where the notch appears."}
+          </span>
+        </span>
+        <SegmentedControl<string>
+          label="Show the notch on"
+          value={value}
+          options={options}
+          onChange={choose}
+        />
+      </div>
+      {display.mode === "one" && !screens.some((s) => s.name === display.monitor) && (
+        <p className="settings__note">
+          The chosen screen isn't connected, so the notch is on your main screen for now.
+        </p>
+      )}
+    </Surface>
   );
 }
 
