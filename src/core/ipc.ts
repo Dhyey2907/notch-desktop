@@ -44,6 +44,8 @@ export const ipc = {
     invoke<Settings>("settings_record_module_init", { moduleId, ok }),
   autostartGet: () => invoke<boolean>("autostart_get"),
   autostartSet: (enabled: boolean) => invoke<boolean>("autostart_set", { enabled }),
+  /** Whether a fullscreen app is in front; `FullscreenChanged` reports changes. */
+  shellIsFullscreen: () => invoke<boolean>("shell_is_fullscreen"),
   /** Open (or focus) the settings window, optionally at a section such as "calendar". */
   openSettingsWindow: (section?: string) => invoke<void>("open_settings_window", { section }),
   diagnosticsOpenLogDir: () => invoke<void>("diagnostics_open_log_dir"),
@@ -86,6 +88,10 @@ export const ipc = {
   claudeHooksPreview: () => invoke<string>("claude_hooks_preview"),
   claudeConnect: () => invoke<void>("claude_connect"),
   claudeDisconnect: () => invoke<void>("claude_disconnect"),
+  /** Exactly what enabling plan limits adds to Claude Code's settings (token masked). */
+  claudeStatusLinePreview: () => invoke<string>("claude_status_line_preview"),
+  claudeStatusLineEnable: () => invoke<void>("claude_status_line_enable"),
+  claudeStatusLineDisable: () => invoke<void>("claude_status_line_disable"),
   claudeApprovalsPending: () => invoke<ApprovalRequest[]>("claude_approvals_pending"),
   /** Answer a waiting Claude Code permission request. Fails if it already expired. */
   claudeApprovalDecide: (id: string, choice: ApprovalChoice) =>

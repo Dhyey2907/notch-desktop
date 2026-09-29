@@ -30,6 +30,14 @@ const MAX_SUMMARY: usize = 4000;
 /// Audit rows kept.
 const AUDIT_KEEP: i64 = 500;
 
+/// Tools that are conversations with you rather than actions: Claude Code shows its own
+/// question or plan dialog for them. They're never turned into approval cards.
+pub const USER_DIALOG_TOOLS: [&str; 3] = ["AskUserQuestion", "ExitPlanMode", "EnterPlanMode"];
+
+pub fn is_user_dialog(tool: &str) -> bool {
+    USER_DIALOG_TOOLS.contains(&tool)
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
@@ -221,10 +229,22 @@ pub fn response_body(behavior: Option<&str>) -> String {
     }
 }
 
+/// How a waiting request ends.
+enum Signal {
+    /// You answered in the notch.
+    Choice(ApprovalChoice),
+    /// Claude Code went away (session ended or process died).
+    AgentExited,
+    /// You answered in Claude Code itself; the card is no longer needed.
+    Elsewhere,
+}
+
+type Answer = mpsc::Sender<Signal>;
+
 /// Pending requests and per-session "allow this exact request" rules.
 #[derive(Default)]
 pub struct Approvals {
-    pending: Mutex<HashMap<String, (ApprovalRequest, mpsc::Sender<ApprovalChoice>)>>,
+    pending: Mutex<HashMap<String, (ApprovalRequest, Answer)>>,
     session_rules: Mutex<HashSet<(String, String, String)>>,
 }
 
@@ -308,11 +328,11 @@ impl Approvals {
         on_change();
 
         let outcome = match rx.recv_timeout(wait) {
-            Ok(ApprovalChoice::Allow) => Outcome {
+            Ok(Signal::Choice(ApprovalChoice::Allow)) => Outcome {
                 behavior: Some("allow"),
                 decided_by: "you",
             },
-            Ok(ApprovalChoice::AllowForSession) => {
+            Ok(Signal::Choice(ApprovalChoice::AllowForSession)) => {
                 self.session_rules
                     .lock()
                     .unwrap_or_else(|e| e.into_inner())
@@ -326,13 +346,21 @@ impl Approvals {
                     decided_by: "you",
                 }
             }
-            Ok(ApprovalChoice::Deny) => Outcome {
+            Ok(Signal::Choice(ApprovalChoice::Deny)) => Outcome {
                 behavior: Some("deny"),
                 decided_by: "you",
             },
-            Ok(ApprovalChoice::AnswerInTerminal) => Outcome {
+            Ok(Signal::Choice(ApprovalChoice::AnswerInTerminal)) => Outcome {
                 behavior: None,
                 decided_by: "you",
+            },
+            Ok(Signal::AgentExited) => Outcome {
+                behavior: None,
+                decided_by: "agent_exited",
+            },
+            Ok(Signal::Elsewhere) => Outcome {
+                behavior: None,
+                decided_by: "elsewhere",
             },
             Err(mpsc::RecvTimeoutError::Timeout) => Outcome {
                 behavior: None,
@@ -354,15 +382,37 @@ impl Approvals {
             .lock()
             .unwrap_or_else(|e| e.into_inner())
             .get(id)
-            .is_some_and(|(_, tx)| tx.send(choice).is_ok())
+            .is_some_and(|(_, tx)| tx.send(Signal::Choice(choice)).is_ok())
     }
 
-    /// Forget session rules when a session ends.
+    /// A session ended (or its process died): forget its rules and close its open requests,
+    /// since nobody is waiting for those answers any more.
     pub fn end_session(&self, session_id: &str) {
         self.session_rules
             .lock()
             .unwrap_or_else(|e| e.into_inner())
             .retain(|(s, _, _)| s != session_id);
+        for (request, tx) in self.pending.lock().unwrap_or_else(|e| e.into_inner()).values() {
+            if request.session_id == session_id {
+                let _ = tx.send(Signal::AgentExited);
+            }
+        }
+    }
+
+    /// Close cards you've already answered in Claude Code. With `tool` (from a `PostToolUse`),
+    /// only the matching request closes, so an unrelated tool running alongside doesn't; without
+    /// it (the turn moved on: new prompt or `Stop`), every open card of the session closes.
+    /// Never allows anything — the hook just returns no decision.
+    pub fn resolve_elsewhere(&self, session_id: &str, tool: Option<(&str, &str)>) -> usize {
+        let mut closed = 0;
+        for (request, tx) in self.pending.lock().unwrap_or_else(|e| e.into_inner()).values() {
+            let matches = request.session_id == session_id
+                && tool.is_none_or(|(name, summary)| request.tool == name && request.summary == summary);
+            if matches && tx.send(Signal::Elsewhere).is_ok() {
+                closed += 1;
+            }
+        }
+        closed
     }
 }
 
@@ -510,6 +560,68 @@ mod tests {
 
         approvals.end_session("s1");
         assert!(!approvals.allowed_by_session_rule(&request));
+    }
+
+    #[test]
+    fn closes_open_requests_when_their_session_ends() {
+        let approvals = Arc::new(Approvals::default());
+        let request = Approvals::request(&payload("Bash", json!({ "command": "ls" })), Utc::now());
+        let ender = approvals.clone();
+        let handle = std::thread::spawn(move || {
+            while ender.pending().is_empty() {
+                std::thread::sleep(Duration::from_millis(5));
+            }
+            ender.end_session("s1");
+        });
+        let outcome = approvals.wait_for_decision(request, Duration::from_secs(5), &|| {});
+        handle.join().unwrap();
+        assert_eq!(
+            outcome,
+            Outcome {
+                behavior: None,
+                decided_by: "agent_exited"
+            }
+        );
+        assert!(approvals.pending().is_empty());
+    }
+
+    #[test]
+    fn questions_and_plans_are_not_approvals() {
+        for tool in ["AskUserQuestion", "ExitPlanMode", "EnterPlanMode"] {
+            assert!(is_user_dialog(tool));
+        }
+        for tool in ["Bash", "Write", "WebFetch", "askuserquestion"] {
+            assert!(!is_user_dialog(tool));
+        }
+    }
+
+    #[test]
+    fn closes_cards_answered_in_claude_code_but_not_unrelated_ones() {
+        let approvals = Arc::new(Approvals::default());
+        let wanted = Approvals::request(&payload("Bash", json!({ "command": "pnpm test" })), Utc::now());
+        let other = Approvals::request(&payload("Bash", json!({ "command": "ls" })), Utc::now());
+        let waiter = |approvals: Arc<Approvals>, request: ApprovalRequest| {
+            std::thread::spawn(move || approvals.wait_for_decision(request, Duration::from_secs(5), &|| {}))
+        };
+        let wanted_thread = waiter(approvals.clone(), wanted);
+        let other_thread = waiter(approvals.clone(), other);
+        while approvals.pending().len() < 2 {
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        // A parallel tool finishing, and another session, leave the card alone.
+        assert_eq!(approvals.resolve_elsewhere("s1", Some(("Read", "C:/a.txt"))), 0);
+        assert_eq!(approvals.resolve_elsewhere("s2", None), 0);
+        // The same command running means it was answered in Claude Code.
+        assert_eq!(approvals.resolve_elsewhere("s1", Some(("Bash", "pnpm test"))), 1);
+        let elsewhere = Outcome {
+            behavior: None,
+            decided_by: "elsewhere",
+        };
+        assert_eq!(wanted_thread.join().unwrap(), elsewhere);
+        // The turn moving on closes whatever is left.
+        assert_eq!(approvals.resolve_elsewhere("s1", None), 1);
+        assert_eq!(other_thread.join().unwrap(), elsewhere);
+        assert!(approvals.pending().is_empty());
     }
 
     #[test]

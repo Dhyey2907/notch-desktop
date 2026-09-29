@@ -134,3 +134,46 @@
   font-size: var(--text-sm);
   color: var(--text-secondary);
 }
+
+/* Resting bubble: status marks shrink to fit; nothing else is shown until hover. */
+.island[data-mode="collapsed"] {
+  box-shadow: none;
+}
+
+.island-content--collapsed .compact-host {
+  gap: 6px;
+}
+
+.island-content--collapsed .compact-host svg {
+  width: 9px;
+  height: 9px;
+}
+
+/* Something put away is still waiting for an answer. */
+.island-attention {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  border-radius: 999px;
+  background: var(--warning);
+  animation: island-attention-pulse 1.4s ease-in-out infinite;
+}
+
+.island-content--collapsed {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@keyframes island-attention-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .island-attention {
+    animation: none;
+  }
+}

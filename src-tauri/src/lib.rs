@@ -25,7 +25,7 @@ use crate::{
 
 /// Logical size of the collapsed island window; mirrors `windowSizeFor("collapsed")`
 /// in `src/shell/geometry.ts` so the first frame is already the right size.
-const INITIAL_WINDOW_SIZE: (f64, f64) = (228.0, 66.0);
+const INITIAL_WINDOW_SIZE: (f64, f64) = (64.0, 20.0);
 
 /// Every command the webview may call. Dev-only commands are compiled into debug builds only.
 macro_rules! app_commands {
@@ -43,6 +43,7 @@ macro_rules! app_commands {
             commands::app::diagnostics_ping,
             commands::app::open_external,
             commands::shell::shell_set_window_size,
+            commands::shell::shell_is_fullscreen,
             commands::settings::settings_get,
             commands::settings::settings_update,
             commands::settings::settings_record_module_init,
@@ -80,6 +81,9 @@ macro_rules! app_commands {
             commands::claude::claude_approvals_pending,
             commands::claude::claude_approval_decide,
             commands::claude::claude_approval_audit,
+            commands::claude::claude_status_line_preview,
+            commands::claude::claude_status_line_enable,
+            commands::claude::claude_status_line_disable,
             $($dev),*
         ]
     };

@@ -9,6 +9,8 @@
 pub mod approvals;
 pub mod connect;
 pub mod hooks;
+pub mod limits;
+pub mod process;
 pub mod service;
 pub mod transcripts;
 pub mod usage;
@@ -18,6 +20,7 @@ use serde::Serialize;
 use ts_rs::TS;
 
 use hooks::AgentSession;
+use limits::PlanLimits;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -29,6 +32,10 @@ pub struct HooksStatus {
     pub listening: bool,
     /// Installed by an older Notch; reconnect to add newer events (e.g. approvals).
     pub outdated: bool,
+    /// Notch's status line is set in Claude Code, forwarding plan limits.
+    pub status_line: bool,
+    /// Another status line is already configured, so Notch won't add its own.
+    pub status_line_taken: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
@@ -61,6 +68,10 @@ pub struct ClaudeStatus {
     pub live: Vec<AgentSession>,
     pub hooks: HooksStatus,
     pub index: IndexStatus,
+    /// Last plan limits reported by Claude Code's status line, while still current.
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limits: Option<PlanLimits>,
     #[ts(optional)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub quota: Option<QuotaStatus>,

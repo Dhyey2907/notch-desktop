@@ -8,15 +8,16 @@ use std::path::{Path, PathBuf};
 
 use serde_json::{json, Map, Value};
 
-use super::hooks::hook_url;
+use super::hooks::{hook_url, HOOK_PORT, STATUS_LINE_PATH};
 use crate::error::{AppError, AppResult};
 
 /// Events Notch listens to. Tool events match every tool.
-pub const EVENTS: [(&str, bool); 8] = [
+pub const EVENTS: [(&str, bool); 9] = [
     ("SessionStart", false),
     ("UserPromptSubmit", false),
     ("PreToolUse", true),
     ("PostToolUse", true),
+    ("PostToolUseFailure", true),
     ("PermissionRequest", true),
     ("Notification", false),
     ("Stop", false),
@@ -103,6 +104,66 @@ pub fn is_installed(settings: &Value) -> bool {
         .get("hooks")
         .and_then(Value::as_object)
         .is_some_and(|hooks| hooks.values().filter_map(Value::as_array).flatten().any(is_ours))
+}
+
+fn status_line_url() -> String {
+    format!("http://127.0.0.1:{HOOK_PORT}{STATUS_LINE_PATH}")
+}
+
+/// Pipes Claude Code's status-line JSON to Notch and prints Notch's reply (e.g.
+/// `5h 23% · week 41%`). `curl.exe` ships with Windows; every argument is quoted so the
+/// command works under bash, cmd, and PowerShell. If Notch isn't running it prints nothing.
+fn status_line_command(token: &str) -> String {
+    format!(
+        "curl.exe -s -m 2 -H \"Authorization: Bearer {token}\" -H \"Content-Type: application/json\" -H \"Expect:\" --data-binary \"@-\" \"{}\"",
+        status_line_url()
+    )
+}
+
+fn status_line_value(token: &str) -> Value {
+    json!({ "type": "command", "command": status_line_command(token), "padding": 0 })
+}
+
+/// Notch's status line is the one configured.
+pub fn has_our_status_line(settings: &Value) -> bool {
+    settings
+        .pointer("/statusLine/command")
+        .and_then(Value::as_str)
+        .is_some_and(|c| c.contains(&status_line_url()))
+}
+
+/// Someone else's status line is configured; Notch never replaces it.
+pub fn status_line_taken(settings: &Value) -> bool {
+    settings.get("statusLine").is_some() && !has_our_status_line(settings)
+}
+
+pub fn add_status_line(settings: &mut Value, token: &str) -> AppResult<()> {
+    if status_line_taken(settings) {
+        return Err(AppError::InvalidInput(
+            "Claude Code already has a status line, so Notch won't replace it".into(),
+        ));
+    }
+    let root = settings
+        .as_object_mut()
+        .ok_or_else(|| AppError::InvalidInput("Claude Code settings aren't a JSON object".into()))?;
+    root.insert("statusLine".into(), status_line_value(token));
+    Ok(())
+}
+
+pub fn remove_status_line(settings: &mut Value) {
+    if has_our_status_line(settings) {
+        if let Some(root) = settings.as_object_mut() {
+            root.remove("statusLine");
+        }
+    }
+}
+
+/// What enabling plan limits adds, with the token masked.
+pub fn status_line_preview() -> String {
+    serde_json::to_string_pretty(&json!({
+        "statusLine": status_line_value("•••••• (stored in Windows Credential Manager)")
+    }))
+    .unwrap_or_default()
 }
 
 /// Installed by an older Notch that didn't register every event (e.g. before approvals).
@@ -246,6 +307,30 @@ mod tests {
         assert!(add_ours(&mut not_object, "tok").is_err());
         let mut bad_event = json!({ "hooks": { "Stop": "nope" } });
         assert!(add_ours(&mut bad_event, "tok").is_err());
+    }
+
+    #[test]
+    fn status_line_is_added_and_removed_but_never_replaces_the_users() {
+        let mut settings = existing();
+        add_status_line(&mut settings, "tok").unwrap();
+        assert!(has_our_status_line(&settings));
+        let command = settings["statusLine"]["command"].as_str().unwrap();
+        assert!(command.starts_with("curl.exe ") && command.contains("Bearer tok"));
+        assert!(command.contains("\"@-\"") && command.contains("/statusline"));
+        add_status_line(&mut settings, "new").unwrap(); // re-adding replaces our own
+        assert!(settings["statusLine"]["command"]
+            .as_str()
+            .unwrap()
+            .contains("Bearer new"));
+        remove_status_line(&mut settings);
+        assert_eq!(settings, existing());
+
+        let mut theirs = json!({ "statusLine": { "type": "command", "command": "~/.claude/statusline.sh" } });
+        assert!(status_line_taken(&theirs));
+        assert!(add_status_line(&mut theirs, "tok").is_err());
+        remove_status_line(&mut theirs);
+        assert_eq!(theirs["statusLine"]["command"], "~/.claude/statusline.sh");
+        assert!(status_line_preview().contains("Credential Manager"));
     }
 
     #[test]

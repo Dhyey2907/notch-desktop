@@ -80,6 +80,8 @@ pub enum AppEvent {
     SettingsChanged(Settings),
     /// The active media session changed (`None` when nothing is playing).
     MediaStateChanged { state: Option<MediaState> },
+    /// A fullscreen app opened or closed on the island's monitor.
+    FullscreenChanged { active: bool },
     /// Calendar status or events changed.
     CalendarChanged(CalendarSnapshot),
     /// A meeting is about to start (reminder lead time reached).
@@ -108,6 +110,7 @@ impl AppEvent {
             AppEvent::ShellToggleRequested => "ShellToggleRequested",
             AppEvent::SettingsChanged(_) => "SettingsChanged",
             AppEvent::MediaStateChanged { .. } => "MediaStateChanged",
+            AppEvent::FullscreenChanged { .. } => "FullscreenChanged",
             AppEvent::CalendarChanged(_) => "CalendarChanged",
             AppEvent::ReminderDue { .. } => "ReminderDue",
             AppEvent::SpotifyChanged(_) => "SpotifyChanged",

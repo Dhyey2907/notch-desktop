@@ -175,3 +175,39 @@ it("caps the queue, dropping the least important first", () => {
   expect(store.getState().activities).toHaveLength(MAX_ACTIVITIES);
   expect(store.getState().activities[0].title).toBe("keep me");
 });
+
+describe("closing", () => {
+  it("dismisses ordinary activities", () => {
+    const store = setup();
+    const id = store.getState().push(base);
+    store.getState().close(id);
+    expect(store.getState().activities).toHaveLength(0);
+  });
+
+  it("puts must-answer activities away and brings them back", () => {
+    const store = setup();
+    const approval = store.getState().push({ ...base, priority: "critical", title: "approve?" });
+    store.getState().close(approval);
+    const [hidden] = store.getState().activities;
+    expect(hidden.id).toBe(approval);
+    expect(hidden.minimized).toBe(true);
+
+    // Still pending: it never expires while put away.
+    vi.advanceTimersByTime(60_000);
+    expect(store.getState().activities).toHaveLength(1);
+
+    store.getState().restore();
+    expect(store.getState().activities[0].minimized).toBe(false);
+  });
+
+  it("restores the most important put-away activity first", () => {
+    const store = setup();
+    const timer = store.getState().push({ ...base, priority: "high", persistent: true, title: "timer" });
+    const approval = store.getState().push({ ...base, priority: "critical", title: "approve?" });
+    store.getState().close(timer);
+    store.getState().close(approval);
+    store.getState().restore();
+    const byTitle = Object.fromEntries(store.getState().activities.map((a) => [a.title, a.minimized]));
+    expect(byTitle).toEqual({ "approve?": false, timer: true });
+  });
+});

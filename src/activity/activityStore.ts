@@ -73,12 +73,18 @@ export interface Activity extends ActivityInput {
   expiresAt: number | null;
   /** How many times it was replaced via its dedup key (1 = original only). */
   repeats: number;
+  /** Put away by the user but still waiting for an answer (must-answer activities only). */
+  minimized?: boolean;
 }
 
 export interface ActivityState {
   activities: Activity[];
   push: (input: ActivityInput) => string;
   dismiss: (id: string) => void;
+  /** Close button / Esc: dismiss an ordinary activity, or put a must-answer one away. */
+  close: (id: string) => void;
+  /** Bring back the most important put-away activity. */
+  restore: () => void;
   /** Refresh an activity's content in place (e.g. artwork arrived) without counting a repeat or restarting its timer. */
   update: (
     id: string,
@@ -166,6 +172,22 @@ export function createActivityStore({
       },
 
       dismiss: (id) => commit(get().activities.filter((a) => a.id !== id)),
+
+      close: (id) => {
+        const activity = get().activities.find((a) => a.id === id);
+        if (!activity) return;
+        if (isPersistent(activity)) {
+          commit(get().activities.map((a) => (a.id === id ? { ...a, minimized: true } : a)));
+        } else {
+          get().dismiss(id);
+        }
+      },
+
+      restore: () => {
+        const target = get().activities.find((a) => a.minimized);
+        if (!target) return;
+        commit(get().activities.map((a) => (a.id === target.id ? { ...a, minimized: false } : a)));
+      },
 
       update: (id, patch) => commit(get().activities.map((a) => (a.id === id ? { ...a, ...patch } : a))),
 

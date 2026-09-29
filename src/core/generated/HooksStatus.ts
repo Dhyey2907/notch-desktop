@@ -12,4 +12,12 @@ listening: boolean,
 /**
  * Installed by an older Notch; reconnect to add newer events (e.g. approvals).
  */
-outdated: boolean, };
+outdated: boolean, 
+/**
+ * Notch's status line is set in Claude Code, forwarding plan limits.
+ */
+statusLine: boolean, 
+/**
+ * Another status line is already configured, so Notch won't add its own.
+ */
+statusLineTaken: boolean, };

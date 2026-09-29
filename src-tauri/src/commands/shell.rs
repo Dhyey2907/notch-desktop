@@ -29,3 +29,9 @@ pub fn shell_set_window_size(
     shell.set_window_size((width, height));
     shell::place(&window, (width, height))
 }
+
+/// Whether a fullscreen app is in front (the island rests as a bubble and stays quiet).
+#[tauri::command]
+pub fn shell_is_fullscreen() -> bool {
+    crate::shell::is_fullscreen()
+}

@@ -10,6 +10,7 @@ import { contentEnter, INSTANT, ISLAND_SPRING, SERIOUS_SPRING } from "../design/
 import { useReduceMotion } from "../design/useReduceMotion";
 import { findModule } from "../modules/registry";
 import { Dock } from "./Dock";
+import { mayInterruptFullscreen, trackFullscreen, useFullscreen } from "./fullscreen";
 import { activityIslandSize, islandRadius, WINDOW_MARGIN, type IslandMode } from "./geometry";
 import { CompactHost, ModuleHost, PeekHost } from "./ModuleHost";
 import { useFirstRunPrompt } from "./useFirstRunPrompt";
@@ -37,8 +38,13 @@ function isSerious(activity: Activity | null) {
   return activity?.priority === "critical" || activity?.priority === "high";
 }
 
+/** The activity that should hold the island: the most important one not put away. */
+function frontActivity(activities: Activity[]) {
+  return activities.find((a) => !a.minimized) ?? null;
+}
+
 function currentActivity() {
-  return useActivities.getState().activities[0] ?? null;
+  return frontActivity(useActivities.getState().activities);
 }
 
 export function Island() {
@@ -46,13 +52,19 @@ export function Island() {
   const size = useIsland((s) => s.size);
   const request = useIsland((s) => s.request);
   const settle = useIsland((s) => s.settle);
-  const activity = useActivities((s) => s.activities[0] ?? null);
-  const queued = useActivities((s) => Math.max(0, s.activities.length - 1));
+  const next = useActivities((s) => frontActivity(s.activities));
+  // Put-away must-answer activities: the bubble shows a dot and a click brings them back.
+  const waiting = useActivities((s) => s.activities.some((a) => a.minimized));
+  const fullscreen = useFullscreen((s) => s.active);
+  // During fullscreen apps only urgent activities interrupt; others wait or expire quietly.
+  const activity = next && (!fullscreen || mayInterruptFullscreen(next)) ? next : null;
+  const queued = useActivities((s) => Math.max(0, s.activities.filter((a) => !a.minimized).length - 1));
   const reduceMotion = useReduceMotion();
   const hoverTimer = useRef<number | undefined>(undefined);
   const swipe = useRef({ distance: 0, lockedUntil: 0 });
 
   useModuleLifecycle();
+  useEffect(() => trackFullscreen(), []);
   useFirstRunPrompt();
 
   // Sync the window to the initial mode once the webview is up.
@@ -95,8 +107,8 @@ export function Island() {
       if (e.key !== "Escape") return;
       const current = currentActivity();
       if (useIsland.getState().mode === "activity" && current) {
-        // Persistent activities (e.g. approvals) need an explicit answer.
-        if (!isPersistent(current)) useActivities.getState().dismiss(current.id);
+        // Same as the close button: must-answer activities are put away, not dropped.
+        useActivities.getState().close(current.id);
         return;
       }
       void useIsland.getState().request("collapsed");
@@ -132,6 +144,11 @@ export function Island() {
 
   const expand = () => {
     window.clearTimeout(hoverTimer.current);
+    // Something put away is still waiting: bring it back instead of opening modules.
+    if (useActivities.getState().activities.some((a) => a.minimized)) {
+      useActivities.getState().restore();
+      return;
+    }
     void request("expanded");
   };
 
@@ -182,7 +199,14 @@ export function Island() {
             animate={{ opacity: 1, scale: 1, transition: contentEnter(mode, reduceMotion) }}
             exit={{ opacity: 0, transition: { duration: 0.08 } }}
           >
-            {mode === "collapsed" && <CompactHost />}
+            {mode === "collapsed" && (
+              <>
+                {waiting && (
+                  <span className="island-attention" role="img" aria-label="Something is waiting for you" />
+                )}
+                <CompactHost />
+              </>
+            )}
             {mode === "peek" && <PeekHost />}
             {shownActivity && (
               <ActivityView
@@ -192,6 +216,7 @@ export function Island() {
                   void useActivities.getState().runAction(shownActivity.id, actionId)
                 }
                 onOpen={() => openActivity(shownActivity)}
+                onClose={() => useActivities.getState().close(shownActivity.id)}
               />
             )}
             {mode === "expanded" && <ModuleHost />}

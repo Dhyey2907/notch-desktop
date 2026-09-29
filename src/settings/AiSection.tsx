@@ -33,6 +33,8 @@ const DECIDED_BY_LABEL: Record<string, string> = {
   session_rule: "for this session",
   timeout: "no answer in time",
   app_closed: "Notch closed",
+  agent_exited: "Claude Code closed",
+  elsewhere: "answered in Claude Code",
 };
 
 function RecentApprovals() {
@@ -72,6 +74,69 @@ function RecentApprovals() {
         </ul>
       ) : (
         <p className="settings__note">Nothing yet.</p>
+      )}
+    </Surface>
+  );
+}
+
+function PlanLimitsSetting({
+  status,
+  run,
+}: {
+  status: ClaudeStatus;
+  run: (action: () => Promise<void>) => Promise<void>;
+}) {
+  const [preview, setPreview] = useState<string | null>(null);
+  useEffect(() => {
+    ipc.claudeStatusLinePreview().then(setPreview, () => setPreview(null));
+  }, []);
+  const { statusLine, statusLineTaken } = status.hooks;
+
+  return (
+    <Surface>
+      <div className="settings__row">
+        <span className="settings__row-text">
+          <span className="settings__row-label">Plan limits</span>
+          <span className="settings__row-description">
+            Show your 5-hour and weekly limits in the notch. Claude Code shares them only with a status line,
+            so this adds a small one that sends just those two numbers to Notch — and shows them in your
+            terminal too. Only terminal (CLI) sessions update them; the desktop app doesn't run status lines.
+          </span>
+        </span>
+        <Pill tone={statusLine ? "success" : "neutral"}>
+          {statusLine ? "On" : statusLineTaken ? "Unavailable" : "Off"}
+        </Pill>
+      </div>
+      {statusLineTaken ? (
+        <p className="settings__note">
+          You already have a status line in Claude Code, so Notch won't replace it.
+        </p>
+      ) : statusLine ? (
+        <div className="settings__buttons">
+          <ConfirmButton
+            confirmLabel="Remove Notch's status line from Claude Code?"
+            onConfirm={() => void run(ipc.claudeStatusLineDisable)}
+          >
+            Turn off
+          </ConfirmButton>
+        </div>
+      ) : (
+        <>
+          {preview && (
+            <details className="settings__details">
+              <summary>Show exactly what will be added</summary>
+              <pre className="settings__pre">{preview}</pre>
+            </details>
+          )}
+          <div className="settings__buttons">
+            <ConfirmButton
+              confirmLabel="Add a status line to Claude Code settings?"
+              onConfirm={() => void run(ipc.claudeStatusLineEnable)}
+            >
+              Show plan limits
+            </ConfirmButton>
+          </div>
+        </>
       )}
     </Surface>
   );
@@ -192,6 +257,7 @@ export function AiSection() {
         <p className="settings__note">New Claude Code sessions pick up the change; restart open ones.</p>
       </Surface>
 
+      {installed && status && <PlanLimitsSetting status={status} run={run} />}
       {installed && <RecentApprovals />}
 
       <Surface>

@@ -2,6 +2,11 @@
 import type { AgentSession } from "./AgentSession";
 import type { HooksStatus } from "./HooksStatus";
 import type { IndexStatus } from "./IndexStatus";
+import type { PlanLimits } from "./PlanLimits";
 import type { QuotaStatus } from "./QuotaStatus";
 
-export type ClaudeStatus = { live: Array<AgentSession>, hooks: HooksStatus, index: IndexStatus, quota?: QuotaStatus, };
+export type ClaudeStatus = { live: Array<AgentSession>, hooks: HooksStatus, index: IndexStatus, 
+/**
+ * Last plan limits reported by Claude Code's status line, while still current.
+ */
+limits?: PlanLimits, quota?: QuotaStatus, };

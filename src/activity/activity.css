@@ -126,3 +126,31 @@
   outline: none;
   box-shadow: var(--focus-ring);
 }
+
+/* Close / hide: small, top-right, above the whole-card "open" layer. */
+.activity__close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.activity__close:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+
+.activity__close:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}

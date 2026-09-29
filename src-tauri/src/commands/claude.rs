@@ -60,3 +60,19 @@ pub async fn claude_approval_audit(
 ) -> AppResult<Vec<AuditEntry>> {
     claude.approval_audit(limit)
 }
+
+/// Exactly what enabling plan limits adds to Claude Code's settings (token masked).
+#[tauri::command]
+pub fn claude_status_line_preview(claude: State<'_, ClaudeService>) -> String {
+    claude.status_line_preview()
+}
+
+#[tauri::command]
+pub fn claude_status_line_enable(claude: State<'_, ClaudeService>) -> AppResult<()> {
+    claude.enable_status_line()
+}
+
+#[tauri::command]
+pub fn claude_status_line_disable(claude: State<'_, ClaudeService>) -> AppResult<()> {
+    claude.disable_status_line()
+}

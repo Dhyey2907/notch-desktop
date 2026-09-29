@@ -14,7 +14,8 @@ use tauri::{AppHandle, Manager};
 use super::{
     approvals::{self, ApprovalChoice, ApprovalRequest, Approvals, AuditEntry, PermissionPayload},
     connect,
-    hooks::{HookPayload, HookServer, LiveSessions},
+    hooks::{Handlers, HookPayload, HookServer, LiveSessions},
+    limits::{self, PlanLimits},
     transcripts::{self, IndexStats, QuotaLimits},
     usage::{self, UsageRange, UsageSummary},
     ClaudeStatus, HooksStatus, IndexStatus, QuotaStatus,
@@ -30,6 +31,7 @@ use crate::{
 /// Quiet period after transcript writes before re-indexing.
 const DEBOUNCE: Duration = Duration::from_secs(2);
 const QUOTA_KEY: &str = "claude.quota";
+const LIMITS_KEY: &str = "claude.limits";
 
 struct IndexState {
     ready: bool,
@@ -44,7 +46,11 @@ struct Inner {
     projects_dir: PathBuf,
     settings_path: PathBuf,
     live: Mutex<LiveSessions>,
+    /// Claude Code processes whose exit is being watched.
+    watched_pids: Mutex<HashSet<u32>>,
     approvals: Approvals,
+    /// Last plan limits from Claude Code's status line (also cached in `kv_cache`).
+    limits: Mutex<Option<PlanLimits>>,
     index: Mutex<IndexState>,
     server: Mutex<Option<HookServer>>,
     watcher: Mutex<Option<notify::RecommendedWatcher>>,
@@ -78,6 +84,15 @@ impl ClaudeService {
                     },
                 )
             });
+        let limits = db
+            .with(|conn| {
+                conn.query_row("SELECT value FROM kv_cache WHERE key = ?1", [LIMITS_KEY], |r| {
+                    r.get::<_, String>(0)
+                })
+                .map_err(Into::into)
+            })
+            .ok()
+            .and_then(|json| serde_json::from_str::<PlanLimits>(&json).ok());
         Ok(Self {
             inner: Arc::new(Inner {
                 app,
@@ -85,7 +100,9 @@ impl ClaudeService {
                 projects_dir: home.join(".claude").join("projects"),
                 settings_path: connect::settings_path(&home),
                 live: Mutex::new(LiveSessions::default()),
+                watched_pids: Mutex::new(HashSet::new()),
                 approvals: Approvals::default(),
+                limits: Mutex::new(limits),
                 index: Mutex::new(IndexState {
                     ready: false,
                     last_indexed_at: None,
@@ -199,12 +216,44 @@ impl ClaudeService {
         });
     }
 
-    pub fn disconnect(&self) -> AppResult<()> {
+    pub fn status_line_preview(&self) -> String {
+        connect::status_line_preview()
+    }
+
+    /// Add Notch's status line to Claude Code's settings so plan limits reach Notch. Needs
+    /// Claude Code connected (it reuses the hook token and server). The UI only calls this
+    /// after showing `status_line_preview()` and getting the user's confirmation.
+    pub fn enable_status_line(&self) -> AppResult<()> {
+        let token = secrets::get(Credential::ClaudeHookToken)?
+            .ok_or_else(|| AppError::InvalidInput("Connect Claude Code first".into()))?;
         let mut settings = connect::read(&self.inner.settings_path)?;
-        if connect::is_installed(&settings) {
-            connect::remove_ours(&mut settings);
+        connect::add_status_line(&mut settings, &token)?;
+        connect::write(&self.inner.settings_path, &settings)?;
+        tracing::info!("claude code status line installed");
+        self.inner.publish_status();
+        Ok(())
+    }
+
+    pub fn disable_status_line(&self) -> AppResult<()> {
+        let mut settings = connect::read(&self.inner.settings_path)?;
+        if connect::has_our_status_line(&settings) {
+            connect::remove_status_line(&mut settings);
             connect::write(&self.inner.settings_path, &settings)?;
         }
+        self.inner.set_limits(None);
+        tracing::info!("claude code status line removed");
+        self.inner.publish_status();
+        Ok(())
+    }
+
+    pub fn disconnect(&self) -> AppResult<()> {
+        let mut settings = connect::read(&self.inner.settings_path)?;
+        if connect::is_installed(&settings) || connect::has_our_status_line(&settings) {
+            connect::remove_ours(&mut settings);
+            connect::remove_status_line(&mut settings);
+            connect::write(&self.inner.settings_path, &settings)?;
+        }
+        self.inner.set_limits(None);
         *self.inner.server.lock().unwrap_or_else(|e| e.into_inner()) = None;
         secrets::delete(Credential::ClaudeHookToken)?;
         *self.inner.live.lock().unwrap_or_else(|e| e.into_inner()) = LiveSessions::default();
@@ -232,15 +281,23 @@ impl Inner {
                 resets_at,
             })
         });
+        let settings = connect::read(&self.settings_path).ok();
+        let check = |f: fn(&serde_json::Value) -> bool| settings.as_ref().is_some_and(f);
+        let limits = self
+            .limits
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .and_then(|l| l.current(now));
         ClaudeStatus {
             live,
             hooks: HooksStatus {
-                installed: self.hooks_installed(),
-                outdated: connect::read(&self.settings_path)
-                    .map(|s| connect::is_outdated(&s))
-                    .unwrap_or(false),
+                installed: check(connect::is_installed),
+                outdated: check(connect::is_outdated),
+                status_line: check(connect::has_our_status_line),
+                status_line_taken: check(connect::status_line_taken),
                 listening: self.server.lock().unwrap_or_else(|e| e.into_inner()).is_some(),
             },
+            limits,
             index: IndexStatus {
                 transcripts_found: self.projects_dir.is_dir(),
                 ready: index.ready,
@@ -248,6 +305,91 @@ impl Inner {
             },
             quota,
         }
+    }
+
+    /// Start watching a Claude Code process (once) so its sessions end if it's killed.
+    fn watch_process(self: &Arc<Self>, pid: u32) {
+        if !self
+            .watched_pids
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .insert(pid)
+        {
+            return;
+        }
+        let weak = Arc::downgrade(self);
+        let watching = super::process::watch_exit(pid, move || {
+            if let Some(inner) = weak.upgrade() {
+                inner.process_exited(pid);
+            }
+        });
+        if !watching {
+            // Couldn't open it (already gone?): allow a retry on its next hook.
+            self.watched_pids
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .remove(&pid);
+        }
+    }
+
+    fn process_exited(&self, pid: u32) {
+        self.watched_pids
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(&pid);
+        let ended = self
+            .live
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .process_exited(pid);
+        for session in &ended {
+            self.approvals.end_session(session);
+        }
+        tracing::debug!(sessions = ended.len(), "claude code process exited");
+        if !ended.is_empty() {
+            self.publish_status();
+        }
+    }
+
+    /// Remember (or forget) the latest plan limits, in memory and in the cache table.
+    fn set_limits(&self, limits: Option<PlanLimits>) {
+        *self.limits.lock().unwrap_or_else(|e| e.into_inner()) = limits;
+        let result = self.db.with(|conn| {
+            match limits {
+                Some(limits) => {
+                    let json = serde_json::to_string(&limits).unwrap_or_default();
+                    conn.execute(
+                        "INSERT INTO kv_cache (key, value, fetched_at) VALUES (?1, ?2, ?3)
+                         ON CONFLICT(key) DO UPDATE SET value = excluded.value, fetched_at = excluded.fetched_at",
+                        rusqlite::params![LIMITS_KEY, json, limits.updated_at.to_rfc3339()],
+                    )?;
+                }
+                None => {
+                    conn.execute("DELETE FROM kv_cache WHERE key = ?1", [LIMITS_KEY])?;
+                }
+            }
+            Ok(())
+        });
+        if let Err(error) = result {
+            tracing::warn!(kind = error.kind(), "could not cache plan limits");
+        }
+    }
+
+    /// One status-line update from Claude Code: keep its limits, reply with the line to show.
+    fn handle_status_line(&self, body: &[u8]) -> String {
+        let now = Utc::now();
+        let parsed = limits::parse(body, now);
+        tracing::debug!(has_limits = parsed.is_some(), "status line update");
+        if let Some(limits) = parsed {
+            self.set_limits(Some(limits));
+            self.publish_status();
+        }
+        let current = self
+            .limits
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .and_then(|l| l.current(now));
+        limits::status_text(current.as_ref())
     }
 
     fn publish_status(&self) {
@@ -374,6 +516,13 @@ impl Inner {
         approvals::response_body(outcome.behavior)
     }
 
+    fn resolve_elsewhere(&self, session_id: &str, tool: Option<(&str, &str)>) {
+        let closed = self.approvals.resolve_elsewhere(session_id, tool);
+        if closed > 0 {
+            tracing::debug!(closed, "approval cards answered in claude code");
+        }
+    }
+
     fn publish_approvals(&self) {
         self.app
             .state::<AppState>()
@@ -397,11 +546,31 @@ impl Inner {
             if changed {
                 inner.publish_status();
             }
+            if let Some(pid) = payload.client_pid {
+                inner.watch_process(pid);
+            }
             match payload.hook_event_name.as_str() {
                 "PermissionRequest" => match serde_json::from_slice::<PermissionPayload>(body) {
+                    // Questions and plan approvals have their own dialog in Claude Code.
+                    Ok(request) if approvals::is_user_dialog(&request.tool_name) => {
+                        approvals::response_body(None)
+                    }
                     Ok(request) => inner.handle_permission(&request),
                     Err(_) => approvals::response_body(None),
                 },
+                // The tool ran (or failed) after being answered in Claude Code itself.
+                "PostToolUse" | "PostToolUseFailure" => {
+                    if let Ok(done) = serde_json::from_slice::<PermissionPayload>(body) {
+                        let summary = approvals::summarize(&done.tool_name, &done.tool_input);
+                        inner.resolve_elsewhere(&done.session_id, Some((&done.tool_name, &summary)));
+                    }
+                    "{}".to_owned()
+                }
+                // The turn moved on, so anything still open was answered in Claude Code.
+                "UserPromptSubmit" | "Stop" => {
+                    inner.resolve_elsewhere(&payload.session_id, None);
+                    "{}".to_owned()
+                }
                 "SessionEnd" => {
                     inner.approvals.end_session(&payload.session_id);
                     "{}".to_owned()
@@ -409,7 +578,17 @@ impl Inner {
                 _ => "{}".to_owned(),
             }
         });
-        let server = HookServer::start(super::hooks::HOOK_PORT, token, handler).map_err(|e| {
+        let weak = Arc::downgrade(self);
+        let status_line = Arc::new(move |body: &[u8]| {
+            weak.upgrade()
+                .map(|inner| inner.handle_status_line(body))
+                .unwrap_or_default()
+        });
+        let handlers = Handlers {
+            hook: handler,
+            status_line,
+        };
+        let server = HookServer::start(super::hooks::HOOK_PORT, token, handlers).map_err(|e| {
             AppError::InvalidInput(format!(
                 "port {} is busy, so live activity can't start ({e})",
                 super::hooks::HOOK_PORT

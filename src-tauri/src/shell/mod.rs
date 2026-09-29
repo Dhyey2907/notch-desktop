@@ -235,7 +235,7 @@ pub fn init(app: &AppHandle) -> AppResult<()> {
 
     place(&window, app.state::<ShellState>().window_size())?;
     #[cfg(windows)]
-    watch_display_changes(&window);
+    watch_system_changes(&window);
     show_island(&window)?;
     Ok(())
 }
@@ -250,13 +250,31 @@ fn replace_island(app: &AppHandle) {
     }
 }
 
-/// Re-place the island when the display layout changes: resolution, monitors added or
-/// removed, the primary monitor switched, or the taskbar moved (work area). Windows
-/// broadcasts these to top-level windows; Tauri doesn't surface them, so the island's
-/// window procedure is subclassed to listen. Bursts are coalesced and handled after the
-/// layout settles.
+/// A fullscreen app (video, game, F11 browser) is in front on the island's monitor.
+static FULLSCREEN: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+pub fn is_fullscreen() -> bool {
+    FULLSCREEN.load(std::sync::atomic::Ordering::SeqCst)
+}
+
+fn set_fullscreen(app: &AppHandle, active: bool) {
+    if FULLSCREEN.swap(active, std::sync::atomic::Ordering::SeqCst) != active {
+        tracing::debug!(active, "fullscreen app changed");
+        app.state::<AppState>()
+            .bus
+            .emit("shell", AppEvent::FullscreenChanged { active });
+    }
+}
+
+/// Listen for system changes the island reacts to. Tauri doesn't surface these, so the
+/// island's window procedure is subclassed:
+/// - display layout (resolution, monitors added or removed, primary switched, taskbar moved):
+///   re-place the island, coalescing bursts until the layout settles;
+/// - fullscreen apps opening or closing: Windows tells registered app bars
+///   (`ABN_FULLSCREENAPP`). Notch registers one only for that notice — it never reserves
+///   screen space.
 #[cfg(windows)]
-fn watch_display_changes(window: &WebviewWindow) {
+fn watch_system_changes(window: &WebviewWindow) {
     use std::sync::{
         atomic::{AtomicBool, Ordering},
         OnceLock,
@@ -264,14 +282,30 @@ fn watch_display_changes(window: &WebviewWindow) {
     use windows::Win32::{
         Foundation::{HWND, LPARAM, LRESULT, WPARAM},
         UI::{
-            Shell::{DefSubclassProc, SetWindowSubclass},
-            WindowsAndMessaging::{SPI_SETWORKAREA, WM_DISPLAYCHANGE, WM_SETTINGCHANGE},
+            Shell::{
+                DefSubclassProc, SHAppBarMessage, SHQueryUserNotificationState, SetWindowSubclass, ABM_NEW,
+                ABM_REMOVE, ABN_FULLSCREENAPP, APPBARDATA, QUNS_BUSY, QUNS_PRESENTATION_MODE,
+                QUNS_RUNNING_D3D_FULL_SCREEN,
+            },
+            WindowsAndMessaging::{
+                SPI_SETWORKAREA, WM_APP, WM_DISPLAYCHANGE, WM_NCDESTROY, WM_SETTINGCHANGE,
+            },
         },
     };
 
     const SETTLE: std::time::Duration = std::time::Duration::from_millis(400);
+    const APPBAR_CALLBACK: u32 = WM_APP + 0x42;
     static APP: OnceLock<AppHandle> = OnceLock::new();
     static PENDING: AtomicBool = AtomicBool::new(false);
+
+    fn appbar(hwnd: HWND) -> APPBARDATA {
+        APPBARDATA {
+            cbSize: std::mem::size_of::<APPBARDATA>() as u32,
+            hWnd: hwnd,
+            uCallbackMessage: APPBAR_CALLBACK,
+            ..Default::default()
+        }
+    }
 
     unsafe extern "system" fn subclass(
         hwnd: HWND,
@@ -294,16 +328,44 @@ fn watch_display_changes(window: &WebviewWindow) {
                 PENDING.store(false, Ordering::SeqCst);
             }
         }
+        if msg == APPBAR_CALLBACK && wparam.0 == ABN_FULLSCREENAPP as usize {
+            if let Some(app) = APP.get().cloned() {
+                let active = lparam.0 != 0;
+                // Off the window procedure: emitting reaches into the webview.
+                std::thread::spawn(move || set_fullscreen(&app, active));
+            }
+        }
+        if msg == WM_NCDESTROY {
+            let mut data = appbar(hwnd);
+            // SAFETY: unregistering the app bar this window registered.
+            unsafe { SHAppBarMessage(ABM_REMOVE, &mut data) };
+        }
         // SAFETY: forwarding the unmodified message to the next window procedure.
         unsafe { DefSubclassProc(hwnd, msg, wparam, lparam) }
     }
 
     let _ = APP.set(window.app_handle().clone());
     let Ok(raw) = window.hwnd() else { return };
+    let hwnd = HWND(raw.0);
     // SAFETY: called on the main thread that owns this live window; the callback only reads
     // statics and forwards every message unchanged.
-    let installed = unsafe { SetWindowSubclass(HWND(raw.0), Some(subclass), 1, 0) };
+    let installed = unsafe { SetWindowSubclass(hwnd, Some(subclass), 1, 0) };
     if !installed.as_bool() {
         tracing::warn!("could not watch for display changes; the island may drift until restart");
+        return;
+    }
+    let mut data = appbar(hwnd);
+    // SAFETY: registers this window for app-bar notifications; no screen space is claimed.
+    if unsafe { SHAppBarMessage(ABM_NEW, &mut data) } == 0 {
+        tracing::warn!("could not watch for fullscreen apps");
+    }
+    // Notifications only report changes; ask once whether something is fullscreen already.
+    // SAFETY: plain query with no arguments.
+    if let Ok(state) = unsafe { SHQueryUserNotificationState() } {
+        let active = matches!(
+            state,
+            QUNS_BUSY | QUNS_RUNNING_D3D_FULL_SCREEN | QUNS_PRESENTATION_MODE
+        );
+        set_fullscreen(window.app_handle(), active);
     }
 }

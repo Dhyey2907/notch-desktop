@@ -1,6 +1,8 @@
+import { X } from "lucide-react";
+
 import { Button, ConfirmButton, Dot, IconButton, Pill } from "../design/components";
 import { findModule } from "../modules/registry";
-import type { Activity } from "./activityStore";
+import { isPersistent, type Activity } from "./activityStore";
 import "./activity.css";
 
 function relativeTime(from: number, now: number): string {
@@ -19,12 +21,15 @@ export function ActivityView({
   queued,
   onRunAction,
   onOpen,
+  onClose,
 }: {
   activity: Activity;
   /** How many other activities are waiting behind this one. */
   queued: number;
   onRunAction: (actionId: string) => void;
   onOpen: () => void;
+  /** Dismiss, or put away a must-answer activity (it stays pending). */
+  onClose: () => void;
 }) {
   const moduleName = findModule(activity.moduleId)?.name ?? activity.moduleId;
   const actions = activity.actions ?? [];
@@ -40,6 +45,15 @@ export function ActivityView({
       aria-label={`${moduleName}: ${activity.title}`}
     >
       <button type="button" className="activity__open" onClick={onOpen} aria-label={`Open ${moduleName}`} />
+      <button
+        type="button"
+        className="activity__close"
+        onClick={onClose}
+        aria-label={isPersistent(activity) ? "Hide for now" : "Dismiss"}
+        title={isPersistent(activity) ? "Hide for now (still waiting for you)" : "Dismiss"}
+      >
+        <X size={12} aria-hidden />
+      </button>
       <div className="activity__main">
         {activity.imageUrl ? (
           <img className="activity__image" src={activity.imageUrl} alt="" />

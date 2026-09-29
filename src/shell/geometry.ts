@@ -11,7 +11,8 @@ export interface Size {
 
 /** Default island size per mode. Activities size themselves via `activityIslandSize`. */
 export const ISLAND_SIZE: Record<IslandMode, Size> = {
-  collapsed: { width: 184, height: 30 },
+  // Resting bubble: small enough to sit above browser tabs without covering them.
+  collapsed: { width: 64, height: 14 },
   peek: { width: 400, height: 64 },
   activity: { width: 380, height: 72 },
   expanded: { width: 540, height: 300 },
@@ -38,6 +39,9 @@ export const WINDOW_MARGIN = { x: 22, top: 6, bottom: 30 } as const;
 export const DOCK = { height: 40, gap: 8 } as const;
 
 export function windowSizeFor(mode: IslandMode, island: Size = ISLAND_SIZE[mode]): Size {
+  // At rest the window is exactly the bubble: no shadow margin, so the transparent area
+  // around it never swallows clicks meant for the apps underneath (e.g. browser tabs).
+  if (mode === "collapsed") return { width: island.width, height: island.height + WINDOW_MARGIN.top };
   const dock = mode === "expanded" ? DOCK.gap + DOCK.height : 0;
   return {
     width: island.width + WINDOW_MARGIN.x * 2,
