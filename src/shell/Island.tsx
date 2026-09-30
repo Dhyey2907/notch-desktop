@@ -6,12 +6,13 @@ import { useActivities } from "../activity";
 import { isPersistent, type Activity } from "../activity/activityStore";
 import { ActivityView } from "../activity/ActivityView";
 import { eventBus } from "../core/eventBus";
+import { ipc } from "../core/ipc";
 import { windowLabel } from "../core/window";
 import { contentEnter, INSTANT, ISLAND_SPRING, SERIOUS_SPRING } from "../design/motion";
 import { useReduceMotion } from "../design/useReduceMotion";
 import { findModule } from "../modules/registry";
 import { Dock } from "./Dock";
-import { mayInterruptFullscreen, trackFullscreen, useFullscreen } from "./fullscreen";
+import { trackFullscreen, useFullscreen } from "./fullscreen";
 import { activityIslandSize, islandRadius, WINDOW_MARGIN, type IslandMode } from "./geometry";
 import { CompactHost, ModuleHost, PeekHost } from "./ModuleHost";
 import { useFirstRunPrompt } from "./useFirstRunPrompt";
@@ -26,6 +27,8 @@ const PEEK_LEAVE_MS = 200;
 /** Horizontal scroll distance that switches module, and the cooldown between switches. */
 const SWIPE_THRESHOLD = 60;
 const SWIPE_COOLDOWN_MS = 350;
+/** Let the island finish collapsing before it hides over a fullscreen app. */
+const FULLSCREEN_HIDE_DELAY_MS = 450;
 
 function focusActiveDockItem() {
   const id = useModuleNav.getState().activeId;
@@ -53,12 +56,10 @@ export function Island() {
   const size = useIsland((s) => s.size);
   const request = useIsland((s) => s.request);
   const settle = useIsland((s) => s.settle);
-  const next = useActivities((s) => frontActivity(s.activities));
+  const activity = useActivities((s) => frontActivity(s.activities));
   // Put-away must-answer activities: the bubble shows a dot and a click brings them back.
   const waiting = useActivities((s) => s.activities.some((a) => a.minimized));
   const fullscreen = useFullscreen((s) => s.active);
-  // During fullscreen apps only urgent activities interrupt; others wait or expire quietly.
-  const activity = next && (!fullscreen || mayInterruptFullscreen(next)) ? next : null;
   const queued = useActivities((s) => Math.max(0, s.activities.filter((a) => !a.minimized).length - 1));
   const reduceMotion = useReduceMotion();
   const hoverTimer = useRef<number | undefined>(undefined);
@@ -67,6 +68,21 @@ export function Island() {
   useModuleLifecycle();
   useEffect(() => trackFullscreen(), []);
   useFirstRunPrompt();
+
+  // Fullscreen app in front: hidden while resting, shown while a notification is up (or
+  // the user has it open). Hiding waits for the collapse animation to finish.
+  const hideForFullscreen = fullscreen && !activity && (mode === "collapsed" || mode === "peek");
+  useEffect(() => {
+    if (!hideForFullscreen) {
+      void ipc.shellSetFullscreenHidden(false).catch(() => {});
+      return;
+    }
+    const timer = window.setTimeout(
+      () => void ipc.shellSetFullscreenHidden(true).catch(() => {}),
+      FULLSCREEN_HIDE_DELAY_MS,
+    );
+    return () => window.clearTimeout(timer);
+  }, [hideForFullscreen]);
 
   // Sync the window to the initial mode once the webview is up.
   useEffect(() => {

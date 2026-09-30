@@ -3,6 +3,12 @@
 import { invoke } from "@tauri-apps/api/core";
 
 import type { AppInfo } from "./generated/AppInfo";
+import type { DeviceCode } from "./generated/DeviceCode";
+import type { GithubRepo } from "./generated/GithubRepo";
+import type { GithubRepoOverview } from "./generated/GithubRepoOverview";
+import type { GithubStatus } from "./generated/GithubStatus";
+import type { RepoInfo as GithubLocalRepo } from "./generated/RepoInfo";
+import type { SignInOptions } from "./generated/SignInOptions";
 import type { ApprovalChoice } from "./generated/ApprovalChoice";
 import type { ApprovalRequest } from "./generated/ApprovalRequest";
 import type { AuditEntry } from "./generated/AuditEntry";
@@ -53,6 +59,8 @@ export const ipc = {
   shellListScreens: () => invoke<ScreenInfo[]>("shell_list_screens"),
   /** Whether a fullscreen app is in front on this island's screen; `FullscreenChanged` reports changes. */
   shellIsFullscreen: () => invoke<boolean>("shell_is_fullscreen"),
+  /** Hide this island while a fullscreen app is in front; `false` brings it back. */
+  shellSetFullscreenHidden: (hidden: boolean) => invoke<void>("shell_set_fullscreen_hidden", { hidden }),
   /** Open (or focus) the settings window, optionally at a section such as "calendar". */
   openSettingsWindow: (section?: string) => invoke<void>("open_settings_window", { section }),
   diagnosticsOpenLogDir: () => invoke<void>("diagnostics_open_log_dir"),
@@ -100,6 +108,22 @@ export const ipc = {
   claudeStatusLineEnable: () => invoke<void>("claude_status_line_enable"),
   claudeStatusLineDisable: () => invoke<void>("claude_status_line_disable"),
   /** Phone Link notifications in Action Center, plus whether Notch may read them. */
+  /** Which "Continue with …" sign-ins this build offers. */
+  signInOptions: () => invoke<SignInOptions>("sign_in_options"),
+  calendarConnectBuiltin: () => invoke<void>("calendar_connect_builtin"),
+  spotifyConnectBuiltin: () => invoke<void>("spotify_connect_builtin"),
+  githubStatus: () => invoke<GithubStatus>("github_status"),
+  /** Starts GitHub sign-in; returns the code to enter on github.com (opened in the browser). */
+  githubSignIn: () => invoke<DeviceCode>("github_sign_in"),
+  githubCancelSignIn: () => invoke<void>("github_cancel_sign_in"),
+  githubSignOut: () => invoke<void>("github_sign_out"),
+  /** Your GitHub repositories, most recently pushed first. */
+  githubRepositories: () => invoke<GithubRepo[]>("github_repositories"),
+  githubRepoOverview: (nameWithOwner: string) =>
+    invoke<GithubRepoOverview>("github_repo_overview", { nameWithOwner }),
+  /** Show a GitHub repo in the Git module; returns the local clone used, if you have one added. */
+  githubSelectRepo: (nameWithOwner: string) =>
+    invoke<GithubLocalRepo | null>("github_select_repo", { nameWithOwner }),
   phoneSnapshot: () => invoke<PhoneSnapshot>("phone_snapshot"),
   /** Clear a phone notification from Action Center. */
   phoneDismiss: (id: number) => invoke<void>("phone_dismiss", { id }),

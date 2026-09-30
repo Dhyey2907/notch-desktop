@@ -14,6 +14,7 @@ import {
 } from "../design/components";
 import { useSettings } from ".";
 import { Section } from "./Section";
+import { SignInWith } from "./SignInWith";
 
 const REMINDER_OPTIONS = [
   { value: "0", label: "Off" },
@@ -58,6 +59,18 @@ export function CalendarSection() {
   const needsReconnect = status?.state === "error" && status.reason === "authExpired";
   // A network/unknown error still counts as connected: saved events are shown and retries continue.
   const connected = state === "connected" || (status?.state === "error" && !needsReconnect);
+
+  const connectBuiltin = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await ipc.calendarConnectBuiltin();
+    } catch (e) {
+      setError(connectErrorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const connect = async () => {
     setBusy(true);
@@ -116,7 +129,13 @@ export function CalendarSection() {
             </div>
           </>
         ) : (
-          <>
+          <SignInWith
+            provider="google"
+            busy={busy}
+            reconnect={needsReconnect}
+            error={error}
+            onContinue={() => void connectBuiltin()}
+          >
             <p className="settings__lead">
               Notch Desktop connects with your own Google Cloud OAuth client, so your calendar data goes only
               between your PC and Google. One-time setup:
@@ -161,7 +180,7 @@ export function CalendarSection() {
                 {busy ? "Waiting for sign-in…" : needsReconnect ? "Reconnect" : "Connect Google Calendar"}
               </Button>
             </div>
-          </>
+          </SignInWith>
         )}
         <p className="settings__note">
           Notch Desktop asks for read-only access to your calendar and your email address (to label the

@@ -20,6 +20,7 @@ use crate::{
     calendar::{CalendarEvent, CalendarSnapshot},
     claude::{approvals::ApprovalRequest, ClaudeStatus},
     git::GitSnapshot,
+    github::GithubStatus,
     media::MediaState,
     phone::{PhoneNotification, PhoneSnapshot},
     settings::Settings,
@@ -91,6 +92,8 @@ pub enum AppEvent {
     ReminderDue { event: CalendarEvent },
     /// Spotify connection or playlists changed.
     SpotifyChanged(SpotifySnapshot),
+    /// GitHub sign-in changed (signed in/out, or a code is waiting for approval).
+    GithubChanged(GithubStatus),
     /// Repository status, history, or a running operation changed.
     GitChanged(GitSnapshot),
     /// Live Claude Code activity, hook connection, or index status changed.
@@ -126,6 +129,7 @@ impl AppEvent {
             AppEvent::ReminderDue { .. } => "ReminderDue",
             AppEvent::SpotifyChanged(_) => "SpotifyChanged",
             AppEvent::GitChanged(_) => "GitChanged",
+            AppEvent::GithubChanged(_) => "GithubChanged",
             AppEvent::ClaudeStatusChanged(_) => "ClaudeStatusChanged",
             AppEvent::ClaudeUsageChanged => "ClaudeUsageChanged",
             AppEvent::ApprovalsChanged(_) => "ApprovalsChanged",

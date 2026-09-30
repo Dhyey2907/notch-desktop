@@ -9,6 +9,8 @@ const MIGRATIONS: &[&str] = &[
     include_str!("migrations/002_claude_usage.sql"),
     include_str!("migrations/003_approval_audit.sql"),
     include_str!("migrations/004_todo.sql"),
+    include_str!("migrations/005_removed_phone_devices.sql"),
+    include_str!("migrations/006_drop_phone_devices.sql"),
 ];
 
 pub fn schema_version(conn: &Connection) -> AppResult<u32> {

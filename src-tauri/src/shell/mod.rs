@@ -114,10 +114,14 @@ fn make_tool_window(window: &WebviewWindow) -> AppResult<()> {
     Ok(())
 }
 
+/// Hidden from the tray: fullscreen ending must not bring the notch back.
+static HIDDEN_BY_USER: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
 /// Tray show/hide acts on every island together.
 fn toggle_visibility(app: &AppHandle) {
     let windows = islands::all(app);
     let hide = windows.iter().any(|w| w.is_visible().unwrap_or(false));
+    HIDDEN_BY_USER.store(hide, std::sync::atomic::Ordering::Relaxed);
     for window in windows {
         let result = if hide {
             window.hide().map_err(Into::into)
@@ -271,6 +275,33 @@ fn watch_display_setting(app: &AppHandle) {
     });
 }
 
+/// While a fullscreen app is in front the island hides, popping in only for notifications.
+/// Raw `ShowWindow` so showing never takes focus from the game or video.
+pub fn set_fullscreen_hidden(window: &WebviewWindow, hidden: bool) -> AppResult<()> {
+    if !hidden && HIDDEN_BY_USER.load(std::sync::atomic::Ordering::Relaxed) {
+        return Ok(());
+    }
+    #[cfg(windows)]
+    {
+        use windows::Win32::UI::WindowsAndMessaging::{ShowWindow, SW_HIDE, SW_SHOWNOACTIVATE};
+        if window.is_visible()? == !hidden {
+            return Ok(());
+        }
+        let hwnd = windows::Win32::Foundation::HWND(window.hwnd()?.0);
+        // SAFETY: `hwnd` is a live top-level window owned by this process.
+        unsafe {
+            let _ = ShowWindow(hwnd, if hidden { SW_HIDE } else { SW_SHOWNOACTIVATE });
+        }
+    }
+    #[cfg(not(windows))]
+    if hidden {
+        window.hide()?;
+    } else {
+        show_island(window)?;
+    }
+    Ok(())
+}
+
 /// Fullscreen state per island: Windows reports fullscreen apps per monitor.
 static FULLSCREEN: Mutex<Option<HashMap<String, bool>>> = Mutex::new(None);
 
@@ -292,7 +323,7 @@ fn set_fullscreen(app: &AppHandle, label: &str, active: bool) {
             != Some(active)
     };
     if changed {
-        tracing::debug!(active, "fullscreen app changed");
+        tracing::debug!(label, active, "fullscreen app changed");
         app.state::<AppState>().bus.emit(
             "shell",
             AppEvent::FullscreenChanged {
@@ -318,16 +349,13 @@ fn watch_system_changes(window: &WebviewWindow) {
     };
     use windows::Win32::{
         Foundation::{HWND, LPARAM, LRESULT, WPARAM},
-        Graphics::Gdi::{MonitorFromWindow, MONITOR_DEFAULTTONEAREST},
         UI::{
             Shell::{
-                DefSubclassProc, SHAppBarMessage, SHQueryUserNotificationState, SetWindowSubclass, ABM_NEW,
-                ABM_REMOVE, ABN_FULLSCREENAPP, APPBARDATA, QUNS_BUSY, QUNS_PRESENTATION_MODE,
-                QUNS_RUNNING_D3D_FULL_SCREEN,
+                DefSubclassProc, SHAppBarMessage, SetWindowSubclass, ABM_NEW, ABM_REMOVE, ABN_FULLSCREENAPP,
+                APPBARDATA,
             },
             WindowsAndMessaging::{
-                GetForegroundWindow, SPI_SETWORKAREA, WM_APP, WM_DISPLAYCHANGE, WM_NCDESTROY,
-                WM_SETTINGCHANGE,
+                SPI_SETWORKAREA, WM_APP, WM_DISPLAYCHANGE, WM_NCDESTROY, WM_SETTINGCHANGE,
             },
         },
     };
@@ -336,17 +364,6 @@ fn watch_system_changes(window: &WebviewWindow) {
     const APPBAR_CALLBACK: u32 = WM_APP + 0x42;
     static APP: OnceLock<AppHandle> = OnceLock::new();
     static PENDING: AtomicBool = AtomicBool::new(false);
-    /// Island label for each subclassed window handle.
-    static LABELS: Mutex<Option<HashMap<isize, String>>> = Mutex::new(None);
-
-    fn label_of(hwnd: HWND) -> Option<String> {
-        LABELS
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .as_ref()
-            .and_then(|map| map.get(&(hwnd.0 as isize)).cloned())
-    }
-
     fn appbar(hwnd: HWND) -> APPBARDATA {
         APPBARDATA {
             cbSize: std::mem::size_of::<APPBARDATA>() as u32,
@@ -379,19 +396,17 @@ fn watch_system_changes(window: &WebviewWindow) {
             }
         }
         if msg == APPBAR_CALLBACK && wparam.0 == ABN_FULLSCREENAPP as usize {
-            if let (Some(app), Some(label)) = (APP.get().cloned(), label_of(hwnd)) {
-                let active = lparam.0 != 0;
+            // Windows tells only one app bar (usually the primary screen's), whichever screen
+            // the fullscreen app is on, so every island re-checks its own screen.
+            if let Some(app) = APP.get().cloned() {
                 // Off the window procedure: emitting reaches into the webview.
-                std::thread::spawn(move || set_fullscreen(&app, &label, active));
+                std::thread::spawn(move || refresh_fullscreen(&app));
             }
         }
         if msg == WM_NCDESTROY {
             let mut data = appbar(hwnd);
             // SAFETY: unregistering the app bar this window registered.
             unsafe { SHAppBarMessage(ABM_REMOVE, &mut data) };
-            if let Some(map) = LABELS.lock().unwrap_or_else(|e| e.into_inner()).as_mut() {
-                map.remove(&(hwnd.0 as isize));
-            }
         }
         // SAFETY: forwarding the unmodified message to the next window procedure.
         unsafe { DefSubclassProc(hwnd, msg, wparam, lparam) }
@@ -400,11 +415,6 @@ fn watch_system_changes(window: &WebviewWindow) {
     let _ = APP.set(window.app_handle().clone());
     let Ok(raw) = window.hwnd() else { return };
     let hwnd = HWND(raw.0);
-    LABELS
-        .lock()
-        .unwrap_or_else(|e| e.into_inner())
-        .get_or_insert_with(HashMap::new)
-        .insert(hwnd.0 as isize, window.label().to_owned());
     // SAFETY: called on the main thread that owns this live window; the callback only reads
     // statics and forwards every message unchanged.
     let installed = unsafe { SetWindowSubclass(hwnd, Some(subclass), 1, 0) };
@@ -417,18 +427,123 @@ fn watch_system_changes(window: &WebviewWindow) {
     if unsafe { SHAppBarMessage(ABM_NEW, &mut data) } == 0 {
         tracing::warn!("could not watch for fullscreen apps");
     }
-    // Notifications only report changes; ask once whether something is fullscreen already,
-    // and whether it's on this island's screen.
-    // SAFETY: plain queries with no arguments or with window handles owned by the system.
-    let busy = unsafe { SHQueryUserNotificationState() }.is_ok_and(|state| {
-        matches!(
-            state,
-            QUNS_BUSY | QUNS_RUNNING_D3D_FULL_SCREEN | QUNS_PRESENTATION_MODE
-        )
-    });
-    let same_screen = unsafe {
-        MonitorFromWindow(GetForegroundWindow(), MONITOR_DEFAULTTONEAREST)
-            == MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST)
+    watch_front_window(window.app_handle());
+    // Notifications only report changes; check once whether something is fullscreen already.
+    refresh_fullscreen(window.app_handle());
+}
+
+/// App-bar notices miss fullscreen apps on secondary screens, so also re-check whenever the
+/// front window changes or is resized (F11). Installed once, on the main (UI) thread, whose
+/// message loop delivers the callbacks; bursts (dragging a window) collapse into one check.
+#[cfg(windows)]
+fn watch_front_window(app: &AppHandle) {
+    use std::sync::{
+        atomic::{AtomicBool, Ordering},
+        Once, OnceLock,
     };
-    set_fullscreen(window.app_handle(), window.label(), busy && same_screen);
+    use windows::Win32::{
+        Foundation::HWND,
+        UI::{
+            Accessibility::{SetWinEventHook, HWINEVENTHOOK},
+            WindowsAndMessaging::{
+                GetForegroundWindow, EVENT_OBJECT_LOCATIONCHANGE, EVENT_SYSTEM_FOREGROUND, OBJID_WINDOW,
+                WINEVENT_OUTOFCONTEXT, WINEVENT_SKIPOWNPROCESS,
+            },
+        },
+    };
+    const SETTLE: std::time::Duration = std::time::Duration::from_millis(150);
+    static APP: OnceLock<AppHandle> = OnceLock::new();
+    static PENDING: AtomicBool = AtomicBool::new(false);
+    static INSTALL: Once = Once::new();
+
+    unsafe extern "system" fn on_event(
+        _hook: HWINEVENTHOOK,
+        event: u32,
+        hwnd: HWND,
+        id_object: i32,
+        id_child: i32,
+        _thread: u32,
+        _time: u32,
+    ) {
+        // Location changes fire for every window and caret; only the front window matters.
+        if event == EVENT_OBJECT_LOCATIONCHANGE
+            // SAFETY: a plain query with no arguments.
+            && (id_object != OBJID_WINDOW.0 || id_child != 0 || hwnd != unsafe { GetForegroundWindow() })
+        {
+            return;
+        }
+        if PENDING.swap(true, Ordering::SeqCst) {
+            return;
+        }
+        if let Some(app) = APP.get().cloned() {
+            std::thread::spawn(move || {
+                std::thread::sleep(SETTLE);
+                PENDING.store(false, Ordering::SeqCst);
+                refresh_fullscreen(&app);
+            });
+        } else {
+            PENDING.store(false, Ordering::SeqCst);
+        }
+    }
+
+    let _ = APP.set(app.clone());
+    INSTALL.call_once(|| {
+        let flags = WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS;
+        for event in [EVENT_SYSTEM_FOREGROUND, EVENT_OBJECT_LOCATIONCHANGE] {
+            // SAFETY: an out-of-context hook with a `'static` callback, installed on the UI
+            // thread for the life of the app; the callback only reads statics.
+            let hook = unsafe { SetWinEventHook(event, event, None, Some(on_event), 0, 0, flags) };
+            if hook.is_invalid() {
+                tracing::warn!(event, "could not watch the front window for fullscreen apps");
+            }
+        }
+    });
+}
+
+/// Whether the front window fills each island's screen (a video, game, or F11 browser).
+#[cfg(windows)]
+fn refresh_fullscreen(app: &AppHandle) {
+    use windows::Win32::{
+        Foundation::{HWND, RECT},
+        Graphics::Gdi::{GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST},
+        UI::WindowsAndMessaging::{
+            GetClassNameW, GetForegroundWindow, GetWindowRect, GetWindowThreadProcessId,
+        },
+    };
+    // SAFETY: read-only queries on the foreground window and our own island windows; every
+    // out-parameter is a local of the right type and size.
+    let covered = unsafe {
+        let front = GetForegroundWindow();
+        let mut class = [0u16; 32];
+        let len = GetClassNameW(front, &mut class) as usize;
+        let class = String::from_utf16_lossy(&class[..len]);
+        let mut pid = 0;
+        GetWindowThreadProcessId(front, Some(&mut pid));
+        // The desktop fills the screen too, and the island itself is never "fullscreen".
+        let ignored =
+            front.is_invalid() || pid == std::process::id() || class == "Progman" || class == "WorkerW";
+        let monitor = MonitorFromWindow(front, MONITOR_DEFAULTTONEAREST);
+        let mut info = MONITORINFO {
+            cbSize: std::mem::size_of::<MONITORINFO>() as u32,
+            ..Default::default()
+        };
+        let mut rect = RECT::default();
+        let fills = !ignored
+            && GetMonitorInfoW(monitor, &mut info).as_bool()
+            && GetWindowRect(front, &mut rect).is_ok()
+            && rect.left <= info.rcMonitor.left
+            && rect.top <= info.rcMonitor.top
+            && rect.right >= info.rcMonitor.right
+            && rect.bottom >= info.rcMonitor.bottom;
+        fills.then_some(monitor)
+    };
+    for window in islands::all(app) {
+        let on_screen = covered.is_some_and(|monitor| {
+            window.hwnd().is_ok_and(|raw| {
+                // SAFETY: `raw` is a live window owned by this process.
+                unsafe { MonitorFromWindow(HWND(raw.0), MONITOR_DEFAULTTONEAREST) == monitor }
+            })
+        });
+        set_fullscreen(app, window.label(), on_screen);
+    }
 }

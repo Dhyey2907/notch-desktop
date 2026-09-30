@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Notch's own OAuth client IDs (one-click sign-in); see src-tauri/oauth-clients.example.json
+src-tauri/oauth-clients.json

@@ -128,6 +128,10 @@ pub struct GitSettings {
     #[ts(optional)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub active: Option<String>,
+    /// GitHub repository (`owner/name`) picked while signed in with GitHub.
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub github_repo: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
@@ -177,6 +181,14 @@ impl Settings {
             .is_some_and(|m| m.is_empty() || m.len() > 64)
         {
             return Err(AppError::InvalidInput("invalid screen name".into()));
+        }
+        if self
+            .git
+            .github_repo
+            .as_deref()
+            .is_some_and(|r| !crate::github::valid_name_with_owner(r))
+        {
+            return Err(AppError::InvalidInput("invalid GitHub repository".into()));
         }
         if self.calendar.reminder_minutes > 120 {
             return Err(AppError::InvalidInput("reminder lead is too long".into()));

@@ -384,3 +384,57 @@ html.settings-window #root {
   align-self: flex-start;
   flex-wrap: wrap;
 }
+
+/* "Continue with …" buttons (provider colours per their brand guidelines) */
+.settings__buttons--start {
+  justify-content: flex-start;
+}
+
+.signin-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+  padding: 0 16px 0 12px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-label);
+  cursor: pointer;
+}
+
+.signin-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.signin-button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.signin-button--google {
+  background: #fff;
+  color: #1f1f1f;
+  border-color: #747775;
+}
+
+.signin-button--spotify {
+  background: #1ed760;
+  color: #000;
+}
+
+.signin-button--github {
+  background: #f6f8fa;
+  color: #1f2328;
+  border-color: #d1d9e0;
+}
+
+.github-code {
+  margin: 0;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 28px;
+  font-weight: var(--weight-headline);
+  letter-spacing: 0.12em;
+}

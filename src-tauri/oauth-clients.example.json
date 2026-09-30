@@ -1,0 +1,13 @@
+{
+  "_readme": "Copy to oauth-clients.json (gitignored) and fill in your own registered clients to get one-click 'Continue with …' buttons. Leave a value as-is to skip that provider. See README → One-click sign-in.",
+  "google": {
+    "clientId": "<something>.apps.googleusercontent.com",
+    "clientSecret": "<GOCSPX-…>"
+  },
+  "spotify": {
+    "clientId": "<32 hex characters>"
+  },
+  "github": {
+    "clientId": "<Ov23li…>"
+  }
+}

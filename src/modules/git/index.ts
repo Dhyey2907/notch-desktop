@@ -6,11 +6,19 @@ import { ipc } from "../../core/ipc";
 import type { ModuleContext, NotchModule } from "../types";
 import { GitCompact, GitPeek } from "./GitIndicators";
 import { useGit } from "./gitStore";
+import { useGithub } from "./githubStore";
 import { bindActivities } from "./notify";
 
 function init({ events, activities }: ModuleContext) {
   bindActivities(activities);
   const off = events.on("GitChanged", ({ event }) => useGit.getState().set(event.payload));
+  const offGithub = events.on("GithubChanged", ({ event }) => useGithub.getState().set(event.payload));
+  ipc
+    .githubStatus()
+    .then((status) => {
+      if (!useGithub.getState().status) useGithub.getState().set(status);
+    })
+    .catch(() => {});
   ipc
     .gitGetSnapshot()
     .then((snapshot) => {
@@ -19,6 +27,7 @@ function init({ events, activities }: ModuleContext) {
     .catch((error) => console.error("failed to read Git state", error));
   return () => {
     off();
+    offGithub();
     bindActivities(null);
   };
 }

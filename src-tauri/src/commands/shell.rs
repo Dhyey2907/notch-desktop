@@ -30,10 +30,16 @@ pub fn shell_set_window_size(
     shell::place(&window, (width, height))
 }
 
-/// Whether a fullscreen app is in front on this island's screen (it rests as a bubble).
+/// Whether a fullscreen app is in front on this island's screen (the island hides).
 #[tauri::command]
 pub fn shell_is_fullscreen(window: WebviewWindow) -> bool {
     shell::is_fullscreen(window.label())
+}
+
+/// Hide the island during a fullscreen app (`true`), or bring it back (`false`).
+#[tauri::command]
+pub fn shell_set_fullscreen_hidden(window: WebviewWindow, hidden: bool) -> AppResult<()> {
+    shell::set_fullscreen_hidden(&window, hidden)
 }
 
 /// Connected screens, for "Show the notch on" in Settings.

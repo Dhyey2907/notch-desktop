@@ -170,6 +170,14 @@ pub fn pull(repo: &Path) -> AppResult<()> {
     git(repo, &["pull", "--ff-only"], NETWORK_TIMEOUT).map(|_| ())
 }
 
+/// URL of the `origin` remote, if any.
+pub fn origin_url(repo: &Path) -> Option<String> {
+    git(repo, &["remote", "get-url", "origin"], LOCAL_TIMEOUT)
+        .ok()
+        .map(|url| url.trim().to_owned())
+        .filter(|url| !url.is_empty())
+}
+
 /// Open pull requests for the repo via the GitHub CLI, using its existing sign-in.
 pub fn pull_requests(repo: &Path) -> PullRequests {
     let unavailable = |reason| PullRequests::Unavailable { reason };

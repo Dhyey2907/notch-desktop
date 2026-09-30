@@ -8,6 +8,7 @@ import { Button, ConfirmButton, MockBadge, Pill, Surface, TextField } from "../d
 import { MAX_PINNED, pinnedPlaylists, togglePinned } from "../modules/media/spotifyStore";
 import { useSettings } from ".";
 import { Section } from "./Section";
+import { SignInWith } from "./SignInWith";
 
 const REDIRECT_URI = "http://127.0.0.1:43821/callback";
 
@@ -40,6 +41,18 @@ export function MediaSection() {
   const status = snapshot?.status;
   const needsReconnect = status?.state === "error" && status.reason === "authExpired";
   const connected = status?.state === "connected" || (status?.state === "error" && !needsReconnect);
+
+  const connectBuiltin = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await ipc.spotifyConnectBuiltin();
+    } catch (e) {
+      setError(friendlyError(e, "Couldn't finish connecting. Try again."));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const connect = async () => {
     setBusy(true);
@@ -96,7 +109,13 @@ export function MediaSection() {
             </p>
           </>
         ) : (
-          <>
+          <SignInWith
+            provider="spotify"
+            busy={busy}
+            reconnect={needsReconnect}
+            error={error}
+            onContinue={() => void connectBuiltin()}
+          >
             <p className="settings__lead">
               Uses your own Spotify developer app (free, takes a couple of minutes). One-time setup:
             </p>
@@ -131,7 +150,7 @@ export function MediaSection() {
                 {busy ? "Waiting for sign-in…" : needsReconnect ? "Reconnect" : "Connect Spotify"}
               </Button>
             </div>
-          </>
+          </SignInWith>
         )}
       </Surface>
 

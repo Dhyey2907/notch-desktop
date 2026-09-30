@@ -1,0 +1,2 @@
+-- Slot 5 once created KDE Connect paired phones; that feature was removed before release.
+-- Migrations are append-only, so the slot stays (empty); 006 drops the table.

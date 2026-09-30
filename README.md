@@ -17,10 +17,31 @@ Uninstalling removes the app and its "Start with Windows" entry. Your settings s
 | Media       | Windows media sessions (any app that shows in the volume flyout)                                | None                                                                      |
 | Spotify     | Spotify Web API — pinned playlists (Premium needed to start playback)                           | Settings → Media: paste your own Spotify app's client ID                  |
 | Calendar    | Google Calendar (read-only)                                                                     | Settings → Calendar: paste your own Google "Desktop app" OAuth client     |
-| Git         | `git` CLI in repos you pick; pull requests via the `gh` CLI                                     | Settings → Git: add repositories; `gh auth login` for PRs                 |
+| Git         | `git` CLI in repos you pick; pull requests via Continue with GitHub or the `gh` CLI             | Settings → Git: add repositories; `gh auth login` for PRs                 |
 | Claude Code | Usage from local transcripts; live activity and permission approvals via Claude Code HTTP hooks | Settings → AI: **Connect Claude Code** (shows exactly what it adds first) |
 
 Everything runs locally. Secrets (OAuth refresh tokens, client secrets, the hook token) live in Windows Credential Manager, never in files, SQLite, or logs.
+
+## One-click sign-in ("Continue with Google / Spotify / GitHub")
+
+Those buttons are OAuth sign-ins. The app is registered once with each provider, and that registration's **client ID** is built into the app. Clicking the button opens the provider's own sign-in page in your browser; when you approve, the provider hands Notch a token, which it keeps in Windows Credential Manager. Google and Spotify send you back to Notch through a local `127.0.0.1` address (with PKCE). GitHub uses the "device code" flow, the same one the GitHub CLI uses: Notch shows a code, and you enter it on github.com.
+
+Notch has no client of its own until you register one. To turn the buttons on, copy `src-tauri/oauth-clients.example.json` to `src-tauri/oauth-clients.json` (gitignored, so it never reaches the repo), fill in what you register below, and rebuild. Leave a provider's placeholder in place to skip it. Without the file, Settings shows the "paste your own client ID" setup instead.
+
+- **Google** (console.cloud.google.com):
+  1. Create a project and enable the **Google Calendar API**.
+  2. Configure the **OAuth consent screen** as _External_, and add yourself under **Test users**.
+  3. Go to **Credentials → Create credentials → OAuth client ID**, choose **Desktop app**, and copy both the client ID and the secret. Google documents that a desktop app's secret can't be kept confidential.
+- **Spotify** (developer.spotify.com/dashboard):
+  1. **Create app**, adding the redirect URI `http://127.0.0.1:43821/callback`.
+  2. Tick **Web API**.
+  3. Copy the **Client ID**. No secret is needed.
+- **GitHub** (github.com → Settings → Developer settings → OAuth Apps → **New OAuth App**):
+  1. Use any homepage and callback URL (for example `https://github.com`).
+  2. Tick **Enable Device Flow**.
+  3. Copy the **Client ID**. No secret is needed.
+
+Signing in to GitHub asks for the `repo` scope, which lets Notch list pull requests in your private repositories as well as public ones.
 
 ## Stack
 

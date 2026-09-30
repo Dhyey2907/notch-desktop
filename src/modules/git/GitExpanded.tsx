@@ -1,4 +1,4 @@
-import { FolderOpen, GitBranch, GitPullRequest } from "lucide-react";
+import { FolderOpen, GitBranch } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import type { GitOperation } from "../../core/generated/GitOperation";
@@ -20,7 +20,11 @@ import {
   TextField,
 } from "../../design/components";
 import { activityCells, changeSummary, timeAgo, trackedChanges, useGit } from "./gitStore";
+import { GithubRepoPicker, GithubRepoView } from "./GithubView";
+import { useGithub } from "./githubStore";
 import { notify } from "./notify";
+import { PrItems } from "./PrItems";
+import { useSettings } from "../../settings";
 import "./git.css";
 
 type Tab = "overview" | "prs";
@@ -46,9 +50,33 @@ function useNow(intervalMs: number) {
 
 export default function GitExpanded() {
   const snapshot = useGit((s) => s.snapshot);
+  const github = useGithub((s) => s.status);
+  const githubRepo = useSettings((s) => s.settings?.git.githubRepo);
   const [tab, setTab] = useState<Tab>("overview");
+  // Showing the GitHub repository picker (from the switcher or "Change").
+  const [choosing, setChoosing] = useState(false);
 
   if (!snapshot) return <ModuleContainer title="Git">{null}</ModuleContainer>;
+
+  const noLocalRepo = snapshot.status.state === "noRepo" || !snapshot.repo;
+  // Signed in with GitHub: pick from your GitHub repositories instead of a folder.
+  if (github?.signedIn && (choosing || (noLocalRepo && !githubRepo))) {
+    return (
+      <GithubRepoPicker
+        onPicked={() => setChoosing(false)}
+        onLocalFolder={() => {
+          setChoosing(false);
+          pickRepo();
+        }}
+        onCancel={choosing ? () => setChoosing(false) : undefined}
+      />
+    );
+  }
+  if (github?.signedIn && noLocalRepo && githubRepo) {
+    return (
+      <GithubRepoView nameWithOwner={githubRepo} onChange={() => setChoosing(true)} onLinkFolder={pickRepo} />
+    );
+  }
 
   if (snapshot.status.state === "gitMissing") {
     return (
@@ -65,7 +93,11 @@ export default function GitExpanded() {
       <ModuleContainer title="Git">
         <EmptyState
           title="Your code, at a glance."
-          body="Choose a repository to see its branch, changes, and activity — and commit, push, or pull from here."
+          body={
+            github?.available
+              ? "Choose a repository folder on this PC — or sign in with GitHub (Settings → Git) to pick from your GitHub repositories."
+              : "Choose a repository to see its branch, changes, and activity — and commit, push, or pull from here."
+          }
           action={
             <Button variant="primary" onClick={pickRepo}>
               Choose repository
@@ -79,7 +111,7 @@ export default function GitExpanded() {
   const trailing = (
     <>
       {snapshot.mock && <MockBadge />}
-      <RepoSwitcher snapshot={snapshot} />
+      <RepoSwitcher snapshot={snapshot} onGithub={github?.signedIn ? () => setChoosing(true) : undefined} />
       <SegmentedControl<Tab>
         label="Git view"
         value={tab}
@@ -110,7 +142,7 @@ export default function GitExpanded() {
   );
 }
 
-function RepoSwitcher({ snapshot }: { snapshot: GitSnapshot }) {
+function RepoSwitcher({ snapshot, onGithub }: { snapshot: GitSnapshot; onGithub?: () => void }) {
   const current = snapshot.repo?.path ?? "";
   return (
     <select
@@ -120,6 +152,7 @@ function RepoSwitcher({ snapshot }: { snapshot: GitSnapshot }) {
       onChange={(e) => {
         const value = e.currentTarget.value;
         if (value === "__pick__") pickRepo();
+        else if (value === "__github__") onGithub?.();
         else if (value !== current) void ipc.gitSelectRepo(value).catch(() => {});
       }}
     >
@@ -128,7 +161,8 @@ function RepoSwitcher({ snapshot }: { snapshot: GitSnapshot }) {
           {r.name}
         </option>
       ))}
-      <option value="__pick__">Choose another…</option>
+      {onGithub && <option value="__github__">Your GitHub repositories…</option>}
+      <option value="__pick__">Choose another folder…</option>
     </select>
   );
 }
@@ -311,45 +345,5 @@ function PullRequestList() {
   }, []);
 
   if (!prs) return <p className="git__muted git__loading">Loading pull requests…</p>;
-  if (prs.state === "unavailable") {
-    const copy = {
-      ghMissing: [
-        "GitHub CLI not found",
-        "Install the GitHub CLI (cli.github.com) to see pull requests here.",
-      ],
-      notAuthenticated: ["Sign in to GitHub", "Run  gh auth login  in a terminal once, then come back."],
-      notGithub: ["Not a GitHub repository", "This repository has no GitHub remote."],
-      failed: ["Couldn't load pull requests", "GitHub didn't respond. Try again in a moment."],
-    }[prs.reason];
-    return <EmptyState title={copy[0]} body={copy[1]} />;
-  }
-  if (prs.items.length === 0) {
-    return <EmptyState title="No open pull requests" body="Nothing waiting on review in this repository." />;
-  }
-  const review = (decision: string) =>
-    decision === "APPROVED" ? (
-      <Pill tone="success">Approved</Pill>
-    ) : decision === "CHANGES_REQUESTED" ? (
-      <Pill tone="warning">Changes requested</Pill>
-    ) : decision === "REVIEW_REQUIRED" ? (
-      <Pill>Review required</Pill>
-    ) : null;
-
-  return (
-    <ul className="git-prs">
-      {prs.items.map((pr) => (
-        <li key={pr.number}>
-          <button type="button" className="git-prs__row" onClick={() => void ipc.openExternal(pr.url)}>
-            <GitPullRequest size={14} aria-hidden />
-            <span className="git-prs__number">#{pr.number}</span>
-            <span className="git-prs__title" title={pr.title}>
-              {pr.title}
-            </span>
-            {pr.isDraft ? <Pill>Draft</Pill> : review(pr.reviewDecision)}
-            <span className="git__muted">{pr.author}</span>
-          </button>
-        </li>
-      ))}
-    </ul>
-  );
+  return <PrItems prs={prs} />;
 }

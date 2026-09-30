@@ -12,5 +12,6 @@ pub mod media;
 pub mod phone;
 pub mod settings;
 pub mod shell;
+pub mod signin;
 pub mod spotify;
 pub mod todo;

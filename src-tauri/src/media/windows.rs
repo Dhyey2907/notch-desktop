@@ -500,7 +500,13 @@ pub fn store_artwork(dir: &Path, bytes: &[u8], ext: &str) -> AppResult<Option<Pa
     let mut hasher = DefaultHasher::new();
     bytes.hash(&mut hasher);
     let path = dir.join(format!("{:016x}.{ext}", hasher.finish()));
-    if !path.exists() {
+    if path.exists() {
+        // Mark it recently used so pruning can't delete artwork that's on screen.
+        let _ = std::fs::File::options()
+            .append(true)
+            .open(&path)
+            .and_then(|f| f.set_modified(std::time::SystemTime::now()));
+    } else {
         std::fs::write(&path, bytes)?;
         prune_artwork(dir, MAX_ARTWORK_FILES)?;
     }
@@ -525,6 +531,26 @@ fn prune_artwork(dir: &Path, keep: usize) -> AppResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reused_artwork_survives_pruning() {
+        let dir = std::env::temp_dir().join(format!("notch-artwork-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let on_screen = store_artwork(&dir, b"cover-0", "png").unwrap().unwrap();
+        for i in 1..MAX_ARTWORK_FILES {
+            store_artwork(&dir, format!("cover-{i}").as_bytes(), "png").unwrap();
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+        // Shown again, then one more new cover pushes the cache over its limit.
+        assert_eq!(
+            store_artwork(&dir, b"cover-0", "png").unwrap().unwrap(),
+            on_screen
+        );
+        store_artwork(&dir, b"cover-new", "png").unwrap();
+        assert!(on_screen.exists());
+        assert_eq!(std::fs::read_dir(&dir).unwrap().count(), MAX_ARTWORK_FILES);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 
     fn c(list: &[(&str, bool)]) -> Vec<(String, bool)> {
         list.iter()

@@ -3,4 +3,8 @@
 /**
  * Repositories the Git module knows about (most recent first) and the one shown.
  */
-export type GitSettings = { repos: Array<string>, active?: string, };
+export type GitSettings = { repos: Array<string>, active?: string, 
+/**
+ * GitHub repository (`owner/name`) picked while signed in with GitHub.
+ */
+githubRepo?: string, };

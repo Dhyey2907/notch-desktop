@@ -173,6 +173,38 @@ impl GitService {
         Ok(repo_info(&top))
     }
 
+    /// Show a GitHub repository. If one of your local repositories is a clone of it, that
+    /// one opens (with commit/push/pull); otherwise the Git module shows it straight from
+    /// GitHub. Returns the local repository used, if any.
+    pub async fn select_github_repo(&self, name_with_owner: String) -> AppResult<Option<RepoInfo>> {
+        if !crate::github::valid_name_with_owner(&name_with_owner) {
+            return Err(AppError::InvalidInput(
+                "that isn't a GitHub repository name".into(),
+            ));
+        }
+        let wanted = name_with_owner.to_ascii_lowercase();
+        let known = settings_of(&self.inner.app).git.repos;
+        let local = tauri::async_runtime::spawn_blocking(move || {
+            known.into_iter().find(|path| {
+                cli::origin_url(std::path::Path::new(path))
+                    .and_then(|url| crate::github::parse_remote(&url))
+                    .is_some_and(|(owner, name)| format!("{owner}/{name}").to_ascii_lowercase() == wanted)
+            })
+        })
+        .await
+        .unwrap_or(None);
+        let chosen = name_with_owner.clone();
+        update_settings(&self.inner.app, |s| s.git.github_repo = Some(chosen))?;
+        if let Some(path) = local {
+            return self.select_repo(path).await.map(Some);
+        }
+        update_settings(&self.inner.app, |s| s.git.active = None)?;
+        *self.inner.lock() = State::default();
+        *self.inner.watcher.lock().unwrap_or_else(|e| e.into_inner()) = None;
+        self.inner.publish();
+        Ok(None)
+    }
+
     pub fn forget_repo(&self, path: &str) -> AppResult<()> {
         let was_active = settings_of(&self.inner.app).git.active.as_deref() == Some(path);
         update_settings(&self.inner.app, |s| {
@@ -259,6 +291,23 @@ impl GitService {
                 reason: super::PrUnavailable::NotGithub,
             };
         };
+        // Signed in with "Continue with GitHub": ask GitHub directly (no gh CLI needed).
+        let github = self.inner.app.state::<crate::github::service::GithubService>();
+        if github.signed_in() {
+            let remote = {
+                let repo = repo.clone();
+                tauri::async_runtime::spawn_blocking(move || cli::origin_url(&repo))
+                    .await
+                    .ok()
+                    .flatten()
+            };
+            return match remote.as_deref().and_then(crate::github::parse_remote) {
+                Some((owner, name)) => github.pull_requests(&owner, &name).await,
+                None => PullRequests::Unavailable {
+                    reason: super::PrUnavailable::NotGithub,
+                },
+            };
+        }
         tauri::async_runtime::spawn_blocking(move || cli::pull_requests(&repo))
             .await
             .unwrap_or(PullRequests::Unavailable {

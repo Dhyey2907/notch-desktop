@@ -1,11 +1,10 @@
 // Whether a fullscreen app (video, game, F11 browser) is in front. While it is, the island
-// stays a bubble and only urgent activities (approvals, meeting reminders) pop out.
+// hides, pops in for notifications, and hides again; it comes back when fullscreen ends.
 import { create } from "zustand";
 
 import { eventBus } from "../core/eventBus";
 import { ipc } from "../core/ipc";
 import { windowLabel } from "../core/window";
-import type { Activity } from "../activity/activityStore";
 
 export const useFullscreen = create<{ active: boolean }>(() => ({ active: false }));
 
@@ -24,9 +23,4 @@ export function trackFullscreen(): () => void {
     cancelled = true;
     off();
   };
-}
-
-/** Activities allowed to interrupt a fullscreen app. */
-export function mayInterruptFullscreen(activity: Activity): boolean {
-  return activity.priority === "critical" || activity.priority === "high";
 }

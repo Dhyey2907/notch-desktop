@@ -5,9 +5,11 @@ mod db;
 mod error;
 mod events;
 mod git;
+mod github;
 mod logging;
 mod media;
 mod oauth;
+mod oauth_clients;
 mod phone;
 mod secrets;
 mod settings;
@@ -46,6 +48,7 @@ macro_rules! app_commands {
             commands::app::open_external,
             commands::shell::shell_set_window_size,
             commands::shell::shell_is_fullscreen,
+            commands::shell::shell_set_fullscreen_hidden,
             commands::shell::shell_list_screens,
             commands::settings::settings_get,
             commands::settings::settings_update,
@@ -64,6 +67,16 @@ macro_rules! app_commands {
             commands::calendar::calendar_open_link,
             commands::spotify::spotify_get_snapshot,
             commands::spotify::spotify_connect,
+            commands::signin::sign_in_options,
+            commands::signin::calendar_connect_builtin,
+            commands::signin::spotify_connect_builtin,
+            commands::signin::github_status,
+            commands::signin::github_sign_in,
+            commands::signin::github_cancel_sign_in,
+            commands::signin::github_sign_out,
+            commands::signin::github_repositories,
+            commands::signin::github_repo_overview,
+            commands::signin::github_select_repo,
             commands::spotify::spotify_disconnect,
             commands::spotify::spotify_refresh_playlists,
             commands::spotify::spotify_play_playlist,
@@ -179,6 +192,10 @@ pub fn run() {
             let calendar = calendar::service::CalendarService::new(handle.clone(), mock_enabled("calendar"));
             calendar.start();
             app.manage(calendar);
+
+            let github = github::service::GithubService::new(handle.clone());
+            github.start();
+            app.manage(github);
 
             let phone = phone::service::PhoneService::new(handle.clone());
             phone.start();
