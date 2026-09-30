@@ -19,6 +19,7 @@ use ts_rs::TS;
 use crate::{
     calendar::{CalendarEvent, CalendarSnapshot},
     claude::{approvals::ApprovalRequest, ClaudeStatus},
+    clipboard::ClipboardSnapshot,
     git::GitSnapshot,
     github::GithubStatus,
     media::MediaState,
@@ -80,6 +81,8 @@ pub enum AppEvent {
     /// The global shortcut asked the island to toggle between collapsed and expanded.
     /// Ctrl+Alt+N: toggle the island with this window label (the one on the pointer's screen).
     ShellToggleRequested { label: String },
+    /// A global shortcut asked island `label` to open straight to `module` (Ctrl+Alt+V).
+    ShellOpenModuleRequested { label: String, module: String },
     /// Settings were saved; every window replaces its copy with this one.
     SettingsChanged(Settings),
     /// The active media session changed (`None` when nothing is playing).
@@ -104,6 +107,8 @@ pub enum AppEvent {
     PhoneChanged(PhoneSnapshot),
     /// A new phone notification arrived through Phone Link.
     PhoneNotification(PhoneNotification),
+    /// Clipboard history or pinned clips changed.
+    ClipboardChanged(ClipboardSnapshot),
     /// Tasks, notes, or finished-timer alerts changed.
     TodoChanged(TodoSnapshot),
     /// A task's timer ran out (`late`: it ran out while Notch wasn't running).
@@ -122,6 +127,8 @@ impl AppEvent {
             AppEvent::AppReady { .. } => "AppReady",
             AppEvent::DiagnosticsPong { .. } => "DiagnosticsPong",
             AppEvent::ShellToggleRequested { .. } => "ShellToggleRequested",
+            AppEvent::ShellOpenModuleRequested { .. } => "ShellOpenModuleRequested",
+            AppEvent::ClipboardChanged(_) => "ClipboardChanged",
             AppEvent::SettingsChanged(_) => "SettingsChanged",
             AppEvent::MediaStateChanged { .. } => "MediaStateChanged",
             AppEvent::FullscreenChanged { .. } => "FullscreenChanged",

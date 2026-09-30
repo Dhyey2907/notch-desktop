@@ -1,0 +1,99 @@
+import { X } from "lucide-react";
+import { useState, type FormEvent } from "react";
+
+import { ipc } from "../core/ipc";
+import { Button, ConfirmButton, IconButton, Surface, Switch, TextField } from "../design/components";
+import { useSettings } from ".";
+import { exeName } from "./clipboardApps";
+import { Section } from "./Section";
+
+const MAX_BLOCKED = 50;
+
+export function ClipboardSection() {
+  const clipboard = useSettings((s) => s.settings?.clipboard);
+  const [app, setApp] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const blocked = clipboard?.blockedApps ?? [];
+
+  const save = (change: { paused?: boolean; blockedApps?: string[] }) =>
+    void useSettings
+      .getState()
+      .update((s) => ({ ...s, clipboard: { ...s.clipboard, ...change } }))
+      .then(
+        () => setError(null),
+        () => setError("Couldn't save that. Try again."),
+      );
+
+  const block = () => {
+    const name = exeName(app);
+    if (!name || name.length > 100) return;
+    if (!blocked.includes(name) && blocked.length < MAX_BLOCKED) save({ blockedApps: [...blocked, name] });
+    setApp("");
+  };
+
+  return (
+    <Section title="Clipboard">
+      <Surface>
+        <Switch
+          label="Keep clipboard history"
+          description="Everything you copy shows up in the Clipboard module (Ctrl+Alt+V). History stays in memory and is gone when Notch restarts; only pinned clips are saved."
+          checked={!clipboard?.paused}
+          onChange={(on) => save({ paused: !on })}
+        />
+      </Surface>
+      <p className="settings__note">
+        Copies that apps mark as private are never kept — password managers such as 1Password, Bitwarden and
+        KeePass do this, and they're skipped even if they don't.
+      </p>
+
+      <Surface>
+        <form
+          className="settings__row settings__row--stacked"
+          onSubmit={(e: FormEvent) => {
+            e.preventDefault();
+            block();
+          }}
+        >
+          <TextField
+            label="Never keep copies from"
+            value={app}
+            onChange={setApp}
+            placeholder="slack.exe"
+            description="The app's program name, e.g. slack.exe or chrome.exe."
+          />
+          <div className="settings__buttons settings__buttons--start">
+            <Button variant="primary" disabled={!exeName(app)} onClick={block}>
+              Block app
+            </Button>
+          </div>
+        </form>
+        {blocked.length > 0 && (
+          <ul className="settings__chips" aria-label="Blocked apps">
+            {blocked.map((name) => (
+              <li key={name} className="settings__chip">
+                {name}
+                <IconButton
+                  icon={X}
+                  label={`Stop blocking ${name}`}
+                  size="sm"
+                  onClick={() => save({ blockedApps: blocked.filter((b) => b !== name) })}
+                />
+              </li>
+            ))}
+          </ul>
+        )}
+      </Surface>
+
+      <div className="settings__buttons settings__buttons--start">
+        <ConfirmButton
+          variant="danger"
+          confirmLabel="Clear history?"
+          onConfirm={() => void ipc.clipboardClear()}
+        >
+          Clear clipboard history
+        </ConfirmButton>
+      </div>
+      {error && <p className="settings__note settings__note--warning">{error}</p>}
+    </Section>
+  );
+}

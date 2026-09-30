@@ -176,11 +176,17 @@ fn toggle_shortcut() -> Shortcut {
     Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::KeyN)
 }
 
+/// Ctrl+Alt+V: open the notch straight to clipboard history.
+fn clipboard_shortcut() -> Shortcut {
+    Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::KeyV)
+}
+
 pub fn shortcut_plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
     let toggle = toggle_shortcut();
+    let clipboard = clipboard_shortcut();
     tauri_plugin_global_shortcut::Builder::new()
         .with_handler(move |app, shortcut, event| {
-            if shortcut != &toggle || event.state() != ShortcutState::Pressed {
+            if event.state() != ShortcutState::Pressed || (shortcut != &toggle && shortcut != &clipboard) {
                 return;
             }
             // The island on the screen the pointer is on.
@@ -189,12 +195,16 @@ pub fn shortcut_plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
             };
             let _ = show_island(&window);
             let _ = window.set_focus();
-            app.state::<AppState>().bus.emit(
-                "shell",
-                AppEvent::ShellToggleRequested {
-                    label: window.label().to_owned(),
-                },
-            );
+            let label = window.label().to_owned();
+            let event = if shortcut == &clipboard {
+                AppEvent::ShellOpenModuleRequested {
+                    label,
+                    module: "clipboard".into(),
+                }
+            } else {
+                AppEvent::ShellToggleRequested { label }
+            };
+            app.state::<AppState>().bus.emit("shell", event);
         })
         .build()
 }
@@ -206,6 +216,9 @@ pub fn init(app: &AppHandle) -> AppResult<()> {
     if let Err(error) = app.global_shortcut().register(toggle_shortcut()) {
         // Another app may own the chord; the island still works by pointer and tray.
         tracing::warn!(%error, "could not register the Ctrl+Alt+N shortcut");
+    }
+    if let Err(error) = app.global_shortcut().register(clipboard_shortcut()) {
+        tracing::warn!(%error, "could not register the Ctrl+Alt+V shortcut");
     }
 
     // `main` comes from tauri.conf.json; other screens' islands are created by `sync`.

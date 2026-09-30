@@ -438,3 +438,23 @@ html.settings-window #root {
   font-weight: var(--weight-headline);
   letter-spacing: 0.12em;
 }
+
+/* Clipboard: blocked apps */
+.settings__chips {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.settings__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 2px 0 var(--space-3);
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: var(--text-sm);
+}

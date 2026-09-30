@@ -12,6 +12,7 @@ const defaults: Settings = {
   spotify: { pinnedPlaylists: [] },
   git: { repos: [] },
   display: { mode: "primary" },
+  clipboard: { paused: false, blockedApps: [] },
 };
 
 function setup(initial: Settings = defaults) {

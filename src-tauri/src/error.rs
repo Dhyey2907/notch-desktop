@@ -42,3 +42,10 @@ impl Serialize for AppError {
 }
 
 pub type AppResult<T> = Result<T, AppError>;
+
+#[cfg(windows)]
+impl From<windows::core::Error> for AppError {
+    fn from(error: windows::core::Error) -> Self {
+        AppError::Platform(error.to_string())
+    }
+}

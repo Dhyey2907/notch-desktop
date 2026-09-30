@@ -1,5 +1,6 @@
 mod calendar;
 mod claude;
+mod clipboard;
 mod commands;
 mod db;
 mod error;
@@ -100,6 +101,13 @@ macro_rules! app_commands {
             commands::claude::claude_status_line_preview,
             commands::claude::claude_status_line_enable,
             commands::claude::claude_status_line_disable,
+            commands::clipboard::clipboard_snapshot,
+            commands::clipboard::clipboard_copy,
+            commands::clipboard::clipboard_text,
+            commands::clipboard::clipboard_pin,
+            commands::clipboard::clipboard_unpin,
+            commands::clipboard::clipboard_delete,
+            commands::clipboard::clipboard_clear,
             commands::todo::todo_snapshot,
             commands::todo::todo_add_task,
             commands::todo::todo_set_done,
@@ -200,6 +208,11 @@ pub fn run() {
             let phone = phone::service::PhoneService::new(handle.clone());
             phone.start();
             app.manage(phone);
+
+            let clips_dir = app.path().app_cache_dir()?.join("clips");
+            let clipboard = clipboard::service::ClipboardService::new(handle.clone(), clips_dir);
+            clipboard.start();
+            app.manage(clipboard);
 
             let todo = todo::service::TodoService::new(handle.clone());
             todo.start();

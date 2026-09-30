@@ -116,6 +116,18 @@ export function Island() {
     [],
   );
 
+  // Ctrl+Alt+V: open straight to a module (clipboard history), even if already expanded.
+  useEffect(
+    () =>
+      eventBus.on("ShellOpenModuleRequested", async ({ event }) => {
+        if (event.payload.label !== windowLabel() || !findModule(event.payload.module)) return;
+        useModuleNav.getState().setActive(event.payload.module);
+        if (useIsland.getState().mode !== "expanded") await useIsland.getState().request("expanded");
+        focusActiveDockItem();
+      }),
+    [],
+  );
+
   // Clicking elsewhere (window blur) collapses; Escape collapses or dismisses the activity.
   useEffect(() => {
     const unlisten = getCurrentWindow().onFocusChanged(({ payload: focused }) => {

@@ -32,16 +32,16 @@ pub fn app_info(app: tauri::AppHandle, state: State<'_, AppState>) -> AppResult<
     })
 }
 
-/// Open an https link (e.g. a pull request) in the default browser. Other schemes are refused
-/// so a crafted link can't launch local programs.
+/// Open a web link (a pull request, a copied link) in the default browser. Other schemes are
+/// refused so a crafted link can't launch local programs.
 #[tauri::command]
 pub fn open_external(url: String, app: tauri::AppHandle) -> AppResult<()> {
     use tauri_plugin_opener::OpenerExt;
     let parsed =
         url::Url::parse(&url).map_err(|_| crate::error::AppError::InvalidInput("invalid link".into()))?;
-    if parsed.scheme() != "https" {
+    if !matches!(parsed.scheme(), "https" | "http") {
         return Err(crate::error::AppError::InvalidInput(
-            "only https links can be opened".into(),
+            "only web links can be opened".into(),
         ));
     }
     app.opener()

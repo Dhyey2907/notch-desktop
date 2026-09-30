@@ -4,6 +4,7 @@
 pub mod app;
 pub mod calendar;
 pub mod claude;
+pub mod clipboard;
 #[cfg(debug_assertions)]
 pub mod dev;
 pub mod diagnostics;

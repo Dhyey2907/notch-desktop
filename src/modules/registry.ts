@@ -2,6 +2,7 @@
 // registered module is enabled.
 import { calendarModule } from "./calendar";
 import { claudeModule } from "./claude";
+import { clipboardModule } from "./clipboard";
 import { devEventsModule } from "./devEvents";
 import { galleryModule } from "./gallery";
 import { gitModule } from "./git";
@@ -24,7 +25,17 @@ const devModules: NotchModule[] =
     : [];
 
 export const MODULES: readonly NotchModule[] = sortModules(
-  [homeModule, mediaModule, calendarModule, gitModule, claudeModule, todoModule, phoneModule, ...devModules],
+  [
+    homeModule,
+    mediaModule,
+    calendarModule,
+    gitModule,
+    claudeModule,
+    todoModule,
+    clipboardModule,
+    phoneModule,
+    ...devModules,
+  ],
   import.meta.env.DEV,
 );
 

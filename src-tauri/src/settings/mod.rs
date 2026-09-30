@@ -119,6 +119,16 @@ pub struct DisplaySettings {
     pub monitor: Option<String>,
 }
 
+/// Clipboard history: pause it, or never keep copies from some apps (by exe name).
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export)]
+pub struct ClipboardSettings {
+    pub paused: bool,
+    /// e.g. `["slack.exe"]`. Password managers are always skipped.
+    pub blocked_apps: Vec<String>,
+}
+
 /// Repositories the Git module knows about (most recent first) and the one shown.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", default)]
@@ -147,6 +157,7 @@ pub struct Settings {
     pub spotify: SpotifySettings,
     pub git: GitSettings,
     pub display: DisplaySettings,
+    pub clipboard: ClipboardSettings,
 }
 
 impl Settings {
@@ -189,6 +200,15 @@ impl Settings {
             .is_some_and(|r| !crate::github::valid_name_with_owner(r))
         {
             return Err(AppError::InvalidInput("invalid GitHub repository".into()));
+        }
+        if self.clipboard.blocked_apps.len() > 50
+            || self
+                .clipboard
+                .blocked_apps
+                .iter()
+                .any(|a| a.trim().is_empty() || a.len() > 100)
+        {
+            return Err(AppError::InvalidInput("invalid clipboard block list".into()));
         }
         if self.calendar.reminder_minutes > 120 {
             return Err(AppError::InvalidInput("reminder lead is too long".into()));

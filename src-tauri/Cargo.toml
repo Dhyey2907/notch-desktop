@@ -44,6 +44,7 @@ keyring = { version = "3", features = ["windows-native"] }
 notify = "8.2.0"
 tauri-plugin-dialog = "2.8.0"
 tiny_http = "0.12.0"
+png = "0.18"
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
@@ -70,6 +71,10 @@ windows = { version = "0.61", features = [
     "Win32_Media_Audio",
     "Win32_NetworkManagement_IpHelper",
     "Win32_Networking_WinSock",
+    "Win32_System_DataExchange",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Memory",
+    "Win32_System_Ole",
     "Win32_System_Threading",
     "Win32_System_WinRT",
     "Win32_UI_Shell",

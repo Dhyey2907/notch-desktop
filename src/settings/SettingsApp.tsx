@@ -11,13 +11,15 @@ import { MODULES } from "../modules/registry";
 import { useSettings } from ".";
 import { AiSection } from "./AiSection";
 import { CalendarSection } from "./CalendarSection";
+import { ClipboardSection } from "./ClipboardSection";
 import { GitSection } from "./GitSection";
 import { MediaSection } from "./MediaSection";
 import { Section } from "./Section";
 import { moduleSettings } from "./settingsStore";
 import "./settings.css";
 
-type SectionId = "general" | "appearance" | "modules" | "media" | "calendar" | "git" | "ai" | "diagnostics";
+type SectionId =
+  "general" | "appearance" | "modules" | "media" | "calendar" | "git" | "clipboard" | "ai" | "diagnostics";
 
 const SECTIONS: { id: SectionId; label: string }[] = [
   { id: "general", label: "General" },
@@ -26,6 +28,7 @@ const SECTIONS: { id: SectionId; label: string }[] = [
   { id: "media", label: "Media" },
   { id: "calendar", label: "Calendar" },
   { id: "git", label: "Git" },
+  { id: "clipboard", label: "Clipboard" },
   { id: "ai", label: "AI" },
   { id: "diagnostics", label: "Diagnostics & About" },
 ];
@@ -72,6 +75,7 @@ export function SettingsApp() {
             {section === "media" && <MediaSection />}
             {section === "calendar" && <CalendarSection />}
             {section === "git" && <GitSection />}
+            {section === "clipboard" && <ClipboardSection />}
             {section === "ai" && <AiSection />}
             {section === "diagnostics" && <DiagnosticsSection />}
           </>

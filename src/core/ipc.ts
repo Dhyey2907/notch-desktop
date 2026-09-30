@@ -3,6 +3,7 @@
 import { invoke } from "@tauri-apps/api/core";
 
 import type { AppInfo } from "./generated/AppInfo";
+import type { ClipboardSnapshot } from "./generated/ClipboardSnapshot";
 import type { DeviceCode } from "./generated/DeviceCode";
 import type { GithubRepo } from "./generated/GithubRepo";
 import type { GithubRepoOverview } from "./generated/GithubRepoOverview";
@@ -85,6 +86,16 @@ export const ipc = {
   spotifySetPinned: (playlistIds: string[]) => invoke<void>("spotify_set_pinned", { playlistIds }),
   /** Open an https link (e.g. a pull request) in the default browser. */
   openExternal: (url: string) => invoke<void>("open_external", { url }),
+  clipboardSnapshot: () => invoke<ClipboardSnapshot>("clipboard_snapshot"),
+  /** Copy a clip again; `formatted` indents JSON first. */
+  clipboardCopy: (id: string, formatted = false) => invoke<void>("clipboard_copy", { id, formatted }),
+  /** A clip's full text (the list carries only the start). */
+  clipboardText: (id: string) => invoke<string>("clipboard_text", { id }),
+  clipboardPin: (id: string) => invoke<void>("clipboard_pin", { id }),
+  clipboardUnpin: (id: string) => invoke<void>("clipboard_unpin", { id }),
+  clipboardDelete: (id: string) => invoke<void>("clipboard_delete", { id }),
+  /** Empty history; pinned clips stay. */
+  clipboardClear: () => invoke<void>("clipboard_clear"),
   gitGetSnapshot: () => invoke<GitSnapshot>("git_get_snapshot"),
   gitRefresh: () => invoke<void>("git_refresh"),
   /** Folder picker; resolves `null` if cancelled. */

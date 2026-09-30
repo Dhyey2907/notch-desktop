@@ -1,0 +1,150 @@
+.clips {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.clips p {
+  margin: 0;
+}
+
+.clips-search {
+  height: 30px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--text-sm);
+  outline: none;
+}
+
+.clips-search:focus {
+  border-color: var(--border-strong, rgba(255, 255, 255, 0.24));
+}
+
+.clips-search::placeholder {
+  color: var(--text-muted);
+}
+
+.clips-status {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.clips-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 2px 0 0;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.clips-section {
+  margin-top: var(--space-1);
+  padding: 0 var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.clip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  border-radius: var(--radius-sm);
+}
+
+.clip:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.clip__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.clip__main:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.clip__icon,
+.clip__swatch,
+.clip__thumb {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+}
+
+.clip__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  color: var(--text-secondary, var(--text-muted));
+}
+
+.clip__swatch {
+  border: 1px solid var(--border);
+}
+
+.clip__thumb {
+  object-fit: cover;
+  background: var(--surface);
+}
+
+.clip__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.clip__title {
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.clip__meta {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.clip__copied {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--success, #4ade80);
+}
+
+.clip__actions {
+  display: flex;
+  align-items: center;
+  opacity: 0.55;
+}
+
+.clip:hover .clip__actions,
+.clip:focus-within .clip__actions {
+  opacity: 1;
+}
