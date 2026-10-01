@@ -12,6 +12,7 @@ import { contentEnter, INSTANT, ISLAND_SPRING, SERIOUS_SPRING } from "../design/
 import { useReduceMotion } from "../design/useReduceMotion";
 import { findModule } from "../modules/registry";
 import { Dock } from "./Dock";
+import { useFileDrop } from "./fileDrop";
 import { trackFullscreen, useFullscreen } from "./fullscreen";
 import { activityIslandSize, islandRadius, WINDOW_MARGIN, type IslandMode } from "./geometry";
 import { CompactHost, ModuleHost, PeekHost } from "./ModuleHost";
@@ -67,6 +68,7 @@ export function Island() {
 
   useModuleLifecycle();
   useEffect(() => trackFullscreen(), []);
+  useFileDrop();
   useFirstRunPrompt();
 
   // Fullscreen app in front: hidden while resting, shown while a notification is up (or

@@ -1,5 +1,6 @@
-// Clipboard history. Click a clip to copy it again; pin the ones you reuse. Links open,
-// colors show a swatch, JSON can be copied indented, and short text can become a task.
+// Copied | Files. Copied is clipboard history: click a clip to copy it again, pin the ones you
+// reuse; links open, colors show a swatch, JSON can be copied indented, and short text can
+// become a task. Files is the drop shelf (ShelfView).
 import { convertFileSrc } from "@tauri-apps/api/core";
 import {
   Braces,
@@ -10,6 +11,7 @@ import {
   Image as ImageIcon,
   Link,
   ListPlus,
+  PackagePlus,
   Palette,
   Pause,
   Pin,
@@ -24,10 +26,18 @@ import { useEffect, useState } from "react";
 
 import type { Clip } from "../../core/generated/Clip";
 import { ipc, isIpcError } from "../../core/ipc";
-import { ConfirmButton, EmptyState, IconButton, ModuleContainer } from "../../design/components";
+import {
+  ConfirmButton,
+  EmptyState,
+  IconButton,
+  ModuleContainer,
+  SegmentedControl,
+} from "../../design/components";
 import { useSettings } from "../../settings";
 import { age, clipTitle, matchesQuery, taskTitle } from "./clips";
 import { useClipboard } from "./clipboardStore";
+import { useShelf, type ClipboardTab } from "./shelfStore";
+import { ShelfView } from "./ShelfView";
 import { useMinuteClock } from "./useMinuteClock";
 import "./clipboard.css";
 
@@ -61,6 +71,29 @@ function ClipIcon({ clip }: { clip: Clip }) {
 }
 
 export default function ClipboardExpanded() {
+  const tab = useShelf((s) => s.tab);
+  const shelfCount = useShelf((s) => s.snapshot?.items.length ?? 0);
+  return (
+    <ModuleContainer
+      title="Clipboard"
+      trailing={
+        <SegmentedControl<ClipboardTab>
+          label="Clipboard view"
+          value={tab}
+          options={[
+            { value: "copied", label: "Copied" },
+            { value: "files", label: shelfCount ? `Files · ${shelfCount}` : "Files" },
+          ]}
+          onChange={(t) => useShelf.getState().setTab(t)}
+        />
+      }
+    >
+      {tab === "copied" ? <CopiedView /> : <ShelfView />}
+    </ModuleContainer>
+  );
+}
+
+function CopiedView() {
   const snapshot = useClipboard((s) => s.snapshot);
   const paused = useSettings((s) => s.settings?.clipboard.paused ?? false);
   const [query, setQuery] = useState("");
@@ -110,6 +143,7 @@ export default function ClipboardExpanded() {
       onDelete={() => run(ipc.clipboardDelete(clip.id))}
       onOpen={() => run(ipc.openExternal(clip.preview.trim()))}
       onTask={(title) => run(ipc.todoAddTask(title, null, false), "Added to To-do")}
+      onShelf={() => run(ipc.shelfAdd(clip.files), "Added to Files")}
       onNote={() =>
         run(
           ipc.clipboardText(clip.id).then((text) => ipc.noteAdd(text)),
@@ -120,26 +154,8 @@ export default function ClipboardExpanded() {
   );
 
   return (
-    <ModuleContainer
-      title="Clipboard"
-      trailing={
-        <>
-          <IconButton
-            icon={paused ? Play : Pause}
-            label={paused ? "Resume clipboard history" : "Pause clipboard history"}
-            size="sm"
-            active={paused}
-            onClick={() => setPaused(!paused)}
-          />
-          {(snapshot?.recent.length ?? 0) > 0 && (
-            <ConfirmButton confirmLabel="Clear history?" onConfirm={() => run(ipc.clipboardClear())}>
-              Clear
-            </ConfirmButton>
-          )}
-        </>
-      }
-    >
-      <div className="clips">
+    <div className="clips">
+      <div className="clips-bar">
         {!empty && (
           <input
             className="clips-search"
@@ -149,25 +165,38 @@ export default function ClipboardExpanded() {
             onChange={(e) => setQuery(e.target.value)}
           />
         )}
-        {status && <p className="clips-status">{status}</p>}
-        {paused && <p className="clips-status">Paused — new copies aren't kept.</p>}
-        {empty ? (
-          <EmptyState
-            title="Nothing copied yet"
-            body="Copy text, a picture or files and it shows up here. Password managers are never recorded."
-          />
-        ) : pinned.length + recent.length === 0 ? (
-          <EmptyState title="No matches" body="Try a different search." />
-        ) : (
-          <ul className="clips-list" aria-label="Clipboard history">
-            {pinned.length > 0 && <li className="clips-section">Pinned</li>}
-            {pinned.map(row)}
-            {pinned.length > 0 && recent.length > 0 && <li className="clips-section">Recent</li>}
-            {recent.map(row)}
-          </ul>
+        <span className="clips-bar__spacer" />
+        <IconButton
+          icon={paused ? Play : Pause}
+          label={paused ? "Resume clipboard history" : "Pause clipboard history"}
+          size="sm"
+          active={paused}
+          onClick={() => setPaused(!paused)}
+        />
+        {(snapshot?.recent.length ?? 0) > 0 && (
+          <ConfirmButton confirmLabel="Clear history?" onConfirm={() => run(ipc.clipboardClear())}>
+            Clear
+          </ConfirmButton>
         )}
       </div>
-    </ModuleContainer>
+      {status && <p className="clips-status">{status}</p>}
+      {paused && <p className="clips-status">Paused — new copies aren't kept.</p>}
+      {empty ? (
+        <EmptyState
+          title="Nothing copied yet"
+          body="Copy text, a picture or files and it shows up here. Password managers are never recorded."
+        />
+      ) : pinned.length + recent.length === 0 ? (
+        <EmptyState title="No matches" body="Try a different search." />
+      ) : (
+        <ul className="clips-list" aria-label="Clipboard history">
+          {pinned.length > 0 && <li className="clips-section">Pinned</li>}
+          {pinned.map(row)}
+          {pinned.length > 0 && recent.length > 0 && <li className="clips-section">Recent</li>}
+          {recent.map(row)}
+        </ul>
+      )}
+    </div>
   );
 }
 
@@ -181,6 +210,7 @@ function ClipRow({
   onOpen,
   onTask,
   onNote,
+  onShelf,
 }: {
   clip: Clip;
   now: number;
@@ -191,6 +221,7 @@ function ClipRow({
   onOpen: () => void;
   onTask: (title: string) => void;
   onNote: () => void;
+  onShelf: () => void;
 }) {
   const title = clipTitle(clip);
   const task = taskTitle(clip);
@@ -241,6 +272,9 @@ function ClipRow({
         {task && <IconButton icon={ListPlus} label="Add as a task" size="sm" onClick={() => onTask(task)} />}
         {clip.kind === "text" && !clip.textKind && !task && (
           <IconButton icon={StickyNote} label="Save as a note" size="sm" onClick={onNote} />
+        )}
+        {clip.kind === "files" && (
+          <IconButton icon={PackagePlus} label="Add to Files shelf" size="sm" onClick={onShelf} />
         )}
         <IconButton
           icon={clip.pinned ? PinOff : Pin}

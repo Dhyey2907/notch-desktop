@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 import type { AppInfo } from "./generated/AppInfo";
 import type { ClipboardSnapshot } from "./generated/ClipboardSnapshot";
+import type { ShelfSnapshot } from "./generated/ShelfSnapshot";
 import type { DeviceCode } from "./generated/DeviceCode";
 import type { GithubRepo } from "./generated/GithubRepo";
 import type { GithubRepoOverview } from "./generated/GithubRepoOverview";
@@ -96,6 +97,16 @@ export const ipc = {
   clipboardDelete: (id: string) => invoke<void>("clipboard_delete", { id }),
   /** Empty history; pinned clips stay. */
   clipboardClear: () => invoke<void>("clipboard_clear"),
+  shelfSnapshot: () => invoke<ShelfSnapshot>("shelf_snapshot"),
+  /** Park files on the drop shelf; resolves to how many were new. */
+  shelfAdd: (paths: string[]) => invoke<number>("shelf_add", { paths }),
+  shelfRemove: (ids: string[]) => invoke<void>("shelf_remove", { ids }),
+  shelfClear: () => invoke<void>("shelf_clear"),
+  /** Copy shelf files to the clipboard (no ids: all). */
+  shelfCopy: (ids: string[] = []) => invoke<void>("shelf_copy", { ids }),
+  shelfReveal: (id: string) => invoke<void>("shelf_reveal", { id }),
+  /** Drag shelf files out of the notch (no ids: all); true if dropped somewhere. */
+  shelfDrag: (ids: string[] = []) => invoke<boolean>("shelf_drag", { ids }),
   gitGetSnapshot: () => invoke<GitSnapshot>("git_get_snapshot"),
   gitRefresh: () => invoke<void>("git_refresh"),
   /** Folder picker; resolves `null` if cancelled. */

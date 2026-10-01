@@ -12,6 +12,7 @@ pub mod git;
 pub mod media;
 pub mod phone;
 pub mod settings;
+pub mod shelf;
 pub mod shell;
 pub mod signin;
 pub mod spotify;

@@ -148,3 +148,72 @@
 .clip:focus-within .clip__actions {
   opacity: 1;
 }
+
+/* Toolbar row (both tabs) */
+.clips-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.clips-bar .clips-search {
+  flex: 1;
+  min-width: 0;
+}
+
+.clips-bar__spacer {
+  flex: 1;
+}
+
+.clips-bar .clips-search + .clips-bar__spacer {
+  display: none;
+}
+
+/* Drop shelf */
+.shelf-drop {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius-md, 12px);
+  transition:
+    border-color 120ms ease,
+    background 120ms ease;
+}
+
+.shelf-drop--active {
+  border-color: var(--info);
+  background: rgba(96, 165, 250, 0.08);
+}
+
+.shelf-grip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 var(--space-3) 0 var(--space-2);
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: var(--text-xs);
+  color: var(--text-secondary, var(--text-muted));
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.shelf-item__drag {
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.shelf-item--missing .clip__title {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.shelf-item--missing .clip__meta {
+  color: var(--warning);
+}

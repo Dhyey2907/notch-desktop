@@ -219,7 +219,8 @@ fn build_island_window(app: &AppHandle, label: &str, size: (f64, f64)) -> AppRes
             .resizable(false)
             .maximizable(false)
             .minimizable(false)
-            .focused(false)
+            // Hidden until placed. Not `focused(false)`: WebView2 created hidden *and*
+            // unfocused never registers for file drops, which the drop shelf needs.
             .visible(false)
             .build()?,
     )

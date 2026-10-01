@@ -9,7 +9,7 @@
 pub mod image;
 pub mod service;
 #[cfg(windows)]
-mod win;
+pub(crate) mod win;
 
 use std::{
     collections::VecDeque,

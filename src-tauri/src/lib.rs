@@ -14,6 +14,7 @@ mod oauth_clients;
 mod phone;
 mod secrets;
 mod settings;
+mod shelf;
 mod shell;
 mod spotify;
 mod state;
@@ -108,6 +109,13 @@ macro_rules! app_commands {
             commands::clipboard::clipboard_unpin,
             commands::clipboard::clipboard_delete,
             commands::clipboard::clipboard_clear,
+            commands::shelf::shelf_snapshot,
+            commands::shelf::shelf_add,
+            commands::shelf::shelf_remove,
+            commands::shelf::shelf_clear,
+            commands::shelf::shelf_copy,
+            commands::shelf::shelf_reveal,
+            commands::shelf::shelf_drag,
             commands::todo::todo_snapshot,
             commands::todo::todo_add_task,
             commands::todo::todo_set_done,
@@ -213,6 +221,8 @@ pub fn run() {
             let clipboard = clipboard::service::ClipboardService::new(handle.clone(), clips_dir);
             clipboard.start();
             app.manage(clipboard);
+
+            app.manage(shelf::service::ShelfService::new(handle.clone()));
 
             let todo = todo::service::TodoService::new(handle.clone());
             todo.start();

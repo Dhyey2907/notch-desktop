@@ -25,6 +25,7 @@ use crate::{
     media::MediaState,
     phone::{PhoneNotification, PhoneSnapshot},
     settings::Settings,
+    shelf::ShelfSnapshot,
     spotify::SpotifySnapshot,
     todo::{Task, TodoSnapshot},
 };
@@ -109,6 +110,8 @@ pub enum AppEvent {
     PhoneNotification(PhoneNotification),
     /// Clipboard history or pinned clips changed.
     ClipboardChanged(ClipboardSnapshot),
+    /// Files on the drop shelf changed.
+    ShelfChanged(ShelfSnapshot),
     /// Tasks, notes, or finished-timer alerts changed.
     TodoChanged(TodoSnapshot),
     /// A task's timer ran out (`late`: it ran out while Notch wasn't running).
@@ -129,6 +132,7 @@ impl AppEvent {
             AppEvent::ShellToggleRequested { .. } => "ShellToggleRequested",
             AppEvent::ShellOpenModuleRequested { .. } => "ShellOpenModuleRequested",
             AppEvent::ClipboardChanged(_) => "ClipboardChanged",
+            AppEvent::ShelfChanged(_) => "ShelfChanged",
             AppEvent::SettingsChanged(_) => "SettingsChanged",
             AppEvent::MediaStateChanged { .. } => "MediaStateChanged",
             AppEvent::FullscreenChanged { .. } => "FullscreenChanged",
