@@ -9,6 +9,7 @@ import type { SoundState } from "./generated/SoundState";
 import type { DeviceCode } from "./generated/DeviceCode";
 import type { GithubRepo } from "./generated/GithubRepo";
 import type { GithubRepoOverview } from "./generated/GithubRepoOverview";
+import type { GithubNotification } from "./generated/GithubNotification";
 import type { GithubStatus } from "./generated/GithubStatus";
 import type { RepoInfo as GithubLocalRepo } from "./generated/RepoInfo";
 import type { SignInOptions } from "./generated/SignInOptions";
@@ -144,6 +145,10 @@ export const ipc = {
   githubSignIn: () => invoke<DeviceCode>("github_sign_in"),
   githubCancelSignIn: () => invoke<void>("github_cancel_sign_in"),
   githubSignOut: () => invoke<void>("github_sign_out"),
+  /** Unread GitHub notifications, newest first. */
+  githubNotifications: () => invoke<GithubNotification[]>("github_notifications"),
+  /** Mark a GitHub notification read (on GitHub too). */
+  githubMarkRead: (id: string) => invoke<void>("github_mark_read", { id }),
   /** Your GitHub repositories, most recently pushed first. */
   githubRepositories: () => invoke<GithubRepo[]>("github_repositories"),
   githubRepoOverview: (nameWithOwner: string) =>

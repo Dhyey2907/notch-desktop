@@ -20,6 +20,7 @@ import {
   TextField,
 } from "../../design/components";
 import { activityCells, changeSummary, timeAgo, trackedChanges, useGit } from "./gitStore";
+import { GithubInbox, InboxButton } from "./GithubInbox";
 import { GithubRepoPicker, GithubRepoView } from "./GithubView";
 import { useGithub } from "./githubStore";
 import { notify } from "./notify";
@@ -55,8 +56,13 @@ export default function GitExpanded() {
   const [tab, setTab] = useState<Tab>("overview");
   // Showing the GitHub repository picker (from the switcher or "Change").
   const [choosing, setChoosing] = useState(false);
+  // Showing the GitHub notifications inbox.
+  const [inbox, setInbox] = useState(false);
 
   if (!snapshot) return <ModuleContainer title="Git">{null}</ModuleContainer>;
+
+  if (github?.signedIn && inbox) return <GithubInbox onClose={() => setInbox(false)} />;
+  const inboxButton = github?.signedIn ? <InboxButton onOpen={() => setInbox(true)} /> : null;
 
   const noLocalRepo = snapshot.status.state === "noRepo" || !snapshot.repo;
   // Signed in with GitHub: pick from your GitHub repositories instead of a folder.
@@ -74,7 +80,12 @@ export default function GitExpanded() {
   }
   if (github?.signedIn && noLocalRepo && githubRepo) {
     return (
-      <GithubRepoView nameWithOwner={githubRepo} onChange={() => setChoosing(true)} onLinkFolder={pickRepo} />
+      <GithubRepoView
+        nameWithOwner={githubRepo}
+        onChange={() => setChoosing(true)}
+        onLinkFolder={pickRepo}
+        extra={inboxButton}
+      />
     );
   }
 
@@ -111,6 +122,7 @@ export default function GitExpanded() {
   const trailing = (
     <>
       {snapshot.mock && <MockBadge />}
+      {inboxButton}
       <RepoSwitcher snapshot={snapshot} onGithub={github?.signedIn ? () => setChoosing(true) : undefined} />
       <SegmentedControl<Tab>
         label="Git view"

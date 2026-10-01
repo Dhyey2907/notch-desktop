@@ -80,6 +80,8 @@ macro_rules! app_commands {
             commands::signin::github_repositories,
             commands::signin::github_repo_overview,
             commands::signin::github_select_repo,
+            commands::signin::github_notifications,
+            commands::signin::github_mark_read,
             commands::spotify::spotify_disconnect,
             commands::spotify::spotify_refresh_playlists,
             commands::spotify::spotify_play_playlist,

@@ -119,6 +119,19 @@ pub struct DisplaySettings {
     pub monitor: Option<String>,
 }
 
+/// Which new GitHub notifications pop up in the notch (all are listed in the Git inbox).
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export)]
+pub struct GithubAlertSettings {
+    pub hide_reviews: bool,
+    pub hide_ci_failures: bool,
+    /// Successful runs are quiet unless asked for.
+    pub show_ci_passes: bool,
+    /// Mentions and assignments.
+    pub hide_mentions: bool,
+}
+
 /// Volume, brightness and Bluetooth readouts in the notch (all shown unless turned off).
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", default)]
@@ -169,6 +182,7 @@ pub struct Settings {
     pub display: DisplaySettings,
     pub clipboard: ClipboardSettings,
     pub hud: HudSettings,
+    pub github_alerts: GithubAlertSettings,
 }
 
 impl Settings {

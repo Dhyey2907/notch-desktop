@@ -1,4 +1,5 @@
-//! GitHub device-flow sign-in and pull requests over the GraphQL API.
+//! GitHub device-flow sign-in, pull requests over the GraphQL API, and notifications
+//! (review requests, CI results, mentions) polled while signed in.
 
 use std::{
     sync::{
@@ -13,6 +14,7 @@ use serde_json::{json, Value};
 use tauri::{AppHandle, Manager};
 
 use super::{
+    notifications::{self, GithubNotification, Seen},
     parse_commits, parse_repos, parse_token_poll, DeviceCode, DeviceCodeResponse, GithubRepo,
     GithubRepoOverview, GithubStatus, TokenPoll,
 };
@@ -78,6 +80,20 @@ struct Inner {
     status: Mutex<GithubStatus>,
     /// Bumped to cancel a sign-in that's waiting for approval.
     attempt: AtomicU64,
+    /// Unread notifications, newest first.
+    notifications: Mutex<Vec<GithubNotification>>,
+    /// Wakes the notifications poller (signed in or out).
+    wake: tokio::sync::Notify,
+}
+
+/// GitHub asks clients to poll notifications no more often than this (`X-Poll-Interval`).
+const MIN_POLL: Duration = Duration::from_secs(60);
+/// Back off after errors (offline, GitHub down).
+const ERROR_POLL: Duration = Duration::from_secs(300);
+
+enum Fetched {
+    NotModified,
+    List(Vec<GithubNotification>),
 }
 
 #[derive(Clone)]
@@ -104,12 +120,16 @@ impl GithubService {
                     last_error: None,
                 }),
                 attempt: AtomicU64::new(0),
+                notifications: Mutex::new(Vec::new()),
+                wake: tokio::sync::Notify::new(),
             }),
         }
     }
 
-    /// Fill in the account name for an existing sign-in.
+    /// Fill in the account name for an existing sign-in, and watch notifications.
     pub fn start(&self) {
+        let poller = self.inner.clone();
+        tauri::async_runtime::spawn(async move { poller.watch_notifications().await });
         if !self.inner.status().signed_in {
             return;
         }
@@ -189,6 +209,43 @@ impl GithubService {
             s.pending = None;
         });
         tracing::info!("github signed out");
+        Ok(())
+    }
+
+    pub fn notifications(&self) -> Vec<GithubNotification> {
+        self.inner
+            .notifications
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
+    }
+
+    /// Mark a notification read on GitHub and drop it from the list.
+    pub async fn mark_read(&self, id: &str) -> AppResult<()> {
+        if id.is_empty() || id.len() > 32 || !id.chars().all(|c| c.is_ascii_digit()) {
+            return Err(AppError::InvalidInput("invalid notification".into()));
+        }
+        let Ok(Some(token)) = secrets::get(Credential::GithubToken) else {
+            return Err(AppError::InvalidInput("Sign in with GitHub first".into()));
+        };
+        let response = self
+            .inner
+            .http
+            .patch(format!("{API}/notifications/threads/{id}"))
+            .bearer_auth(&token)
+            .header("Accept", "application/vnd.github+json")
+            .send()
+            .await
+            .map_err(|_| AppError::InvalidInput("Couldn't reach GitHub".into()))?;
+        if !response.status().is_success() {
+            return Err(AppError::InvalidInput("GitHub didn't mark it read".into()));
+        }
+        let list = {
+            let mut list = self.inner.notifications.lock().unwrap_or_else(|e| e.into_inner());
+            list.retain(|n| n.id != id);
+            list.clone()
+        };
+        self.inner.publish_notifications(list);
         Ok(())
     }
 
@@ -318,6 +375,105 @@ impl Inner {
             .state::<AppState>()
             .bus
             .emit("github", AppEvent::GithubChanged(status));
+        // Signed in or out: the notifications poller starts or stops.
+        self.wake.notify_one();
+    }
+
+    fn publish_notifications(&self, list: Vec<GithubNotification>) {
+        self.app
+            .state::<AppState>()
+            .bus
+            .emit("github", AppEvent::GithubNotificationsChanged(list));
+    }
+
+    /// Poll notifications while signed in, at GitHub's interval; sleep while signed out.
+    async fn watch_notifications(self: Arc<Self>) {
+        let mut seen = Seen::default();
+        let mut last_modified: Option<String> = None;
+        loop {
+            if !self.status().signed_in {
+                seen.reset();
+                last_modified = None;
+                let had = std::mem::take(&mut *self.notifications.lock().unwrap_or_else(|e| e.into_inner()));
+                if !had.is_empty() {
+                    self.publish_notifications(Vec::new());
+                }
+                self.wake.notified().await;
+                continue;
+            }
+            let (fetched, poll) = self.fetch_notifications(&mut last_modified).await;
+            if let Some(Fetched::List(list)) = fetched {
+                for alert in seen.fresh(&list) {
+                    self.app
+                        .state::<AppState>()
+                        .bus
+                        .emit("github", AppEvent::GithubAlert(alert));
+                }
+                *self.notifications.lock().unwrap_or_else(|e| e.into_inner()) = list.clone();
+                self.publish_notifications(list);
+            }
+            tokio::select! {
+                _ = tokio::time::sleep(poll) => {}
+                _ = self.wake.notified() => {}
+            }
+        }
+    }
+
+    /// One `GET /notifications`. `If-Modified-Since` makes unchanged checks free (304).
+    async fn fetch_notifications(&self, last_modified: &mut Option<String>) -> (Option<Fetched>, Duration) {
+        let Ok(Some(token)) = secrets::get(Credential::GithubToken) else {
+            return (None, ERROR_POLL);
+        };
+        let mut request = self
+            .http
+            .get(format!(
+                "{API}/notifications?per_page={}",
+                notifications::MAX_ITEMS
+            ))
+            .bearer_auth(&token)
+            .header("Accept", "application/vnd.github+json");
+        if let Some(since) = last_modified.as_deref() {
+            request = request.header("If-Modified-Since", since);
+        }
+        let Ok(response) = request.send().await else {
+            return (None, ERROR_POLL);
+        };
+        let poll = response
+            .headers()
+            .get("X-Poll-Interval")
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| v.parse::<u64>().ok())
+            .map(Duration::from_secs)
+            .unwrap_or(MIN_POLL)
+            .clamp(MIN_POLL, Duration::from_secs(3600));
+        match response.status() {
+            reqwest::StatusCode::NOT_MODIFIED => (Some(Fetched::NotModified), poll),
+            reqwest::StatusCode::UNAUTHORIZED => {
+                // Revoked on github.com: forget it so Settings offers signing in again.
+                tracing::info!("github rejected the saved sign-in; signed out");
+                let _ = secrets::delete(Credential::GithubToken);
+                self.update(|s| {
+                    s.signed_in = false;
+                    s.login = None;
+                });
+                (None, poll)
+            }
+            status if status.is_success() => {
+                let modified = response
+                    .headers()
+                    .get("Last-Modified")
+                    .and_then(|v| v.to_str().ok())
+                    .map(str::to_owned);
+                match response.json::<Value>().await {
+                    Ok(json) => {
+                        *last_modified = modified;
+                        (Some(Fetched::List(notifications::parse(&json))), poll)
+                    }
+                    Err(_) => (None, ERROR_POLL),
+                }
+            }
+            _ => (None, ERROR_POLL),
+        }
     }
 
     async fn fetch_login(&self, token: &str) -> Option<String> {

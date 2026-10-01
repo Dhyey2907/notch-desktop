@@ -2,7 +2,7 @@
 // repositories, then see its latest commits and open pull requests — no local folder needed.
 // Linking a local clone adds branch, changes, commit, push, and pull.
 import { GitCommitHorizontal, Lock, Search } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import type { GithubRepo } from "../../core/generated/GithubRepo";
 import type { GithubRepoOverview } from "../../core/generated/GithubRepoOverview";
@@ -133,10 +133,13 @@ export function GithubRepoView({
   nameWithOwner,
   onChange,
   onLinkFolder,
+  extra,
 }: {
   nameWithOwner: string;
   onChange: () => void;
   onLinkFolder: () => void;
+  /** More trailing controls (the inbox button). */
+  extra?: ReactNode;
 }) {
   const [overview, setOverview] = useState<GithubRepoOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -164,6 +167,7 @@ export function GithubRepoView({
 
   const trailing = (
     <>
+      {extra}
       <Button onClick={onChange}>Change</Button>
       <Button onClick={onLinkFolder}>Link local folder</Button>
       <SegmentedControl<Tab>

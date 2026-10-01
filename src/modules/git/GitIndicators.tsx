@@ -1,17 +1,27 @@
-import { ArrowUp, GitBranch, LoaderCircle } from "lucide-react";
+import { ArrowUp, GitBranch, GitPullRequest, LoaderCircle } from "lucide-react";
 
 import { MockBadge } from "../../design/components";
 import { changeSummary, useGit } from "./gitStore";
+import { useGithub } from "./githubStore";
 import "./git.css";
 
 /** Collapsed: only speaks up while an operation runs or commits are waiting to be pushed. */
 export function GitCompact() {
   const running = useGit((s) => s.snapshot?.running);
   const ahead = useGit((s) => (s.snapshot?.status.state === "ready" ? s.snapshot.branch.ahead : 0));
+  const reviews = useGithub((s) => s.notifications.filter((n) => n.kind === "reviewRequested").length);
   if (running) {
     return (
       <span className="git-compact" role="img" aria-label={`Git ${running} in progress`}>
         <LoaderCircle className="git-compact__spin" size={12} aria-hidden />
+      </span>
+    );
+  }
+  if (reviews > 0) {
+    return (
+      <span className="git-compact" role="img" aria-label={`${reviews} review requests on GitHub`}>
+        <GitPullRequest size={12} aria-hidden />
+        {reviews}
       </span>
     );
   }

@@ -254,3 +254,86 @@
   margin: 0 0 var(--space-2);
   font-size: var(--text-xs);
 }
+
+/* GitHub inbox */
+.gh-inbox {
+  list-style: none;
+  margin: 0;
+  padding: 0 2px 0 0;
+  height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gh-inbox__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  border-radius: var(--radius-sm);
+}
+
+.gh-inbox__item:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.gh-inbox__icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.gh-inbox__fail {
+  color: var(--danger);
+}
+
+.gh-inbox__pass {
+  color: var(--success, #4ade80);
+}
+
+.gh-inbox__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-1);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.gh-inbox__main:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.gh-inbox__title {
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gh-inbox__meta {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gh-inbox__error {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--warning);
+}

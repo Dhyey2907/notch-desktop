@@ -4,6 +4,7 @@
 //! The token lives in Windows Credential Manager. Without a sign-in, the Git module keeps
 //! using the `gh` CLI for pull requests.
 
+pub mod notifications;
 pub mod service;
 
 use chrono::{DateTime, Utc};

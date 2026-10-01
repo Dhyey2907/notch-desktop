@@ -79,3 +79,17 @@ pub async fn github_select_repo(
 ) -> AppResult<Option<RepoInfo>> {
     git.select_github_repo(name_with_owner).await
 }
+
+/// Unread GitHub notifications, newest first.
+#[tauri::command]
+pub fn github_notifications(
+    github: State<'_, GithubService>,
+) -> Vec<crate::github::notifications::GithubNotification> {
+    github.notifications()
+}
+
+/// Mark a GitHub notification read (on GitHub too).
+#[tauri::command]
+pub async fn github_mark_read(id: String, github: State<'_, GithubService>) -> AppResult<()> {
+    github.mark_read(&id).await
+}

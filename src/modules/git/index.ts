@@ -6,11 +6,27 @@ import { ipc } from "../../core/ipc";
 import type { ModuleContext, NotchModule } from "../types";
 import { GitCompact, GitPeek } from "./GitIndicators";
 import { useGit } from "./gitStore";
+import { alertCard, shouldAlert } from "./githubAlerts";
 import { useGithub } from "./githubStore";
+import { useSettings } from "../../settings";
 import { bindActivities } from "./notify";
 
 function init({ events, activities }: ModuleContext) {
   bindActivities(activities);
+  const offInbox = events.on("GithubNotificationsChanged", ({ event }) =>
+    useGithub.getState().setNotifications(event.payload),
+  );
+  const offAlert = events.on("GithubAlert", ({ event }) => {
+    const n = event.payload;
+    if (!shouldAlert(n.kind, useSettings.getState().settings?.githubAlerts)) return;
+    activities.push(alertCard(n, { open: ipc.openExternal, markRead: ipc.githubMarkRead }));
+  });
+  ipc
+    .githubNotifications()
+    .then((list) => {
+      if (useGithub.getState().notifications.length === 0) useGithub.getState().setNotifications(list);
+    })
+    .catch(() => {});
   const off = events.on("GitChanged", ({ event }) => useGit.getState().set(event.payload));
   const offGithub = events.on("GithubChanged", ({ event }) => useGithub.getState().set(event.payload));
   ipc
@@ -28,6 +44,8 @@ function init({ events, activities }: ModuleContext) {
   return () => {
     off();
     offGithub();
+    offInbox();
+    offAlert();
     bindActivities(null);
   };
 }

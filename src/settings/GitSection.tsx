@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 
 import { eventBus } from "../core/eventBus";
+import type { GithubAlertSettings } from "../core/generated/GithubAlertSettings";
 import type { GitSnapshot } from "../core/generated/GitSnapshot";
 import type { GithubStatus } from "../core/generated/GithubStatus";
 import { ipc, isIpcError } from "../core/ipc";
-import { Button, ConfirmButton, Pill, Surface } from "../design/components";
+import { Button, ConfirmButton, Pill, Surface, Switch } from "../design/components";
+import { useSettings } from ".";
 import { Section } from "./Section";
 import { ProviderButton } from "./SignInWith";
 
@@ -63,6 +65,7 @@ function GithubAccount() {
         </span>
         {status.signedIn && <Pill tone="success">Signed in</Pill>}
       </div>
+      {status.signedIn && <GithubAlertSwitches />}
       {status.signedIn ? (
         <div className="settings__buttons">
           <ConfirmButton
@@ -158,5 +161,38 @@ export function GitSection() {
         </p>
       </Surface>
     </Section>
+  );
+}
+
+function GithubAlertSwitches() {
+  const alerts = useSettings((s) => s.settings?.githubAlerts);
+  if (!alerts) return null;
+  const set = (change: Partial<GithubAlertSettings>) =>
+    void useSettings.getState().update((s) => ({ ...s, githubAlerts: { ...s.githubAlerts, ...change } }));
+  return (
+    <>
+      <p className="settings__lead">Pop up in the notch when, on GitHub:</p>
+      <Switch
+        label="Someone requests your review"
+        checked={!alerts.hideReviews}
+        onChange={(on) => set({ hideReviews: !on })}
+      />
+      <Switch
+        label="A workflow you started fails"
+        checked={!alerts.hideCiFailures}
+        onChange={(on) => set({ hideCiFailures: !on })}
+      />
+      <Switch
+        label="A workflow you started succeeds"
+        checked={alerts.showCiPasses}
+        onChange={(on) => set({ showCiPasses: on })}
+      />
+      <Switch
+        label="You're mentioned or assigned"
+        checked={!alerts.hideMentions}
+        onChange={(on) => set({ hideMentions: !on })}
+      />
+      <p className="settings__note">Everything also waits in the Git module's Inbox.</p>
+    </>
   );
 }

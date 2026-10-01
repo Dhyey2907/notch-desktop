@@ -14,6 +14,7 @@ const defaults: Settings = {
   display: { mode: "primary" },
   clipboard: { paused: false, blockedApps: [] },
   hud: { hideVolume: false, hideBrightness: false, hideBluetooth: false },
+  githubAlerts: { hideReviews: false, hideCiFailures: false, showCiPasses: false, hideMentions: false },
 };
 
 function setup(initial: Settings = defaults) {
