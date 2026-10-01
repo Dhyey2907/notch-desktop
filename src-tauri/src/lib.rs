@@ -1,4 +1,5 @@
 mod ask;
+mod bridge;
 mod calendar;
 mod claude;
 mod clipboard;
@@ -131,6 +132,9 @@ macro_rules! app_commands {
             commands::system::desktop_switch,
             commands::system::weather_refresh,
             commands::system::open_location_settings,
+            commands::bridge::bridge_state,
+            commands::bridge::bridge_start,
+            commands::bridge::bridge_stop,
             commands::shelf::shelf_snapshot,
             commands::shelf::shelf_add,
             commands::shelf::shelf_remove,
@@ -250,6 +254,7 @@ pub fn run() {
             app.manage(clipboard);
 
             app.manage(shelf::service::ShelfService::new(handle.clone()));
+            app.manage(bridge::service::BridgeService::new(handle.clone()));
 
             let system = system::service::SystemService::new(handle.clone());
             system.start();

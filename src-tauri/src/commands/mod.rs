@@ -3,6 +3,7 @@
 
 pub mod app;
 pub mod ask;
+pub mod bridge;
 pub mod calendar;
 pub mod claude;
 pub mod clipboard;

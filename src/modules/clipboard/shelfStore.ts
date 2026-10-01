@@ -1,5 +1,6 @@
 import { create } from "zustand";
 
+import type { BridgeState } from "../../core/generated/BridgeState";
 import type { ShelfSnapshot } from "../../core/generated/ShelfSnapshot";
 
 export type ClipboardTab = "copied" | "files";
@@ -12,6 +13,9 @@ interface ShelfState {
   /** Files are being dragged over this island. */
   dropHover: boolean;
   setDropHover: (on: boolean) => void;
+  /** The phone bridge, while it runs. */
+  bridge: BridgeState | null;
+  setBridge: (bridge: BridgeState | null) => void;
 }
 
 export const useShelf = create<ShelfState>((set) => ({
@@ -21,6 +25,8 @@ export const useShelf = create<ShelfState>((set) => ({
   setTab: (tab) => set({ tab }),
   dropHover: false,
   setDropHover: (dropHover) => set({ dropHover }),
+  bridge: null,
+  setBridge: (bridge) => set({ bridge }),
 }));
 
 const UNITS = ["B", "KB", "MB", "GB", "TB"];

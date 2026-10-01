@@ -56,6 +56,21 @@ function init({ events, activities }: ModuleContext) {
     })
     .catch((error) => console.error("failed to read the shelf", error));
   const offDrops = watchDrops();
+  const offBridge = events.on("BridgeChanged", ({ event }) => useShelf.getState().setBridge(event.payload));
+  const offReceived = events.on("BridgeReceived", ({ event }) =>
+    activities.push({
+      moduleId: "clipboard",
+      priority: "normal",
+      tone: "success",
+      countRepeats: false,
+      title: `Received ${event.payload.name}`,
+      body: "From your phone · saved to Downloads\\Notch and on the Files shelf",
+    }),
+  );
+  ipc.bridgeState().then(
+    (b) => useShelf.getState().setBridge(b),
+    () => {},
+  );
   const offSuggest = events.on("CopySuggestion", ({ event }) => {
     const card = suggestionCard(event.payload, {
       remind: ipc.todoAddReminder,
@@ -68,6 +83,8 @@ function init({ events, activities }: ModuleContext) {
     offClips();
     offShelf();
     offDrops();
+    offBridge();
+    offReceived();
     offSuggest();
   };
 }

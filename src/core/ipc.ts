@@ -6,6 +6,7 @@ import type { AppInfo } from "./generated/AppInfo";
 import type { ClipboardSnapshot } from "./generated/ClipboardSnapshot";
 import type { ShelfSnapshot } from "./generated/ShelfSnapshot";
 import type { AskSnapshot } from "./generated/AskSnapshot";
+import type { BridgeState } from "./generated/BridgeState";
 import type { Dashboard } from "./generated/Dashboard";
 import type { FocusState } from "./generated/FocusState";
 import type { Lyrics } from "./generated/Lyrics";
@@ -135,6 +136,10 @@ export const ipc = {
   desktopSwitch: (index: number) => invoke<void>("desktop_switch", { index }),
   weatherRefresh: () => invoke<void>("weather_refresh"),
   openLocationSettings: () => invoke<void>("open_location_settings"),
+  bridgeState: () => invoke<BridgeState | null>("bridge_state"),
+  /** Offer files to the phone over Wi-Fi (none: just receive); shows a QR code. */
+  bridgeStart: (paths: string[]) => invoke<BridgeState>("bridge_start", { paths }),
+  bridgeStop: () => invoke<void>("bridge_stop"),
   shelfSnapshot: () => invoke<ShelfSnapshot>("shelf_snapshot"),
   /** Park files on the drop shelf; resolves to how many were new. */
   shelfAdd: (paths: string[]) => invoke<number>("shelf_add", { paths }),

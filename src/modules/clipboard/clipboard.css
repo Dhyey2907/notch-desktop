@@ -217,3 +217,46 @@
 .shelf-item--missing .clip__meta {
   color: var(--warning);
 }
+
+/* Phone bridge */
+.bridge {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.bridge__qr {
+  flex: none;
+  width: 150px;
+  height: 150px;
+  padding: 6px;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.bridge__text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+
+.bridge__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-emphasis);
+}
+
+.bridge__meta {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.bridge__url {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: ui-monospace, Consolas, monospace;
+}

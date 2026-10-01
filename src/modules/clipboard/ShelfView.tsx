@@ -14,6 +14,7 @@ import {
   Folder,
   FolderOpen,
   GripVertical,
+  Smartphone,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -21,10 +22,11 @@ import { useRef, useState, type PointerEvent } from "react";
 
 import type { ShelfItem } from "../../core/generated/ShelfItem";
 import { ipc, isIpcError } from "../../core/ipc";
-import { ConfirmButton, EmptyState, IconButton } from "../../design/components";
+import { Button, ConfirmButton, EmptyState, IconButton } from "../../design/components";
 import { useFileDrag } from "../../shell/fileDrag";
 import { age } from "./clips";
 import { formatSize, useShelf } from "./shelfStore";
+import { BridgePanel } from "./BridgePanel";
 import { useMinuteClock } from "./useMinuteClock";
 
 /** Pointer travel before a press becomes a drag. */
@@ -89,6 +91,7 @@ function useDragOut(ids: string[], onError: (message: string) => void) {
 export function ShelfView() {
   const items = useShelf((s) => s.snapshot?.items ?? []);
   const dropHover = useShelf((s) => s.dropHover);
+  const bridge = useShelf((s) => s.bridge);
   const [status, setStatus] = useState<string | null>(null);
   const now = useMinuteClock();
   const dragAll = useDragOut([], setStatus);
@@ -100,6 +103,17 @@ export function ShelfView() {
       (e) => setStatus(message(e)),
     );
 
+  const toPhone = (paths: string[]) => run(ipc.bridgeStart(paths));
+
+  if (bridge) {
+    return (
+      <div className="clips">
+        <BridgePanel bridge={bridge} />
+        {status && <p className="clips-status">{status}</p>}
+      </div>
+    );
+  }
+
   if (items.length === 0 || dropHover) {
     return (
       <div className={`shelf-drop${dropHover ? " shelf-drop--active" : ""}`}>
@@ -109,6 +123,13 @@ export function ShelfView() {
             dropHover
               ? "They stay where they are on disk — the shelf just remembers them."
               : "Drag files onto the notch to keep them handy, then drag them out into any app."
+          }
+          action={
+            dropHover ? undefined : (
+              <Button onClick={() => toPhone([])}>
+                <Smartphone size={14} aria-hidden /> Receive from phone
+              </Button>
+            )
           }
         />
       </div>
@@ -124,6 +145,14 @@ export function ShelfView() {
           </span>
         )}
         <span className="clips-bar__spacer" />
+        <IconButton
+          icon={Smartphone}
+          label={
+            available > 0 ? "Send all to your phone (or receive from it)" : "Receive files from your phone"
+          }
+          size="sm"
+          onClick={() => toPhone(items.filter((i) => i.exists).map((i) => i.path))}
+        />
         {available > 0 && (
           <IconButton
             icon={Copy}
@@ -187,6 +216,12 @@ function ShelfRow({
               label={`Copy ${item.name}`}
               size="sm"
               onClick={() => run(ipc.shelfCopy([item.id]), "Copied — paste it anywhere")}
+            />
+            <IconButton
+              icon={Smartphone}
+              label={`Send ${item.name} to your phone`}
+              size="sm"
+              onClick={() => run(ipc.bridgeStart([item.path]))}
             />
             <IconButton
               icon={FolderOpen}

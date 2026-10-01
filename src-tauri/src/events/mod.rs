@@ -18,6 +18,7 @@ use ts_rs::TS;
 
 use crate::{
     ask::service::AskSnapshot,
+    bridge::BridgeState,
     calendar::{CalendarEvent, CalendarSnapshot},
     claude::{approvals::ApprovalRequest, ClaudeStatus},
     clipboard::{ClipboardSnapshot, CopySuggestion},
@@ -143,6 +144,10 @@ pub enum AppEvent {
     FocusChanged(FocusState),
     /// A focus session ran its full length.
     FocusDone,
+    /// The phone bridge started, changed or ended (`None`: not running).
+    BridgeChanged(Option<BridgeState>),
+    /// A file arrived from the phone (saved to Downloads\Notch).
+    BridgeReceived { name: String },
     /// A paired Bluetooth device connected or disconnected.
     BluetoothChanged(BluetoothDevice),
     /// Files on the drop shelf changed.
@@ -172,6 +177,8 @@ impl AppEvent {
             AppEvent::SoundChanged { .. } => "SoundChanged",
             AppEvent::BrightnessChanged { .. } => "BrightnessChanged",
             AppEvent::BluetoothChanged(_) => "BluetoothChanged",
+            AppEvent::BridgeChanged(_) => "BridgeChanged",
+            AppEvent::BridgeReceived { .. } => "BridgeReceived",
             AppEvent::FocusChanged(_) => "FocusChanged",
             AppEvent::FocusDone => "FocusDone",
             AppEvent::AskChanged(_) => "AskChanged",
