@@ -11,6 +11,11 @@ import type { Dashboard } from "./generated/Dashboard";
 import type { ControlSnapshot } from "./generated/ControlSnapshot";
 import type { DownloadProgress } from "./generated/DownloadProgress";
 import type { GameStatus } from "./generated/GameStatus";
+import type { Snippet } from "./generated/Snippet";
+import type { TotpCode } from "./generated/TotpCode";
+import type { VaultField } from "./generated/VaultField";
+import type { VaultInput } from "./generated/VaultInput";
+import type { VaultState } from "./generated/VaultState";
 import type { ImageTarget } from "./generated/ImageTarget";
 import type { RecentFile } from "./generated/RecentFile";
 import type { RecorderState } from "./generated/RecorderState";
@@ -153,6 +158,34 @@ export const ipc = {
   recorderStart: () => invoke<RecorderState>("recorder_start"),
   /** Stop and save (MP3, on the shelf); returns the file's path. */
   recorderStop: () => invoke<string | null>("recorder_stop"),
+  vaultState: () => invoke<VaultState>("vault_state"),
+  /** Pick the Obsidian vault folder; null if cancelled. */
+  vaultChooseFolder: () => invoke<VaultState | null>("vault_choose_folder"),
+  /** Add or change a login (password: undefined keeps the saved one). Returns its id. */
+  vaultSave: (entry: VaultInput) => invoke<string>("vault_save", { entry }),
+  /** Move a login's note to the Recycle Bin. */
+  vaultDelete: (id: string) => invoke<void>("vault_delete", { id }),
+  /** Copy a username, or a password (private, cleared after a while; Windows Hello if on). */
+  vaultCopy: (id: string, field: VaultField) => invoke<void>("vault_copy", { id, field }),
+  vaultReveal: (id: string) => invoke<string>("vault_reveal", { id }),
+  vaultGeneratePassword: (length: number) => invoke<string>("vault_generate_password", { length }),
+  vaultExportKey: () => invoke<string>("vault_export_key"),
+  vaultImportKey: (key: string) => invoke<void>("vault_import_key", { key }),
+  totpCodes: () => invoke<TotpCode[]>("totp_codes"),
+  /** From an otpauth:// link, or a secret key plus a name. */
+  totpAdd: (input: string, name: string) => invoke<void>("totp_add", { input, name }),
+  totpDelete: (id: string) => invoke<void>("totp_delete", { id }),
+  totpCopy: (id: string) => invoke<void>("totp_copy", { id }),
+  snippetsList: () => invoke<Snippet[]>("snippets_list"),
+  snippetSave: (id: string | null, trigger: string, body: string) =>
+    invoke<Snippet[]>("snippet_save", { id, trigger, body }),
+  snippetDelete: (id: string) => invoke<Snippet[]>("snippet_delete", { id }),
+  /** Freeze the screen under the pointer and draw a box to copy its text. */
+  grabBegin: () => invoke<void>("grab_begin"),
+  grabPicture: () => invoke<string>("grab_picture"),
+  grabFinish: (x: number, y: number, w: number, h: number) => invoke<string>("grab_finish", { x, y, w, h }),
+  grabCancel: () => invoke<void>("grab_cancel"),
+  qrSvg: (text: string) => invoke<string>("qr_svg", { text }),
   gameStatus: () => invoke<GameStatus>("game_status"),
   /** Remember whether a fullscreen app is a game. */
   gameMark: (exe: string, isGame: boolean) => invoke<void>("game_mark", { exe, isGame }),

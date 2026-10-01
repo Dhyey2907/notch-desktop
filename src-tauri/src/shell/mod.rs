@@ -193,6 +193,8 @@ enum ShortcutAction {
     Ask,
     /// Clipboard history (default Ctrl+Alt+V).
     Clipboard,
+    /// Grab text from the screen (default Ctrl+Alt+G).
+    Grab,
 }
 
 /// The shortcuts registered now, and why any of the user's choices failed.
@@ -227,6 +229,7 @@ pub fn apply_shortcuts(app: &AppHandle, keys: &crate::settings::ShortcutSettings
         ("open", &keys.open, ShortcutAction::Toggle),
         ("ask", &keys.ask, ShortcutAction::Ask),
         ("clipboard", &keys.clipboard, ShortcutAction::Clipboard),
+        ("grab", &keys.grab, ShortcutAction::Grab),
     ] {
         if text.trim().is_empty() {
             continue;
@@ -287,6 +290,15 @@ pub fn shortcut_plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
                 .find(|(s, _)| s == shortcut)
                 .map(|(_, a)| *a);
             let Some(action) = action else { return };
+            if action == ShortcutAction::Grab {
+                let grab = app.state::<crate::grab::service::GrabService>().inner().clone();
+                tauri::async_runtime::spawn(async move {
+                    if let Err(error) = grab.begin().await {
+                        tracing::warn!(kind = error.kind(), "could not start grabbing text");
+                    }
+                });
+                return;
+            }
             // The island on the screen the pointer is on.
             let Some(window) = islands::under_cursor(app) else {
                 return;
@@ -309,7 +321,7 @@ pub fn shortcut_plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
                     label,
                     module: "clipboard".into(),
                 },
-                ShortcutAction::Toggle => AppEvent::ShellToggleRequested { label },
+                ShortcutAction::Toggle | ShortcutAction::Grab => AppEvent::ShellToggleRequested { label },
             };
             app.state::<AppState>().bus.emit("shell", event);
         })

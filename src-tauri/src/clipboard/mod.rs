@@ -7,6 +7,7 @@
 //! history honors), copies from blocked apps, and copies while paused are skipped.
 
 pub mod image;
+pub mod links;
 pub mod service;
 pub mod suggest;
 #[cfg(windows)]

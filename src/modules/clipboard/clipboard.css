@@ -348,3 +348,51 @@
   gap: var(--space-1);
   min-width: 0;
 }
+
+/* QR code for a copied link or text */
+.clips-qr {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.clips-qr__code {
+  flex: none;
+  width: 120px;
+  height: 120px;
+  padding: 5px;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.clips-qr__code svg {
+  width: 100%;
+  height: 100%;
+}
+
+.clips-qr__text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.clips-qr__title {
+  margin: 0;
+  font-weight: var(--weight-emphasis);
+  font-size: var(--text-sm);
+}
+
+.clips-qr__body {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  word-break: break-all;
+  max-height: 60px;
+  overflow: hidden;
+}

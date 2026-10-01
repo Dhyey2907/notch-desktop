@@ -8,11 +8,13 @@ mod control;
 mod db;
 mod error;
 mod events;
+mod expander;
 mod files;
 mod focus;
 mod game;
 mod git;
 mod github;
+mod grab;
 mod logging;
 mod media;
 mod music;
@@ -27,6 +29,7 @@ mod spotify;
 mod state;
 mod system;
 mod todo;
+mod vault;
 
 use tauri::Manager;
 
@@ -167,6 +170,27 @@ macro_rules! app_commands {
             commands::files::recorder_state,
             commands::files::recorder_start,
             commands::files::recorder_stop,
+            commands::vault::vault_state,
+            commands::vault::vault_choose_folder,
+            commands::vault::vault_save,
+            commands::vault::vault_delete,
+            commands::vault::vault_copy,
+            commands::vault::vault_reveal,
+            commands::vault::vault_generate_password,
+            commands::vault::vault_export_key,
+            commands::vault::vault_import_key,
+            commands::vault::totp_codes,
+            commands::vault::totp_add,
+            commands::vault::totp_delete,
+            commands::vault::totp_copy,
+            commands::vault::snippets_list,
+            commands::vault::snippet_save,
+            commands::vault::snippet_delete,
+            commands::vault::grab_begin,
+            commands::vault::grab_picture,
+            commands::vault::grab_finish,
+            commands::vault::grab_cancel,
+            commands::vault::qr_svg,
             commands::focus::focus_state,
             commands::focus::focus_start,
             commands::focus::focus_stop,
@@ -279,6 +303,13 @@ pub fn run() {
             app.manage(clipboard);
 
             app.manage(shelf::service::ShelfService::new(handle.clone()));
+            let vault = vault::service::VaultService::new(handle.clone());
+            vault.start();
+            app.manage(vault);
+            let expander = expander::service::ExpanderService::new(handle.clone());
+            expander.start();
+            app.manage(expander);
+            app.manage(grab::service::GrabService::new(handle.clone()));
             let files = files::service::FilesService::new(handle.clone());
             files.start();
             app.manage(files);

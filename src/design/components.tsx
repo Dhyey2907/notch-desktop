@@ -75,15 +75,18 @@ export function Button({
   onClick,
   disabled,
   variant = "secondary",
+  type = "button",
 }: {
   children: ReactNode;
   onClick?: () => void;
   disabled?: boolean;
   variant?: "primary" | "secondary" | "warning" | "danger";
+  /** "submit" for a form's main button (Enter in a field presses it). */
+  type?: "button" | "submit";
 }) {
   return (
     <button
-      type="button"
+      type={type}
       className={cx("nd-button", `nd-button--${variant}`)}
       onClick={onClick}
       disabled={disabled}

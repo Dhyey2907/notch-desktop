@@ -117,6 +117,30 @@ function init({ events, activities }: ModuleContext) {
     (recorder) => useShelf.setState({ recorder }),
     () => {},
   );
+  const offCleaned = events.on("LinkCleaned", ({ event }) =>
+    activities.push({
+      moduleId: "clipboard",
+      priority: "low",
+      tone: "success",
+      dedupKey: "link-cleaned",
+      countRepeats: false,
+      timeoutMs: 2500,
+      title: "Link cleaned",
+      body: `Removed ${event.payload.removed} tracking ${event.payload.removed === 1 ? "tag" : "tags"} before you paste it`,
+    }),
+  );
+  const offGrabbed = events.on("TextGrabbed", ({ event }) => {
+    const text = event.payload.text.trim();
+    activities.push({
+      moduleId: "clipboard",
+      priority: "normal",
+      tone: text ? "success" : "warning",
+      dedupKey: "grabbed",
+      countRepeats: false,
+      title: text ? "Copied text from the screen" : "No text found there",
+      body: text ? text.replace(/\s+/g, " ").slice(0, 90) : "Try a bigger box around the words.",
+    });
+  });
   const offSuggest = events.on("CopySuggestion", ({ event }) => {
     const card = suggestionCard(event.payload, {
       remind: ipc.todoAddReminder,
@@ -136,6 +160,8 @@ function init({ events, activities }: ModuleContext) {
     offDone();
     offRecorder();
     offSaved();
+    offCleaned();
+    offGrabbed();
   };
 }
 

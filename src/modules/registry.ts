@@ -12,6 +12,7 @@ import { homeModule } from "./home";
 import { mediaModule } from "./media";
 import { phoneModule } from "./phone";
 import { todoModule } from "./todo";
+import { vaultModule } from "./vault";
 import type { NotchModule } from "./types";
 
 export function sortModules(modules: NotchModule[], includeDev: boolean): NotchModule[] {
@@ -37,6 +38,7 @@ export const MODULES: readonly NotchModule[] = sortModules(
     claudeModule,
     todoModule,
     clipboardModule,
+    vaultModule,
     phoneModule,
     ...devModules,
   ],

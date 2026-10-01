@@ -16,6 +16,8 @@ pub enum Credential {
     ClaudeHookToken,
     /// "Continue with GitHub" access token (pull requests).
     GithubToken,
+    /// Key that encrypts passwords in the Obsidian vault (base64, 32 bytes).
+    VaultKey,
     #[cfg(test)]
     Test,
 }
@@ -28,6 +30,7 @@ impl Credential {
             Credential::SpotifyRefreshToken => "spotify/refresh-token",
             Credential::ClaudeHookToken => "claude-code/hook-token",
             Credential::GithubToken => "github/token",
+            Credential::VaultKey => "vault/key",
             #[cfg(test)]
             Credential::Test => "test/round-trip",
         }
@@ -36,6 +39,35 @@ impl Credential {
 
 fn entry(secret: Credential) -> AppResult<keyring::Entry> {
     keyring::Entry::new(SERVICE, secret.key()).map_err(|e| AppError::Platform(e.to_string()))
+}
+
+/// A 2FA account's secret (one per account, keyed by its id).
+fn totp_entry(id: &str) -> AppResult<keyring::Entry> {
+    if id.is_empty() || id.len() > 64 || !id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') {
+        return Err(AppError::InvalidInput("invalid account id".into()));
+    }
+    keyring::Entry::new(SERVICE, &format!("totp/{id}")).map_err(|e| AppError::Platform(e.to_string()))
+}
+
+pub fn totp_get(id: &str) -> AppResult<Option<String>> {
+    match totp_entry(id)?.get_password() {
+        Ok(value) => Ok(Some(value)),
+        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(error) => Err(AppError::Platform(error.to_string())),
+    }
+}
+
+pub fn totp_set(id: &str, secret: &str) -> AppResult<()> {
+    totp_entry(id)?
+        .set_password(secret)
+        .map_err(|e| AppError::Platform(e.to_string()))
+}
+
+pub fn totp_delete(id: &str) -> AppResult<()> {
+    match totp_entry(id)?.delete_credential() {
+        Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+        Err(error) => Err(AppError::Platform(error.to_string())),
+    }
 }
 
 pub fn get(secret: Credential) -> AppResult<Option<String>> {

@@ -7,6 +7,7 @@ import {
   GitBranch,
   House,
   Info,
+  KeyRound,
   Keyboard,
   LayoutGrid,
   MousePointerClick,
@@ -43,6 +44,7 @@ import { AboutSection, PrivacySection } from "./PrivacySection";
 import { pageFromId, pageLead, PAGES, searchSettings, settingAnchor, type PageId } from "./searchIndex";
 import { Section } from "./Section";
 import { ShortcutsSection } from "./ShortcutsSection";
+import { VaultSection } from "./VaultSection";
 import "./settings.css";
 
 const ICONS: Record<PageId, LucideIcon> = {
@@ -59,6 +61,7 @@ const ICONS: Record<PageId, LucideIcon> = {
   focus: Timer,
   games: Gamepad2,
   ai: Bot,
+  vault: KeyRound,
   privacy: Shield,
   about: Info,
 };
@@ -77,6 +80,7 @@ const CONTENT: Record<PageId, () => ReactNode> = {
   focus: () => <FocusSection />,
   games: () => <GamesSection />,
   ai: () => <AiSection />,
+  vault: () => <VaultSection />,
   privacy: () => <PrivacySection />,
   about: () => <AboutSection />,
 };

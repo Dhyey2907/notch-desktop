@@ -26,6 +26,12 @@ const SHORTCUTS: { key: keyof ShortcutSettings; label: string; description: stri
     description: "Opens straight to what you copied.",
     fallback: "Ctrl+Alt+V",
   },
+  {
+    key: "grab",
+    label: "Grab text from the screen",
+    description: "Draw a box around any text — in a picture, video or PDF — to copy it.",
+    fallback: "Ctrl+Alt+G",
+  },
 ];
 
 export function ShortcutsSection() {

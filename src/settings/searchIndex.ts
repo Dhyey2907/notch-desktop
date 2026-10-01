@@ -15,6 +15,7 @@ export type PageId =
   | "focus"
   | "games"
   | "ai"
+  | "vault"
   | "privacy"
   | "about";
 
@@ -70,6 +71,12 @@ export const PAGES: PageInfo[] = [
   { id: "focus", label: "Focus", group: "Features", lead: "Focus sessions, the pet and ambient sounds." },
   { id: "games", label: "Games", group: "Features", lead: "The game mode strip while you play." },
   { id: "ai", label: "AI", group: "Features", lead: "Ask Claude from the notch." },
+  {
+    id: "vault",
+    label: "Vault",
+    group: "Features",
+    lead: "Logins kept in your Obsidian vault, and 2FA codes.",
+  },
   {
     id: "privacy",
     label: "Privacy & data",
@@ -144,6 +151,14 @@ export const ENTRIES: Entry[] = [
   { page: "git", label: "Repositories", keywords: "github pull requests ci reviews" },
   { page: "clipboard", label: "Clipboard history", keywords: "copy paste pause blocked apps" },
   { page: "clipboard", label: "Suggestions", keywords: "remind me maps dates addresses" },
+  { page: "clipboard", label: "Clean tracking from links", keywords: "utm fbclid privacy url" },
+  { page: "clipboard", label: "Text snippets", keywords: "expander autotext abbreviations shortcuts typing" },
+  { page: "shortcuts", label: "Grab text from the screen", keywords: "ocr copy text image screenshot" },
+  { page: "vault", label: "Obsidian vault", keywords: "passwords logins folder sync" },
+  { page: "vault", label: "Ask for Windows Hello", keywords: "fingerprint face pin security" },
+  { page: "vault", label: "Clear copied passwords after", keywords: "clipboard seconds" },
+  { page: "vault", label: "Vault key", keywords: "another pc export import encryption" },
+  { page: "vault", label: "2FA codes", keywords: "authenticator totp two factor otp" },
   { page: "focus", label: "Pet", keywords: "character bubble mood" },
   { page: "focus", label: "Ambient volume", keywords: "rain ocean sounds noise" },
   { page: "games", label: "Game mode", keywords: "fps gpu ping hud" },

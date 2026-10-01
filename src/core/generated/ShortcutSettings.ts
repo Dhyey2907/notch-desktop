@@ -3,4 +3,8 @@
 /**
  * Global shortcuts as text, e.g. `Ctrl+Alt+N`; empty turns one off.
  */
-export type ShortcutSettings = { open: string, ask: string, clipboard: string, };
+export type ShortcutSettings = { open: string, ask: string, clipboard: string, 
+/**
+ * Grab text from the screen.
+ */
+grab: string, };

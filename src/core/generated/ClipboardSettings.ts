@@ -11,4 +11,12 @@ blockedApps: Array<string>,
 /**
  * Don't offer "Remind me" / "Open in Maps" for copied dates and addresses.
  */
-noSuggestions: boolean, };
+noSuggestions: boolean, 
+/**
+ * Leave tracking parameters in copied links.
+ */
+noLinkCleaning: boolean, 
+/**
+ * Turn text snippets off (the keyboard hook stops).
+ */
+noSnippets: boolean, };

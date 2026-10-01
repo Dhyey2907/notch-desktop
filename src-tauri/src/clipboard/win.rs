@@ -14,8 +14,8 @@ use windows::{
         System::{
             DataExchange::{
                 AddClipboardFormatListener, CloseClipboard, EmptyClipboard, GetClipboardData,
-                GetClipboardOwner, IsClipboardFormatAvailable, OpenClipboard, RegisterClipboardFormatW,
-                SetClipboardData,
+                GetClipboardOwner, GetClipboardSequenceNumber, IsClipboardFormatAvailable, OpenClipboard,
+                RegisterClipboardFormatW, SetClipboardData,
             },
             LibraryLoader::GetModuleHandleW,
             Memory::{GlobalAlloc, GlobalLock, GlobalSize, GlobalUnlock, GMEM_MOVEABLE},
@@ -291,6 +291,9 @@ pub(crate) fn exe_of(pid: u32) -> Option<String> {
 /// What to put back on the clipboard.
 pub enum Put<'a> {
     Text(&'a str),
+    /// A password or code: kept out of Windows' clipboard history and cloud sync, and
+    /// skipped by clipboard managers (Notch's own history included).
+    PrivateText(&'a str),
     Image(&'a [u8]),
     Files(&'a [String]),
 }
@@ -309,6 +312,14 @@ pub fn write(put: Put<'_>) -> AppResult<()> {
                 let mut bytes: Vec<u8> = text.encode_utf16().flat_map(u16::to_le_bytes).collect();
                 bytes.extend_from_slice(&[0, 0]);
                 set(u32::from(CF_UNICODETEXT.0), &bytes)
+            }
+            Put::PrivateText(text) => {
+                let mut bytes: Vec<u8> = text.encode_utf16().flat_map(u16::to_le_bytes).collect();
+                bytes.extend_from_slice(&[0, 0]);
+                set(u32::from(CF_UNICODETEXT.0), &bytes)?;
+                set(format(w!("ExcludeClipboardContentFromMonitorProcessing")), &[0])?;
+                set(format(w!("CanIncludeInClipboardHistory")), &0u32.to_le_bytes())?;
+                set(format(w!("CanUploadToCloudClipboard")), &0u32.to_le_bytes())
             }
             Put::Image(png) => {
                 set(format(w!("PNG")), png)?;
@@ -329,6 +340,26 @@ pub fn write(put: Put<'_>) -> AppResult<()> {
         let _ = CloseClipboard();
     }
     result
+}
+
+/// Changes every time anything is copied.
+pub fn sequence() -> u32 {
+    // SAFETY: a plain query.
+    unsafe { GetClipboardSequenceNumber() }
+}
+
+/// Empty the clipboard if nothing was copied since `sequence` (clearing a copied password
+/// without wiping something newer the user copied).
+pub fn clear_if_unchanged(sequence_at_copy: u32) {
+    let owner = HWND(WINDOW.load(Ordering::SeqCst) as *mut _);
+    if sequence() != sequence_at_copy || owner.is_invalid() || open(owner).is_err() {
+        return;
+    }
+    // SAFETY: the clipboard is open on this thread and closed right after.
+    unsafe {
+        let _ = EmptyClipboard();
+        let _ = CloseClipboard();
+    }
 }
 
 /// `CF_HDROP` data: a DROPFILES header, then each path (UTF-16, NUL-terminated), then a NUL.

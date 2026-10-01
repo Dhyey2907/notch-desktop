@@ -7,6 +7,7 @@ import { useSettings } from ".";
 import { exeName } from "./clipboardApps";
 import { pageLead } from "./searchIndex";
 import { Section } from "./Section";
+import { SnippetsSetting } from "./SnippetsSetting";
 
 const MAX_BLOCKED = 50;
 
@@ -16,7 +17,12 @@ export function ClipboardSection() {
   const [error, setError] = useState<string | null>(null);
   const blocked = clipboard?.blockedApps ?? [];
 
-  const save = (change: { paused?: boolean; blockedApps?: string[]; noSuggestions?: boolean }) =>
+  const save = (change: {
+    paused?: boolean;
+    blockedApps?: string[];
+    noSuggestions?: boolean;
+    noLinkCleaning?: boolean;
+  }) =>
     void useSettings
       .getState()
       .update((s) => ({ ...s, clipboard: { ...s.clipboard, ...change } }))
@@ -49,7 +55,14 @@ export function ClipboardSection() {
           checked={!clipboard?.noSuggestions}
           onChange={(on) => save({ noSuggestions: !on })}
         />
+        <Switch
+          label="Clean tracking from links"
+          description="When you copy a link, tracking tags like utm_source, fbclid or YouTube's si= are removed before you paste it. The page still opens the same."
+          checked={!clipboard?.noLinkCleaning}
+          onChange={(on) => save({ noLinkCleaning: !on })}
+        />
       </Surface>
+      <SnippetsSetting />
       <p className="settings__note">
         Copies that apps mark as private are never kept — password managers such as 1Password, Bitwarden and
         KeePass do this, and they're skipped even if they don't.

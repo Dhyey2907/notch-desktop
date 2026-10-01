@@ -1,0 +1,124 @@
+.vault {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 0;
+  height: 100%;
+}
+
+.vault-item__avatar {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-headline);
+  color: var(--text-primary);
+}
+
+.vault-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+/* 2FA codes */
+.vault-code__digits {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-headline);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+}
+
+.vault-code__ring {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: conic-gradient(var(--active) calc(var(--left) * 360deg), var(--surface-hover) 0);
+  -webkit-mask: radial-gradient(circle, transparent 6px, #000 7px);
+  mask: radial-gradient(circle, transparent 6px, #000 7px);
+}
+
+/* Login form */
+.vault-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.vault-form__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2) var(--space-3);
+}
+
+.vault-form__password {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.vault-form__password .nd-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.vault-form__notes {
+  resize: none;
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--text-sm);
+}
+
+.vault-form__buttons {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.vault-form__buttons .nd-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.vault-form__error {
+  color: var(--warning);
+}
+
+/* The form fits the notch: compact fields, scrolls, buttons always visible. */
+.vault-form {
+  height: 100%;
+  gap: 0;
+}
+
+.vault-form .nd-field {
+  padding: 3px 0;
+  gap: 2px;
+}
+
+.vault-form .nd-field__label {
+  font-size: var(--text-xs);
+}
+
+.vault-form .nd-field__input {
+  padding: 5px var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.vault-form__grid {
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0 var(--space-2);
+}
+
+.vault-form__buttons {
+  position: sticky;
+  bottom: 0;
+  padding-top: var(--space-2);
+  background: var(--island-bg, var(--background));
+}

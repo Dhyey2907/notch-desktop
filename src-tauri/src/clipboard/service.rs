@@ -160,7 +160,7 @@ impl Inner {
         if captured.own {
             return;
         }
-        let (paused, blocked, suggestions) = {
+        let (paused, blocked, suggestions, clean_links) = {
             let settings = self
                 .app
                 .state::<AppState>()
@@ -169,7 +169,12 @@ impl Inner {
                 .unwrap_or_else(|e| e.into_inner())
                 .clipboard
                 .clone();
-            (settings.paused, settings.blocked_apps, !settings.no_suggestions)
+            (
+                settings.paused,
+                settings.blocked_apps,
+                !settings.no_suggestions,
+                !settings.no_link_cleaning,
+            )
         };
         if paused {
             return;
@@ -181,7 +186,23 @@ impl Inner {
         }
         let app = captured.exe.as_deref().map(super::app_label);
         let now = Utc::now();
-        let entry = match captured.raw {
+        let mut raw = captured.raw;
+        // A link with tracking in it: put the clean one back (that copy is Notch's own, so
+        // it isn't seen again) and keep the clean one in history.
+        if let Some(Raw::Text(text)) = &raw {
+            if let Some((cleaned, removed)) = clean_links.then(|| super::links::clean(text)).flatten() {
+                if super::win::write(super::win::Put::Text(&cleaned)).is_ok() {
+                    self.app.state::<AppState>().bus.emit(
+                        "clipboard",
+                        AppEvent::LinkCleaned {
+                            removed: removed as u32,
+                        },
+                    );
+                    raw = Some(Raw::Text(cleaned));
+                }
+            }
+        }
+        let entry = match raw {
             Some(Raw::Text(text)) => super::text_entry(text, app, now),
             Some(Raw::Files(files)) => super::files_entry(files, app, now),
             Some(Raw::Png(png)) => super::image::png_size(&png)

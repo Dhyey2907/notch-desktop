@@ -295,6 +295,8 @@ pub struct ShortcutSettings {
     pub open: String,
     pub ask: String,
     pub clipboard: String,
+    /// Grab text from the screen.
+    pub grab: String,
 }
 
 impl Default for ShortcutSettings {
@@ -303,6 +305,7 @@ impl Default for ShortcutSettings {
             open: "Ctrl+Alt+N".into(),
             ask: "Ctrl+Alt+A".into(),
             clipboard: "Ctrl+Alt+V".into(),
+            grab: "Ctrl+Alt+G".into(),
         }
     }
 }
@@ -436,6 +439,25 @@ pub struct ClipboardSettings {
     pub blocked_apps: Vec<String>,
     /// Don't offer "Remind me" / "Open in Maps" for copied dates and addresses.
     pub no_suggestions: bool,
+    /// Leave tracking parameters in copied links.
+    pub no_link_cleaning: bool,
+    /// Turn text snippets off (the keyboard hook stops).
+    pub no_snippets: bool,
+}
+
+/// The password vault in the user's Obsidian vault.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export)]
+pub struct VaultSettings {
+    /// The Obsidian vault folder (logins go in its "Notch Vault" subfolder).
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub folder: Option<String>,
+    /// Ask for Windows Hello before showing or copying a password.
+    pub require_hello: bool,
+    /// Seconds before a copied password or code is cleared (0 = 30).
+    pub clear_secs: u32,
 }
 
 /// Repositories the Git module knows about (most recent first) and the one shown.
@@ -478,6 +500,7 @@ pub struct Settings {
     pub gestures: GestureSettings,
     pub dock: DockSettings,
     pub home: HomeSettings,
+    pub vault: VaultSettings,
 }
 
 impl Settings {
@@ -547,6 +570,9 @@ impl Settings {
         {
             return Err(AppError::InvalidInput("invalid games list".into()));
         }
+        if self.vault.clear_secs > 600 || self.vault.folder.as_ref().is_some_and(|f| f.len() > 1000) {
+            return Err(AppError::InvalidInput("invalid vault settings".into()));
+        }
         if self.hud.charge_alert_at > 100 {
             return Err(AppError::InvalidInput("invalid charge level".into()));
         }
@@ -569,7 +595,10 @@ impl Settings {
             return Err(AppError::InvalidInput("invalid behavior settings".into()));
         }
         let k = &self.shortcuts;
-        if [&k.open, &k.ask, &k.clipboard].iter().any(|s| s.len() > 40) {
+        if [&k.open, &k.ask, &k.clipboard, &k.grab]
+            .iter()
+            .any(|s| s.len() > 40)
+        {
             return Err(AppError::InvalidInput("invalid shortcut".into()));
         }
         let mut ids = self

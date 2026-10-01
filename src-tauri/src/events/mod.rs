@@ -23,6 +23,7 @@ use crate::{
     claude::{approvals::ApprovalRequest, ClaudeStatus},
     clipboard::{ClipboardSnapshot, CopySuggestion},
     control::{ControlSnapshot, SystemAlert},
+    expander::Snippet,
     files::{DownloadDone, DownloadProgress, RecorderState},
     focus::FocusState,
     game::GameHud,
@@ -36,6 +37,7 @@ use crate::{
     spotify::SpotifySnapshot,
     system::{BluetoothDevice, Desktops, ScreenTime, SoundState, Weather},
     todo::{Task, TodoSnapshot},
+    vault::VaultState,
 };
 
 /// Name of the single Tauri channel that carries every `EventEnvelope` to the frontend.
@@ -169,6 +171,14 @@ pub enum AppEvent {
     RecorderChanged(RecorderState),
     /// A recording was saved (and put on the shelf).
     RecordingSaved { name: String, path: String },
+    /// Vault logins changed (here or in Obsidian).
+    VaultChanged(VaultState),
+    /// Tracking was removed from a copied link.
+    LinkCleaned { removed: u32 },
+    /// Text snippets changed.
+    SnippetsChanged(Vec<Snippet>),
+    /// Text was read from the screen and copied (empty if none was found).
+    TextGrabbed { text: String },
     /// A paired Bluetooth device connected or disconnected.
     BluetoothChanged(BluetoothDevice),
     /// Files on the drop shelf changed.
@@ -198,6 +208,10 @@ impl AppEvent {
             AppEvent::SoundChanged { .. } => "SoundChanged",
             AppEvent::BrightnessChanged { .. } => "BrightnessChanged",
             AppEvent::BluetoothChanged(_) => "BluetoothChanged",
+            AppEvent::VaultChanged(_) => "VaultChanged",
+            AppEvent::LinkCleaned { .. } => "LinkCleaned",
+            AppEvent::SnippetsChanged(_) => "SnippetsChanged",
+            AppEvent::TextGrabbed { .. } => "TextGrabbed",
             AppEvent::DownloadsChanged(_) => "DownloadsChanged",
             AppEvent::DownloadDone(_) => "DownloadDone",
             AppEvent::RecorderChanged(_) => "RecorderChanged",
