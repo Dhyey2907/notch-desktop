@@ -5,6 +5,7 @@ import type { AuditEntry } from "../core/generated/AuditEntry";
 import type { ClaudeStatus } from "../core/generated/ClaudeStatus";
 import { ipc, isIpcError } from "../core/ipc";
 import { Button, ConfirmButton, Pill, Surface } from "../design/components";
+import { pageLead } from "./searchIndex";
 import { Section } from "./Section";
 
 function useClaudeStatus() {
@@ -166,7 +167,7 @@ export function AiSection() {
   };
 
   return (
-    <Section title="AI">
+    <Section title="AI" lead={pageLead("ai")}>
       <Surface>
         <div className="settings__row">
           <span className="settings__row-text">

@@ -26,8 +26,10 @@ import { eventBus } from "../../core/eventBus";
 import type { Dashboard } from "../../core/generated/Dashboard";
 import type { SystemStats } from "../../core/generated/SystemStats";
 import type { Weather } from "../../core/generated/Weather";
+import { formatTemperature } from "../../core/clock";
 import { ipc } from "../../core/ipc";
 import { useReduceMotion } from "../../design/useReduceMotion";
+import { useSettings } from "../../settings";
 import { formatMinutes, greeting, longDate } from "./dashboard";
 import "./home.css";
 
@@ -106,6 +108,8 @@ export default function HomeExpanded() {
   const dash = useDashboard();
   const stats = useStats();
   const now = useNow();
+  const home = useSettings((s) => s.settings?.home);
+  const show = (tile: string) => !home?.hiddenTiles.includes(tile);
 
   return (
     <section className="home" aria-label="Home">
@@ -114,13 +118,13 @@ export default function HomeExpanded() {
           <h2 className="home__greeting">{greeting(now.getHours())}</h2>
           <p className="home__date">{longDate(now)}</p>
         </div>
-        {dash && dash.desktops.desktops.length > 0 && <DesktopPicker dash={dash} />}
+        {show("desktops") && dash && dash.desktops.desktops.length > 0 && <DesktopPicker dash={dash} />}
       </header>
       <div className="home__grid">
-        <SystemCard stats={stats} />
-        <ControlsCard dash={dash} />
-        <ScreenTimeCard dash={dash} now={now} />
-        <WeatherCard weather={dash?.weather} />
+        {show("system") && <SystemCard stats={stats} />}
+        {show("controls") && <ControlsCard dash={dash} />}
+        {show("screen") && <ScreenTimeCard dash={dash} now={now} />}
+        {show("weather") && <WeatherCard weather={dash?.weather} fahrenheit={home?.fahrenheit ?? false} />}
       </div>
     </section>
   );
@@ -348,7 +352,7 @@ function ScreenTimeCard({ dash, now }: { dash: Dashboard | null; now: Date }) {
   );
 }
 
-function WeatherCard({ weather }: { weather: Weather | undefined }) {
+function WeatherCard({ weather, fahrenheit }: { weather: Weather | undefined; fahrenheit: boolean }) {
   const Icon = WEATHER_ICONS[weather?.icon ?? "cloud"] ?? Cloud;
   const status = weather?.status ?? "loading";
   return (
@@ -357,7 +361,9 @@ function WeatherCard({ weather }: { weather: Weather | undefined }) {
         <p className="home-card__title">Weather{weather?.place ? ` · ${weather.place}` : ""}</p>
         {status === "ready" ? (
           <>
-            <p className="home-card__big">{weather!.temperature}°C</p>
+            <p className="home-card__big">
+              {weather!.temperature != null ? formatTemperature(weather!.temperature, fahrenheit) : "—"}
+            </p>
             <p className="home-card__sub">{weather!.condition}</p>
           </>
         ) : status === "noAccess" ? (

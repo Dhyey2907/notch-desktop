@@ -119,6 +119,229 @@ pub struct DisplaySettings {
     pub monitor: Option<String>,
 }
 
+/// A three-step size (notch size, text size).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum Scale {
+    Small,
+    #[default]
+    Normal,
+    Large,
+}
+
+/// How the notch looks when nothing is happening.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum BubbleStyle {
+    #[default]
+    Pill,
+    Dot,
+    /// Invisible until the pointer reaches it.
+    Hidden,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum Theme {
+    #[default]
+    Black,
+    Graphite,
+    /// Translucent.
+    Glass,
+}
+
+/// Look of the notch. Numbers are percentages unless noted.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export)]
+pub struct AppearanceSettings {
+    pub size: Scale,
+    pub text_size: Scale,
+    pub bubble: BubbleStyle,
+    /// Show the time in the resting bubble.
+    pub bubble_clock: bool,
+    pub theme: Theme,
+    /// 40–100.
+    pub opacity: u8,
+    /// 0 (square-ish) – 100 (fully round).
+    pub roundness: u8,
+    /// `#rrggbb`, or empty for the default white.
+    pub accent: String,
+    /// Tint highlights with the playing album's colors instead.
+    pub accent_from_music: bool,
+    /// Logical px left (−) or right (+) of center.
+    pub offset_x: i32,
+    /// Logical px down from the top edge.
+    pub offset_y: u32,
+}
+
+impl Default for AppearanceSettings {
+    fn default() -> Self {
+        Self {
+            size: Scale::Normal,
+            text_size: Scale::Normal,
+            bubble: BubbleStyle::Pill,
+            bubble_clock: false,
+            theme: Theme::Black,
+            opacity: 100,
+            roundness: 100,
+            accent: String::new(),
+            accent_from_music: false,
+            offset_x: 0,
+            offset_y: 0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum Speed {
+    Fast,
+    #[default]
+    Normal,
+    Slow,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum AlertSound {
+    #[default]
+    Off,
+    Soft,
+    Chime,
+}
+
+/// What the notch does over a fullscreen app.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum FullscreenBehavior {
+    /// Hidden, but notifications still pop in.
+    #[default]
+    Alerts,
+    /// Hidden; only must-answer cards (approvals, timers) pop in.
+    Hide,
+    /// Always shown.
+    Show,
+}
+
+/// Quiet hours: cards wait (like focus) between two times of day, in minutes after midnight.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export)]
+pub struct QuietHours {
+    pub enabled: bool,
+    pub start_min: u32,
+    pub end_min: u32,
+}
+
+impl Default for QuietHours {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            start_min: 22 * 60,
+            end_min: 7 * 60,
+        }
+    }
+}
+
+/// How the notch reacts to the pointer and how long cards stay.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export)]
+pub struct BehaviorSettings {
+    /// Don't show the small preview when the pointer rests on the bubble.
+    pub no_hover_peek: bool,
+    pub hover_speed: Speed,
+    /// Hovering opens the full notch (instead of clicking).
+    pub open_on_hover: bool,
+    /// Close the open notch this many seconds after the pointer leaves (0 = only on click away).
+    pub auto_close_secs: u32,
+    /// How long notifications stay: `Fast` = short, `Slow` = long.
+    pub card_time: Speed,
+    pub quiet: QuietHours,
+    pub sound: AlertSound,
+    /// 0–1.
+    pub sound_volume: f32,
+    pub fullscreen: FullscreenBehavior,
+}
+
+impl Default for BehaviorSettings {
+    fn default() -> Self {
+        Self {
+            no_hover_peek: false,
+            hover_speed: Speed::Normal,
+            open_on_hover: false,
+            auto_close_secs: 0,
+            card_time: Speed::Normal,
+            quiet: QuietHours::default(),
+            sound: AlertSound::Off,
+            sound_volume: 0.6,
+            fullscreen: FullscreenBehavior::Alerts,
+        }
+    }
+}
+
+/// Global shortcuts as text, e.g. `Ctrl+Alt+N`; empty turns one off.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export)]
+pub struct ShortcutSettings {
+    pub open: String,
+    pub ask: String,
+    pub clipboard: String,
+}
+
+impl Default for ShortcutSettings {
+    fn default() -> Self {
+        Self {
+            open: "Ctrl+Alt+N".into(),
+            ask: "Ctrl+Alt+A".into(),
+            clipboard: "Ctrl+Alt+V".into(),
+        }
+    }
+}
+
+/// Touchpad swipes on the notch.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export)]
+pub struct GestureSettings {
+    pub disabled: bool,
+    /// `Fast` = a light flick is enough.
+    pub sensitivity: Speed,
+    /// Left/right on the bubble doesn't change the song.
+    pub no_track_swipe: bool,
+}
+
+/// The module dock: order, hidden modules, and which one opens first.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export)]
+pub struct DockSettings {
+    pub order: Vec<String>,
+    pub hidden: Vec<String>,
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub first: Option<String>,
+}
+
+/// Home dashboard tiles and units.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export)]
+pub struct HomeSettings {
+    /// Tile ids: `system`, `controls`, `screen`, `weather`, `desktops`.
+    pub hidden_tiles: Vec<String>,
+    pub fahrenheit: bool,
+    pub clock24h: bool,
+}
+
 /// Game mode: which fullscreen apps are games (by exe name) and which aren't.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", default)]
@@ -235,6 +458,12 @@ pub struct Settings {
     pub music: MusicSettings,
     pub focus: FocusSettings,
     pub game: GameSettings,
+    pub appearance: AppearanceSettings,
+    pub behavior: BehaviorSettings,
+    pub shortcuts: ShortcutSettings,
+    pub gestures: GestureSettings,
+    pub dock: DockSettings,
+    pub home: HomeSettings,
 }
 
 impl Settings {
@@ -304,16 +533,45 @@ impl Settings {
         {
             return Err(AppError::InvalidInput("invalid games list".into()));
         }
+        let a = &self.appearance;
+        if !(40..=100).contains(&a.opacity)
+            || a.roundness > 100
+            || !(-800..=800).contains(&a.offset_x)
+            || a.offset_y > 80
+            || !(a.accent.is_empty() || valid_hex_color(&a.accent))
+        {
+            return Err(AppError::InvalidInput("invalid look settings".into()));
+        }
+        let b = &self.behavior;
+        if b.auto_close_secs > 600
+            || !b.sound_volume.is_finite()
+            || !(0.0..=1.0).contains(&b.sound_volume)
+            || b.quiet.start_min >= 24 * 60
+            || b.quiet.end_min >= 24 * 60
+        {
+            return Err(AppError::InvalidInput("invalid behavior settings".into()));
+        }
+        let k = &self.shortcuts;
+        if [&k.open, &k.ask, &k.clipboard].iter().any(|s| s.len() > 40) {
+            return Err(AppError::InvalidInput("invalid shortcut".into()));
+        }
+        let mut ids = self
+            .dock
+            .order
+            .iter()
+            .chain(&self.dock.hidden)
+            .chain(self.dock.first.iter())
+            .chain(&self.home.hidden_tiles);
+        if self.dock.order.len() + self.dock.hidden.len() + self.home.hidden_tiles.len() > 120
+            || ids.any(|id| !valid_id(id))
+        {
+            return Err(AppError::InvalidInput("invalid dock or home settings".into()));
+        }
         if self.calendar.reminder_minutes > 120 {
             return Err(AppError::InvalidInput("reminder lead is too long".into()));
         }
         for id in self.modules.keys() {
-            let valid = !id.is_empty()
-                && id.len() <= 64
-                && id
-                    .chars()
-                    .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_');
-            if !valid {
+            if !valid_id(id) {
                 return Err(AppError::InvalidInput(format!("invalid module id: {id:?}")));
             }
         }
@@ -335,6 +593,18 @@ impl Settings {
             tracing::warn!(module = module_id, "module disabled after repeated init failures");
         }
     }
+}
+
+fn valid_id(id: &str) -> bool {
+    !id.is_empty()
+        && id.len() <= 64
+        && id
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+}
+
+fn valid_hex_color(s: &str) -> bool {
+    s.len() == 7 && s.starts_with('#') && s[1..].chars().all(|c| c.is_ascii_hexdigit())
 }
 
 pub fn load(conn: &Connection) -> AppResult<Settings> {
@@ -437,6 +707,35 @@ mod tests {
         let media = &settings.modules["media"];
         assert!(!media.enabled);
         assert!(media.auto_disabled);
+    }
+
+    #[test]
+    fn new_groups_have_sensible_defaults() {
+        let parsed: Settings = serde_json::from_str("{}").unwrap();
+        assert_eq!(parsed.appearance.opacity, 100);
+        assert_eq!(parsed.appearance.roundness, 100);
+        assert_eq!(parsed.shortcuts.open, "Ctrl+Alt+N");
+        assert_eq!(parsed.behavior.quiet.start_min, 22 * 60);
+        assert!(parsed.validate().is_ok());
+        assert!(Settings::default().validate().is_ok());
+    }
+
+    #[test]
+    fn rejects_out_of_range_look_and_behavior() {
+        let mut s = Settings::default();
+        s.appearance.opacity = 10;
+        assert!(s.validate().is_err());
+        let mut s = Settings::default();
+        s.appearance.accent = "red; background:url(x)".into();
+        assert!(s.validate().is_err());
+        s.appearance.accent = "#1a2B3c".into();
+        assert!(s.validate().is_ok());
+        let mut s = Settings::default();
+        s.behavior.quiet.end_min = 24 * 60;
+        assert!(s.validate().is_err());
+        let mut s = Settings::default();
+        s.dock.order.push("../x".into());
+        assert!(s.validate().is_err());
     }
 
     #[test]

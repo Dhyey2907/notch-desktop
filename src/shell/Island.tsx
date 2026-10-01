@@ -22,6 +22,10 @@ import { useMusicPulse } from "./musicPulse";
 import { addWheel, idleSwipe } from "./gestures";
 import { useSystemHud } from "./systemHud";
 import { trackFullscreen, useFullscreen } from "./fullscreen";
+import { scaledRadius } from "./appearance";
+import { HOVER_CLOSE_MS, hideOverFullscreen, OPEN_DELAY_MS, PEEK_DELAY_MS, SWIPE_DISTANCE } from "./behavior";
+import { BubbleClock } from "./BubbleClock";
+import { useAlertSound, useCardTime, useLook, useQuietHours } from "./useNotchPrefs";
 import {
   activityIslandSize,
   GAME_HUD_SIZE,
@@ -33,14 +37,11 @@ import {
 import { CompactHost, ModuleHost, PeekHost } from "./ModuleHost";
 import { useFirstRunPrompt } from "./useFirstRunPrompt";
 import { useIsland } from "./useIsland";
-import { useModuleLifecycle, useModuleNav } from "./useModules";
+import { openFirstModule, useModuleLifecycle, useModuleNav } from "./useModules";
 import "./island.css";
 
-/** Hover must linger this long before the island peeks (design.md §18: no accidental panels). */
-const PEEK_INTENT_MS = 140;
 /** Grace period before a peek collapses after the pointer leaves. */
 const PEEK_LEAVE_MS = 200;
-/** Horizontal scroll distance that switches module, and the cooldown between switches. */
 /** Let the island finish collapsing before it hides over a fullscreen app. */
 const FULLSCREEN_HIDE_DELAY_MS = 450;
 
@@ -86,14 +87,21 @@ export function Island() {
   useGameMode();
   useAmbient();
   const showPet = useSettings((s) => !s.settings?.focus.hidePet);
+  const look = useSettings((s) => s.settings?.appearance);
+  const fullscreenBehavior = useSettings((s) => s.settings?.behavior.fullscreen ?? "alerts");
   const islandRef = useRef<HTMLElement>(null);
   useMusicPulse(islandRef);
   useSystemHud();
   useFirstRunPrompt();
+  useLook();
+  useCardTime();
+  useQuietHours();
+  useAlertSound();
 
-  // Fullscreen app in front: hidden while resting, shown while a notification is up (or
-  // the user has it open). Hiding waits for the collapse animation to finish.
-  const hideForFullscreen = fullscreen && !activity && (mode === "collapsed" || mode === "peek");
+  // Fullscreen app in front: hidden while resting; whether notifications still pop in is a
+  // setting. Hiding waits for the collapse animation to finish.
+  const hideForFullscreen =
+    fullscreen && hideOverFullscreen(fullscreenBehavior, mode !== "expanded", activity);
   useEffect(() => {
     if (!hideForFullscreen) {
       void ipc.shellSetFullscreenHidden(false).catch(() => {});
@@ -139,6 +147,7 @@ export function Island() {
       eventBus.on("ShellToggleRequested", async ({ event }) => {
         // The shortcut targets the island on the screen under the pointer.
         if (event.payload.label !== windowLabel()) return;
+        if (useIsland.getState().mode !== "expanded") openFirstModule();
         await useIsland.getState().toggleExpanded();
         if (useIsland.getState().mode === "expanded") focusActiveDockItem();
       }),
@@ -185,10 +194,25 @@ export function Island() {
     hoverTimer.current = window.setTimeout(() => void request(target), delay);
   };
 
+  const behavior = () => useSettings.getState().settings?.behavior;
+
   const onPointerEnter = () => {
     const current = useIsland.getState().mode;
-    if (current === "collapsed") scheduleHover("peek", PEEK_INTENT_MS);
-    else window.clearTimeout(hoverTimer.current);
+    const prefs = behavior();
+    window.clearTimeout(hoverTimer.current);
+    if (current === "collapsed" && prefs?.openOnHover) {
+      hoverTimer.current = window.setTimeout(() => {
+        // Something put away is waiting: hovering brings it back, like a click would.
+        if (useActivities.getState().activities.some((a) => a.minimized)) {
+          useActivities.getState().restore();
+          return;
+        }
+        openFirstModule();
+        void request("expanded");
+      }, OPEN_DELAY_MS[prefs.hoverSpeed]);
+    } else if (current === "collapsed" && !prefs?.noHoverPeek) {
+      scheduleHover("peek", PEEK_DELAY_MS[prefs?.hoverSpeed ?? "normal"]);
+    }
     // Don't let an activity vanish while the pointer is on it.
     const shown = currentActivity();
     if (current === "activity" && shown) useActivities.getState().hold(shown.id);
@@ -196,7 +220,14 @@ export function Island() {
 
   const onPointerLeave = () => {
     const current = useIsland.getState().mode;
+    const prefs = behavior();
+    const closeAfter = prefs?.autoCloseSecs
+      ? prefs.autoCloseSecs * 1000
+      : prefs?.openOnHover
+        ? HOVER_CLOSE_MS
+        : 0;
     if (current === "peek") scheduleHover("collapsed", PEEK_LEAVE_MS);
+    else if (current === "expanded" && closeAfter > 0) scheduleHover("collapsed", closeAfter);
     else window.clearTimeout(hoverTimer.current);
     const shown = currentActivity();
     if (current === "activity" && shown) useActivities.getState().release(shown.id);
@@ -209,6 +240,7 @@ export function Island() {
       useActivities.getState().restore();
       return;
     }
+    openFirstModule();
     void request("expanded");
   };
 
@@ -222,8 +254,10 @@ export function Island() {
   // Two-finger swipes (design.md §18). Expanded: left/right switches module. On the bubble or
   // peek: left/right skips the track, up opens the notch, down puts it away.
   const onWheel = (e: WheelEvent) => {
-    if (mode === "activity") return;
-    const result = addWheel(swipe.current, e.deltaX, e.deltaY, performance.now());
+    const gestures = useSettings.getState().settings?.gestures;
+    if (mode === "activity" || gestures?.disabled) return;
+    const distance = SWIPE_DISTANCE[gestures?.sensitivity ?? "normal"];
+    const result = addWheel(swipe.current, e.deltaX, e.deltaY, performance.now(), distance);
     swipe.current = result.state;
     const fired = result.swipe;
     if (!fired) return;
@@ -232,9 +266,11 @@ export function Island() {
       return;
     }
     if (fired === "left" || fired === "right") {
+      if (gestures?.noTrackSwipe) return;
       void ipc.mediaCommand({ kind: fired === "right" ? "next" : "previous" }).catch(() => {});
     } else if (fired === "up") {
       window.clearTimeout(hoverTimer.current);
+      openFirstModule();
       void request("expanded");
     } else {
       window.clearTimeout(hoverTimer.current);
@@ -251,9 +287,14 @@ export function Island() {
         ref={islandRef}
         className="island"
         data-mode={mode}
+        data-bubble={look?.bubble ?? "pill"}
         aria-label="Notch"
         initial={false}
-        animate={{ width: size.width, height: size.height, borderRadius: islandRadius(size) }}
+        animate={{
+          width: size.width,
+          height: size.height,
+          borderRadius: scaledRadius(islandRadius(size), look?.roundness ?? 100),
+        }}
         transition={transition}
         onAnimationComplete={() => void settle()}
         onPointerEnter={onPointerEnter}
@@ -277,7 +318,8 @@ export function Island() {
                   <span className="island-attention" role="img" aria-label="Something is waiting for you" />
                 )}
                 <CompactHost />
-                {showPet && <Pet />}
+                {showPet && look?.bubble === "pill" && <Pet />}
+                {look?.bubbleClock && look.bubble === "pill" && <BubbleClock />}
               </>
             )}
             {mode === "peek" && <PeekHost />}

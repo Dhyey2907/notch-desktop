@@ -26,6 +26,16 @@ describe("moduleStore", () => {
     expect(store.getState().activeId).toBe("a");
   });
 
+  it("can open a module hidden from the dock without swiping onto it", () => {
+    const store = createModuleStore(["a"]);
+    store.getState().setIds(["a", "b"], ["c"]);
+    store.getState().setActive("c");
+    expect(store.getState().activeId).toBe("c");
+    store.getState().setActive("a");
+    store.getState().step(1);
+    expect(store.getState().activeId).toBe("b");
+  });
+
   it("ignores unknown module ids", () => {
     const store = createModuleStore(["a", "b"]);
     store.getState().setActive("nope");

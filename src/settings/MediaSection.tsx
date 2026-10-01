@@ -8,6 +8,7 @@ import { Button, ConfirmButton, MockBadge, Pill, Surface, TextField } from "../d
 import { MAX_PINNED, pinnedPlaylists, togglePinned } from "../modules/media/spotifyStore";
 import { useSettings } from ".";
 import { MusicSetting } from "./MusicSetting";
+import { pageLead } from "./searchIndex";
 import { Section } from "./Section";
 import { SignInWith } from "./SignInWith";
 
@@ -70,7 +71,7 @@ export function MediaSection() {
   };
 
   return (
-    <Section title="Media">
+    <Section title="Media" lead={pageLead("media")}>
       <MusicSetting />
       <Surface>
         <div className="settings__row">

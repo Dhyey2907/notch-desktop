@@ -26,6 +26,21 @@ pub fn top_center_frame(
     (PhysicalPosition::new(x, work.y), PhysicalSize::new(width, height))
 }
 
+/// Move a placed frame by the user's offset (logical px), keeping it inside the work area.
+pub fn nudge(
+    (position, size): (PhysicalPosition<i32>, PhysicalSize<u32>),
+    work: WorkArea,
+    scale_factor: f64,
+    offset_x: i32,
+    offset_y: u32,
+) -> PhysicalPosition<i32> {
+    let max_x = work.x + (work.width - size.width) as i32;
+    let max_y = work.y + (work.height - size.height) as i32;
+    let x = position.x + (f64::from(offset_x) * scale_factor).round() as i32;
+    let y = position.y + (f64::from(offset_y) * scale_factor).round() as i32;
+    PhysicalPosition::new(x.clamp(work.x, max_x), y.clamp(work.y, max_y))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -67,6 +82,14 @@ mod tests {
         };
         let (pos, _) = top_center_frame(work, 1.0, 200.0, 40.0);
         assert_eq!(pos, PhysicalPosition::new(-1060, 48));
+    }
+
+    #[test]
+    fn nudges_by_the_users_offset_but_stays_on_screen() {
+        let frame = top_center_frame(FHD, 1.5, 200.0, 40.0);
+        assert_eq!(nudge(frame, FHD, 1.5, 100, 10), PhysicalPosition::new(960, 15));
+        assert_eq!(nudge(frame, FHD, 1.5, -5000, 0), PhysicalPosition::new(0, 0));
+        assert_eq!(nudge(frame, FHD, 1.5, 5000, 0), PhysicalPosition::new(1620, 0));
     }
 
     #[test]

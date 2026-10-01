@@ -125,9 +125,17 @@ export interface ActivityStoreOptions {
   hold?: (input: ActivityInput) => boolean;
 }
 
+let cardTimeScale = 1;
+
+/** Settings → Behavior: make cards stay shorter or longer than their default. */
+export function setCardTimeScale(scale: number) {
+  cardTimeScale = scale;
+}
+
 function lifetime(input: ActivityInput): number | null {
   if (input.persistent) return null;
-  return input.timeoutMs ?? DEFAULT_TIMEOUT_MS[input.priority];
+  const ms = input.timeoutMs ?? DEFAULT_TIMEOUT_MS[input.priority];
+  return ms === null ? null : Math.round(ms * cardTimeScale);
 }
 
 /** Persistent activities (explicitly, or critical by default) need an explicit answer. */

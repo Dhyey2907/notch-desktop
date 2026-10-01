@@ -18,6 +18,8 @@ export interface IslandState {
   toggleExpanded: () => Promise<void>;
   /** Call when the island's animation settles, to trim the window to the current state. */
   settle: () => Promise<void>;
+  /** Resize the window again even if the state didn't change (the notch size setting did). */
+  refit: () => Promise<void>;
 }
 
 export function createIslandStore(resizeWindow: ResizeWindow, initialMode: IslandMode = "collapsed") {
@@ -52,5 +54,10 @@ export function createIslandStore(resizeWindow: ResizeWindow, initialMode: Islan
     toggleExpanded: () => get().request(get().mode === "expanded" ? "collapsed" : "expanded"),
 
     settle: () => resizeTo(windowSizeFor(get().mode, get().size)),
+
+    refit: () => {
+      windowSize = null;
+      return resizeTo(windowSizeFor(get().mode, get().size));
+    },
   }));
 }

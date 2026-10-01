@@ -5,6 +5,7 @@ import { ipc } from "../core/ipc";
 import { Button, ConfirmButton, IconButton, Surface, Switch, TextField } from "../design/components";
 import { useSettings } from ".";
 import { exeName } from "./clipboardApps";
+import { pageLead } from "./searchIndex";
 import { Section } from "./Section";
 
 const MAX_BLOCKED = 50;
@@ -32,7 +33,7 @@ export function ClipboardSection() {
   };
 
   return (
-    <Section title="Clipboard">
+    <Section title="Clipboard & files" lead={pageLead("clipboard")}>
       <Surface>
         <Switch
           label="Keep clipboard history"

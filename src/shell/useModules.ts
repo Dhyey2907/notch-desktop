@@ -16,10 +16,45 @@ export function isModuleEnabled(module: NotchModule, settings: Parameters<typeof
   return module.alwaysOn || moduleSettings(settings, module.id).enabled;
 }
 
+/** Order modules as the user arranged them; ones not arranged yet keep their built-in order. */
+export function dockOrder<T extends { id: string }>(modules: readonly T[], order: readonly string[]): T[] {
+  const rank = (id: string) => {
+    const i = order.indexOf(id);
+    return i === -1 ? order.length : i;
+  };
+  return modules
+    .map((m, i) => ({ m, i }))
+    .sort((a, b) => rank(a.m.id) - rank(b.m.id) || a.i - b.i)
+    .map(({ m }) => m);
+}
+
 /** Modules the user has enabled, in dock order. */
 export function useEnabledModules(): readonly NotchModule[] {
   const settings = useSettings((s) => s.settings);
-  return useMemo(() => MODULES.filter((m) => isModuleEnabled(m, settings)), [settings]);
+  return useMemo(
+    () =>
+      dockOrder(
+        MODULES.filter((m) => isModuleEnabled(m, settings)),
+        settings?.dock.order ?? [],
+      ),
+    [settings],
+  );
+}
+
+/** Enabled modules shown in the dock (some can be hidden from it but stay on). */
+export function useDockModules(): readonly NotchModule[] {
+  const enabled = useEnabledModules();
+  const hidden = useSettings((s) => s.settings?.dock.hidden);
+  return useMemo(() => {
+    const shown = enabled.filter((m) => !hidden?.includes(m.id));
+    return shown.length > 0 ? shown : enabled;
+  }, [enabled, hidden]);
+}
+
+/** Settings → Dock: "Open the notch to". Unset means wherever it was last. */
+export function openFirstModule() {
+  const first = useSettings.getState().settings?.dock.first;
+  if (first) useModuleNav.getState().setActive(first);
 }
 
 /** A context scoped to one module, so the shell can apply that module's preferences. */
@@ -48,11 +83,21 @@ function contextFor(module: NotchModule): ModuleContext {
 export function useModuleLifecycle() {
   const loaded = useSettings((s) => s.settings !== null);
   const enabled = useEnabledModules();
+  const docked = useDockModules();
   const enabledKey = enabled.map((m) => m.id).join(",");
 
   useEffect(() => {
-    useModuleNav.getState().setIds(enabled.map((m) => m.id));
-  }, [enabled]);
+    const ids = docked.map((m) => m.id);
+    useModuleNav.getState().setIds(
+      ids,
+      enabled.map((m) => m.id).filter((id) => !ids.includes(id)),
+    );
+  }, [enabled, docked]);
+
+  // Start on the chosen module once settings load.
+  useEffect(() => {
+    if (loaded) openFirstModule();
+  }, [loaded]);
 
   useEffect(() => {
     if (!loaded) return;

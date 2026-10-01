@@ -27,6 +27,7 @@ export function addWheel(
   deltaX: number,
   deltaY: number,
   now: number,
+  threshold = SWIPE_THRESHOLD,
 ): { swipe: Swipe | null; state: SwipeState & { lastAt: number } } {
   if (now < state.lockedUntil) return { swipe: null, state };
   // A pause starts a new gesture.
@@ -35,7 +36,7 @@ export function addWheel(
   const dy = (fresh ? 0 : state.dy) + deltaY;
   const horizontal = Math.abs(dx) >= Math.abs(dy);
   const distance = horizontal ? dx : dy;
-  if (Math.abs(distance) < SWIPE_THRESHOLD) {
+  if (Math.abs(distance) < threshold) {
     return { swipe: null, state: { dx, dy, lockedUntil: state.lockedUntil, lastAt: now } };
   }
   const swipe: Swipe = horizontal ? (dx > 0 ? "right" : "left") : dy > 0 ? "down" : "up";

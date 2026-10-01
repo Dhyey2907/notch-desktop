@@ -1,7 +1,9 @@
 // Game mode strip: FPS, GPU temperature and load, CPU, RAM, ping and the time.
 import { useEffect, useState } from "react";
 
+import { formatClock } from "../core/clock";
 import type { GameHud } from "../core/generated/GameHud";
+import { useSettings } from "../settings";
 
 function Stat({ label, value, warn }: { label: string; value: string; warn?: boolean }) {
   return (
@@ -13,12 +15,13 @@ function Stat({ label, value, warn }: { label: string; value: string; warn?: boo
 }
 
 export function GameHudView({ hud }: { hud: GameHud }) {
+  const h24 = useSettings((s) => s.settings?.home.clock24h ?? false);
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const id = window.setInterval(() => setNow(new Date()), 15_000);
     return () => window.clearInterval(id);
   }, []);
-  const time = now.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  const time = formatClock(now, h24);
   return (
     <div className="game-hud" role="status" aria-label={`Game mode: ${hud.app}`}>
       <Stat label="FPS" value={hud.fps != null ? String(hud.fps) : "—"} />

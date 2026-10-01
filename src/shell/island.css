@@ -12,7 +12,7 @@
   position: relative;
   flex: none;
   overflow: hidden;
-  background: var(--background);
+  background: var(--island-bg, var(--background));
   box-shadow: var(--shadow-island);
   color: var(--text-primary);
   pointer-events: auto;
@@ -90,7 +90,7 @@
   height: 40px; /* DOCK.height in geometry.ts */
   box-sizing: border-box;
   padding: 0 var(--space-1);
-  background: var(--background);
+  background: var(--island-bg, var(--background));
   border-radius: var(--radius-pill);
   box-shadow: var(--shadow-island);
   outline: 1px solid var(--border);
@@ -199,4 +199,31 @@
   .island[data-music="on"] {
     transition: none;
   }
+}
+
+/* Settings → Look: highlights follow the album's colors while music plays. */
+:root[data-accent-music] .island[data-music="on"] {
+  --active: var(--music-accent, #ffffff);
+  --on-active: #0a0a0a;
+}
+
+/* Settings → Look: a bubble that's invisible until the pointer reaches it. */
+.island[data-mode="collapsed"][data-bubble="hidden"]:not(:hover) {
+  opacity: 0;
+}
+
+.island[data-bubble="dot"] .island-content--collapsed > :not(.island-attention) {
+  display: none;
+}
+
+.island-clock {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  font-weight: var(--weight-emphasis);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+  pointer-events: none;
 }

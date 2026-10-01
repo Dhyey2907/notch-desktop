@@ -5,6 +5,7 @@ import type { GameStatus } from "../core/generated/GameStatus";
 import { ipc, isIpcError } from "../core/ipc";
 import { Button, IconButton, Surface, Switch } from "../design/components";
 import { useSettings } from ".";
+import { pageLead } from "./searchIndex";
 import { Section } from "./Section";
 
 export function GamesSection() {
@@ -35,7 +36,7 @@ export function GamesSection() {
 
   if (!game) return null;
   return (
-    <Section title="Games">
+    <Section title="Games" lead={pageLead("games")}>
       <Surface>
         <Switch
           label="Game mode"

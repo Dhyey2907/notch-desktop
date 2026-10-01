@@ -13,6 +13,7 @@ import {
   TextField,
 } from "../design/components";
 import { useSettings } from ".";
+import { pageLead } from "./searchIndex";
 import { Section } from "./Section";
 import { SignInWith } from "./SignInWith";
 
@@ -86,7 +87,7 @@ export function CalendarSection() {
   };
 
   return (
-    <Section title="Calendar">
+    <Section title="Calendar" lead={pageLead("calendar")}>
       <Surface>
         <div className="settings__row">
           <span className="settings__row-text">

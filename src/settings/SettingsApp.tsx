@@ -1,97 +1,204 @@
-// Settings window (design.md §21): a short list of sections, not a dashboard. Sections for
-// Media, Calendar, Git and AI are added alongside those modules.
-import { useEffect, useState } from "react";
+// Settings window (design.md §21): grouped pages with icons, a search box that finds any
+// setting, and plain-language rows. Each feature's page lives in its own file.
+import {
+  Bot,
+  Clipboard,
+  Gamepad2,
+  GitBranch,
+  House,
+  Info,
+  Keyboard,
+  LayoutGrid,
+  MousePointerClick,
+  Music,
+  Palette,
+  Search,
+  Settings2,
+  Shield,
+  Timer,
+  CalendarDays,
+  X,
+  type LucideIcon,
+} from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import type { AnimationPreference } from "../core/generated/AnimationPreference";
-import type { AppInfo } from "../core/generated/AppInfo";
 import type { ScreenInfo } from "../core/generated/ScreenInfo";
 import { ipc } from "../core/ipc";
-import { Button, MockBadge, Pill, SegmentedControl, Surface, Switch } from "../design/components";
-import { MODULES } from "../modules/registry";
+import { SegmentedControl, Surface, Switch } from "../design/components";
 import { useSettings } from ".";
 import { AiSection } from "./AiSection";
+import { BehaviorSection } from "./BehaviorSection";
 import { CalendarSection } from "./CalendarSection";
 import { ClipboardSection } from "./ClipboardSection";
+import { Row } from "./controls";
+import { DockSection } from "./DockSection";
+import { FocusSection } from "./FocusSection";
 import { GamesSection } from "./GamesSection";
 import { GitSection } from "./GitSection";
-import { HudSetting } from "./HudSetting";
+import { HomeSection } from "./HomeSection";
+import { LookSection } from "./LookSection";
 import { MediaSection } from "./MediaSection";
+import { AboutSection, PrivacySection } from "./PrivacySection";
+import { pageFromId, pageLead, PAGES, searchSettings, settingAnchor, type PageId } from "./searchIndex";
 import { Section } from "./Section";
-import { moduleSettings } from "./settingsStore";
+import { ShortcutsSection } from "./ShortcutsSection";
 import "./settings.css";
 
-type SectionId =
-  | "general"
-  | "appearance"
-  | "modules"
-  | "media"
-  | "calendar"
-  | "git"
-  | "clipboard"
-  | "games"
-  | "ai"
-  | "diagnostics";
+const ICONS: Record<PageId, LucideIcon> = {
+  general: Settings2,
+  look: Palette,
+  behavior: MousePointerClick,
+  shortcuts: Keyboard,
+  home: House,
+  dock: LayoutGrid,
+  media: Music,
+  calendar: CalendarDays,
+  git: GitBranch,
+  clipboard: Clipboard,
+  focus: Timer,
+  games: Gamepad2,
+  ai: Bot,
+  privacy: Shield,
+  about: Info,
+};
 
-const SECTIONS: { id: SectionId; label: string }[] = [
-  { id: "general", label: "General" },
-  { id: "appearance", label: "Appearance" },
-  { id: "modules", label: "Modules" },
-  { id: "media", label: "Media" },
-  { id: "calendar", label: "Calendar" },
-  { id: "git", label: "Git" },
-  { id: "clipboard", label: "Clipboard" },
-  { id: "games", label: "Games" },
-  { id: "ai", label: "AI" },
-  { id: "diagnostics", label: "Diagnostics & About" },
-];
+const CONTENT: Record<PageId, () => ReactNode> = {
+  general: () => <GeneralSection />,
+  look: () => <LookSection />,
+  behavior: () => <BehaviorSection />,
+  shortcuts: () => <ShortcutsSection />,
+  home: () => <HomeSection />,
+  dock: () => <DockSection />,
+  media: () => <MediaSection />,
+  calendar: () => <CalendarSection />,
+  git: () => <GitSection />,
+  clipboard: () => <ClipboardSection />,
+  focus: () => <FocusSection />,
+  games: () => <GamesSection />,
+  ai: () => <AiSection />,
+  privacy: () => <PrivacySection />,
+  about: () => <AboutSection />,
+};
+
+const GROUPS = ["Notch", "Features", "More"] as const;
 
 /** `#settings/calendar` → "calendar"; anything unknown falls back to General. */
-function sectionFromHash(): SectionId {
-  const id = window.location.hash.split("/")[1];
-  return SECTIONS.find((s) => s.id === id)?.id ?? "general";
+function pageFromHash(): PageId {
+  return pageFromId(window.location.hash.split("/")[1]);
 }
 
 export function SettingsApp() {
-  const [section, setSection] = useState<SectionId>(sectionFromHash);
+  const [page, setPage] = useState<PageId>(pageFromHash);
+  const [query, setQuery] = useState("");
+  const [target, setTarget] = useState<{ label: string; at: number } | null>(null);
   const loaded = useSettings((s) => s.settings !== null);
 
-  // Other windows can deep-link to a section (e.g. the island's "Connect Calendar").
+  // Other windows can deep-link to a page (e.g. the island's "Connect Calendar").
   useEffect(() => {
-    const onHash = () => setSection(sectionFromHash());
+    const onHash = () => setPage(pageFromHash());
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
+
+  // After picking a search result, scroll its row into view and flash it.
+  useEffect(() => {
+    if (!target) return;
+    const frame = requestAnimationFrame(() => {
+      const el = document.getElementById(settingAnchor(target.label));
+      if (!el) return;
+      el.scrollIntoView({ block: "center", behavior: "smooth" });
+      el.classList.add("settings__flash");
+      window.setTimeout(() => el.classList.remove("settings__flash"), 1600);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [target]);
+
+  const results = searchSettings(query);
+  const go = (id: PageId, label?: string) => {
+    setPage(id);
+    setQuery("");
+    // Keep the address in step so a reload stays on this page (no hashchange is fired).
+    history.replaceState(null, "", `#settings/${id}`);
+    if (label) setTarget({ label, at: performance.now() });
+    document.querySelector(".settings__content")?.scrollTo({ top: 0 });
+  };
 
   return (
     <div className="settings">
       <nav className="settings__nav" aria-label="Settings sections">
         <p className="settings__app-name">Notch Desktop</p>
-        {SECTIONS.map((s) => (
-          <button
-            key={s.id}
-            type="button"
-            className={`settings__nav-item${s.id === section ? " settings__nav-item--active" : ""}`}
-            aria-current={s.id === section ? "page" : undefined}
-            onClick={() => setSection(s.id)}
-          >
-            {s.label}
-          </button>
+        <label className="settings__search">
+          <Search size={14} aria-hidden />
+          <input
+            type="search"
+            placeholder="Search settings"
+            aria-label="Search settings"
+            value={query}
+            onChange={(e) => setQuery(e.currentTarget.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && results[0]) go(results[0].page, results[0].label);
+              if (e.key === "Escape") setQuery("");
+            }}
+          />
+          {query && (
+            <button type="button" aria-label="Clear search" onClick={() => setQuery("")}>
+              <X size={13} aria-hidden />
+            </button>
+          )}
+        </label>
+        {GROUPS.map((group) => (
+          <div key={group} className="settings__nav-group" role="group" aria-label={group}>
+            <p className="settings__nav-heading">{group}</p>
+            {PAGES.filter((p) => p.group === group).map((p) => {
+              const Icon = ICONS[p.id];
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  className={`settings__nav-item${p.id === page && !query ? " settings__nav-item--active" : ""}`}
+                  aria-current={p.id === page && !query ? "page" : undefined}
+                  onClick={() => go(p.id)}
+                >
+                  <Icon size={15} aria-hidden />
+                  {p.label}
+                </button>
+              );
+            })}
+          </div>
         ))}
       </nav>
       <main className="settings__content">
-        {!loaded ? null : (
-          <>
-            {section === "general" && <GeneralSection />}
-            {section === "appearance" && <AppearanceSection />}
-            {section === "modules" && <ModulesSection />}
-            {section === "media" && <MediaSection />}
-            {section === "calendar" && <CalendarSection />}
-            {section === "git" && <GitSection />}
-            {section === "clipboard" && <ClipboardSection />}
-            {section === "games" && <GamesSection />}
-            {section === "ai" && <AiSection />}
-            {section === "diagnostics" && <DiagnosticsSection />}
-          </>
+        {!loaded ? null : query.trim() ? (
+          <section className="settings__section" aria-label="Search results">
+            <h1 className="settings__title">Results for “{query.trim()}”</h1>
+            {results.length === 0 ? (
+              <p className="settings__lead">
+                No settings match. Try a different word, like “color”, “sound” or “shortcut”.
+              </p>
+            ) : (
+              <ul className="settings-results">
+                {results.map((r) => {
+                  const Icon = ICONS[r.page];
+                  return (
+                    <li key={`${r.page}-${r.label}`}>
+                      <button
+                        type="button"
+                        className="settings-results__item"
+                        onClick={() => go(r.page, r.label)}
+                      >
+                        <Icon size={15} aria-hidden />
+                        <span className="settings-results__label">{r.label}</span>
+                        <span className="settings-results__page">{r.pageLabel}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+        ) : (
+          CONTENT[page]()
         )}
       </main>
     </div>
@@ -119,8 +226,9 @@ function GeneralSection() {
   };
 
   return (
-    <Section title="General">
+    <Section title="General" lead={pageLead("general")}>
       <Surface>
+        <span id={settingAnchor("Start with Windows")} />
         <Switch
           label="Start with Windows"
           description="Open Notch Desktop when you sign in."
@@ -135,17 +243,7 @@ function GeneralSection() {
         )}
       </Surface>
       <ScreensSetting />
-      <HudSetting />
-      <Surface>
-        <div className="settings__row">
-          <span className="settings__row-text">
-            <span className="settings__row-label">Open or close the notch</span>
-            <span className="settings__row-description">Works from any app.</span>
-          </span>
-          <kbd className="settings__kbd">Ctrl + Alt + N</kbd>
-        </div>
-        <p className="settings__note">Custom shortcuts aren't available yet.</p>
-      </Surface>
+      <AnimationSetting />
     </Section>
   );
 }
@@ -183,7 +281,7 @@ function ScreensSetting() {
 
   return (
     <Surface>
-      <div className="settings__row settings__row--stacked">
+      <div id={settingAnchor("Show the notch on")} className="settings__row settings__row--stacked">
         <span className="settings__row-text">
           <span className="settings__row-label">Show the notch on</span>
           <span className="settings__row-description">
@@ -208,129 +306,25 @@ function ScreensSetting() {
   );
 }
 
-function AppearanceSection() {
+function AnimationSetting() {
   const animation = useSettings((s) => s.settings?.animation ?? "system");
   const update = useSettings((s) => s.update);
-
   return (
-    <Section title="Appearance">
-      <Surface>
-        <div className="settings__row">
-          <span className="settings__row-text">
-            <span className="settings__row-label">Animation</span>
-            <span className="settings__row-description">
-              “Match Windows” follows Settings → Accessibility → Visual effects.
-            </span>
-          </span>
-          <SegmentedControl<AnimationPreference>
-            label="Animation"
-            value={animation}
-            options={[
-              { value: "system", label: "Match Windows" },
-              { value: "reduced", label: "Reduced" },
-            ]}
-            onChange={(value) => void update((s) => ({ ...s, animation: value }))}
-          />
-        </div>
-      </Surface>
-    </Section>
-  );
-}
-
-function ModulesSection() {
-  const settings = useSettings((s) => s.settings);
-  const setModule = useSettings((s) => s.setModule);
-
-  return (
-    <Section title="Modules">
-      <p className="settings__lead">
-        Turn modules off to remove them from the dock and stop their background work.
-      </p>
-      {MODULES.map((module) => {
-        const prefs = moduleSettings(settings, module.id);
-        const Icon = module.icon;
-        return (
-          <Surface key={module.id}>
-            <div className="settings__module-head">
-              <Icon aria-hidden size={16} />
-              <span className="settings__row-label">{module.name}</span>
-              {module.devOnly && <MockBadge />}
-              {module.alwaysOn && <Pill>Always on</Pill>}
-            </div>
-            {prefs.autoDisabled && !prefs.enabled && (
-              <p className="settings__note settings__note--warning" role="alert">
-                Turned off after failing to start three times in a row. Turn it back on to try again.
-              </p>
-            )}
-            <Switch
-              label="Enabled"
-              checked={module.alwaysOn || prefs.enabled}
-              disabled={module.alwaysOn}
-              onChange={(enabled) =>
-                void setModule(module.id, { enabled, autoDisabled: false, initFailures: 0 })
-              }
-            />
-            <Switch
-              label="Can interrupt"
-              description="Show its notifications in the notch. Agent approvals always appear."
-              checked={prefs.mayPeek}
-              disabled={!(module.alwaysOn || prefs.enabled)}
-              onChange={(mayPeek) => void setModule(module.id, { mayPeek })}
-            />
-          </Surface>
-        );
-      })}
-    </Section>
-  );
-}
-
-function DiagnosticsSection() {
-  const [info, setInfo] = useState<AppInfo | null>(null);
-  const [exported, setExported] = useState<string | null>(null);
-  const [error, setError] = useState(false);
-
-  useEffect(() => {
-    ipc.appInfo().then(setInfo, () => setError(true));
-  }, []);
-
-  const exportLogs = async () => {
-    try {
-      setExported(await ipc.diagnosticsExportLogs());
-      setError(false);
-    } catch {
-      setError(true);
-    }
-  };
-
-  return (
-    <Section title="Diagnostics & About">
-      <Surface>
-        <p className="settings__lead">
-          Logs stay on this PC. They record what happened, never message contents, commands, or passwords.
-        </p>
-        <div className="settings__buttons">
-          <Button onClick={() => void ipc.diagnosticsOpenLogDir().catch(() => setError(true))}>
-            Open log folder
-          </Button>
-          <Button onClick={() => void exportLogs()}>Export logs</Button>
-        </div>
-        {exported && <p className="settings__note">Saved to {exported}</p>}
-        {error && (
-          <p className="settings__note settings__note--warning">That didn't work. Please try again.</p>
-        )}
-      </Surface>
-      {info && (
-        <Surface>
-          <dl className="settings__facts">
-            <dt>Version</dt>
-            <dd>{info.version}</dd>
-            <dt>Data folder</dt>
-            <dd>{info.dataDir}</dd>
-            <dt>Log folder</dt>
-            <dd>{info.logDir}</dd>
-          </dl>
-        </Surface>
-      )}
-    </Section>
+    <Surface>
+      <Row
+        label="Animation"
+        description="“Match Windows” follows Settings → Accessibility → Visual effects. Reduced turns off bouncing and the music pulse."
+      >
+        <SegmentedControl<AnimationPreference>
+          label="Animation"
+          value={animation}
+          options={[
+            { value: "system", label: "Match Windows" },
+            { value: "reduced", label: "Reduced" },
+          ]}
+          onChange={(value) => void update((s) => ({ ...s, animation: value }))}
+        />
+      </Row>
+    </Surface>
   );
 }

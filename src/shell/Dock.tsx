@@ -6,14 +6,14 @@ import { ipc } from "../core/ipc";
 import { IconButton } from "../design/components";
 import { contentEnter } from "../design/motion";
 import { useReduceMotion } from "../design/useReduceMotion";
-import { useEnabledModules, useModuleNav } from "./useModules";
+import { useDockModules, useModuleNav } from "./useModules";
 
 /**
  * Compact module switcher shown beneath the expanded island (design.md §17).
  * Arrow keys move between modules; the active one gets a raised treatment.
  */
 export function Dock() {
-  const modules = useEnabledModules();
+  const modules = useDockModules();
   const activeId = useModuleNav((s) => s.activeId);
   const setActive = useModuleNav((s) => s.setActive);
   const step = useModuleNav((s) => s.step);

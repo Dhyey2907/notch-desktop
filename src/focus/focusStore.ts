@@ -16,6 +16,8 @@ interface FocusStore {
   takeHeld: () => ActivityInput[];
   /** A game is being played (game mode holds cards the same way). */
   gaming: boolean;
+  /** Quiet hours are on now (Settings → Behavior). */
+  quiet: boolean;
 }
 
 export const useFocus = create<FocusStore>((set, get) => ({
@@ -23,6 +25,7 @@ export const useFocus = create<FocusStore>((set, get) => ({
   set: (state) => set({ state }),
   held: [],
   gaming: false,
+  quiet: false,
   takeHeld: () => {
     const held = get().held;
     set({ held: [] });
@@ -42,7 +45,8 @@ export function shouldHold(input: ActivityInput): boolean {
 /** `hold` for the activity store: during focus, keep non-urgent cards for later. */
 export function holdDuringFocus(input: ActivityInput): boolean {
   const store = useFocus.getState();
-  if ((!focusActive(store.state, Date.now()) && !store.gaming) || !shouldHold(input)) return false;
+  const holding = focusActive(store.state, Date.now()) || store.gaming || store.quiet;
+  if (!holding || !shouldHold(input)) return false;
   useFocus.setState({ held: [...store.held, input].slice(-MAX_HELD) });
   return true;
 }

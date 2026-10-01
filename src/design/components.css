@@ -116,8 +116,8 @@
 
 .nd-icon-button--active {
   background: var(--surface-elevated);
-  border-color: var(--border-strong);
-  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--active) 45%, var(--border-strong));
+  color: var(--active);
 }
 
 .nd-button {
@@ -131,7 +131,7 @@
 
 .nd-button--primary {
   background: var(--active);
-  color: var(--background);
+  color: var(--on-active, var(--background));
 }
 
 .nd-button--primary:hover:not(:disabled) {

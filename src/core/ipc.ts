@@ -9,6 +9,7 @@ import type { AskSnapshot } from "./generated/AskSnapshot";
 import type { BridgeState } from "./generated/BridgeState";
 import type { Dashboard } from "./generated/Dashboard";
 import type { GameStatus } from "./generated/GameStatus";
+import type { ShortcutProblem } from "./generated/ShortcutProblem";
 import type { FocusState } from "./generated/FocusState";
 import type { Lyrics } from "./generated/Lyrics";
 import type { Palette } from "./generated/Palette";
@@ -63,6 +64,14 @@ export const ipc = {
     invoke<void>("dev_emit_test_activity", { activity, delayMs }),
   settingsGet: () => invoke<Settings>("settings_get"),
   settingsUpdate: (settings: Settings) => invoke<Settings>("settings_update", { settings }),
+  /** Defaults, for "Reset this page". */
+  settingsDefaults: () => invoke<Settings>("settings_defaults"),
+  /** Shortcuts that couldn't be used (not a key combination, or another app has them). */
+  shortcutProblems: () => invoke<ShortcutProblem[]>("shortcut_problems"),
+  /** Save settings to a file the user picks; null if cancelled. */
+  settingsExport: () => invoke<string | null>("settings_export"),
+  /** Load settings from a file the user picks; null if cancelled. */
+  settingsImport: () => invoke<Settings | null>("settings_import"),
   settingsRecordModuleInit: (moduleId: string, ok: boolean) =>
     invoke<Settings>("settings_record_module_init", { moduleId, ok }),
   autostartGet: () => invoke<boolean>("autostart_get"),

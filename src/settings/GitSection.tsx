@@ -7,6 +7,7 @@ import type { GithubStatus } from "../core/generated/GithubStatus";
 import { ipc, isIpcError } from "../core/ipc";
 import { Button, ConfirmButton, Pill, Surface, Switch } from "../design/components";
 import { useSettings } from ".";
+import { pageLead } from "./searchIndex";
 import { Section } from "./Section";
 import { ProviderButton } from "./SignInWith";
 
@@ -114,7 +115,7 @@ export function GitSection() {
   const active = snapshot?.repo?.path;
 
   return (
-    <Section title="Git">
+    <Section title="Git" lead={pageLead("git")}>
       <Surface>
         <div className="settings__row">
           <span className="settings__row-text">

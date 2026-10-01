@@ -12,11 +12,11 @@ use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent,
 };
-use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
 use crate::{error::AppResult, events::AppEvent, state::AppState};
 pub use islands::ShellState;
-use placement::{top_center_frame, WorkArea};
+use placement::{nudge, top_center_frame, WorkArea};
 
 pub const MAIN_WINDOW: &str = "main";
 pub const SETTINGS_WINDOW: &str = "settings";
@@ -69,7 +69,20 @@ pub fn place(window: &WebviewWindow, (width, height): (f64, f64)) -> AppResult<(
         width: area.size.width,
         height: area.size.height,
     };
-    let (position, size) = top_center_frame(work, monitor.scale_factor(), width, height);
+    let frame = top_center_frame(work, monitor.scale_factor(), width, height);
+    let (offset_x, offset_y) = {
+        let settings = window
+            .app_handle()
+            .state::<AppState>()
+            .settings
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .appearance
+            .clone();
+        (settings.offset_x, settings.offset_y)
+    };
+    let position = nudge(frame, work, monitor.scale_factor(), offset_x, offset_y);
+    let size = frame.1;
     window.set_size(size)?;
     window.set_position(position)?;
     Ok(())
@@ -171,14 +184,76 @@ fn setup_tray(app: &AppHandle) -> AppResult<()> {
     Ok(())
 }
 
-/// Ctrl+Alt+N toggles the expanded island from anywhere (keyboard accessibility, design.md §18).
-fn toggle_shortcut() -> Shortcut {
-    Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::KeyN)
+/// What a global shortcut does.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ShortcutAction {
+    /// Open or close the notch (default Ctrl+Alt+N).
+    Toggle,
+    /// Ask Claude (default Ctrl+Alt+A).
+    Ask,
+    /// Clipboard history (default Ctrl+Alt+V).
+    Clipboard,
 }
 
-/// Ctrl+Alt+A: ask Claude from anywhere.
-fn ask_shortcut() -> Shortcut {
-    Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::KeyA)
+/// The shortcuts registered now, and why any of the user's choices failed.
+static BOUND: Mutex<Vec<(Shortcut, ShortcutAction)>> = Mutex::new(Vec::new());
+static SHORTCUT_ERRORS: Mutex<Vec<ShortcutProblem>> = Mutex::new(Vec::new());
+
+/// A shortcut the user picked that couldn't be used.
+#[derive(Debug, Clone, serde::Serialize, ts_rs::TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct ShortcutProblem {
+    /// `open`, `ask` or `clipboard`.
+    pub name: String,
+    pub keys: String,
+    /// `invalid` (not a key combination) or `taken` (another app has it).
+    pub reason: String,
+}
+
+pub fn shortcut_problems() -> Vec<ShortcutProblem> {
+    SHORTCUT_ERRORS.lock().unwrap_or_else(|e| e.into_inner()).clone()
+}
+
+/// Register the user's shortcuts in place of the current ones.
+pub fn apply_shortcuts(app: &AppHandle, keys: &crate::settings::ShortcutSettings) {
+    let global = app.global_shortcut();
+    let mut bound = BOUND.lock().unwrap_or_else(|e| e.into_inner());
+    for (shortcut, _) in bound.drain(..) {
+        let _ = global.unregister(shortcut);
+    }
+    let mut problems = Vec::new();
+    for (name, text, action) in [
+        ("open", &keys.open, ShortcutAction::Toggle),
+        ("ask", &keys.ask, ShortcutAction::Ask),
+        ("clipboard", &keys.clipboard, ShortcutAction::Clipboard),
+    ] {
+        if text.trim().is_empty() {
+            continue;
+        }
+        let problem = |reason: &str| ShortcutProblem {
+            name: name.into(),
+            keys: text.clone(),
+            reason: reason.into(),
+        };
+        let Ok(shortcut) = text.parse::<Shortcut>() else {
+            problems.push(problem("invalid"));
+            continue;
+        };
+        if bound.iter().any(|(s, _)| *s == shortcut) {
+            problems.push(problem("taken"));
+            continue;
+        }
+        match global.register(shortcut) {
+            Ok(()) => bound.push((shortcut, action)),
+            Err(error) => {
+                // Another app may own the chord; the island still works by pointer and tray.
+                tracing::warn!(%error, name, "could not register a shortcut");
+                problems.push(problem("taken"));
+            }
+        }
+    }
+    *SHORTCUT_ERRORS.lock().unwrap_or_else(|e| e.into_inner()) = problems;
 }
 
 /// The window in front (before the notch takes focus) and its app's name, for Ask.
@@ -199,28 +274,25 @@ fn front_window() -> (isize, Option<String>) {
     }
 }
 
-/// Ctrl+Alt+V: open the notch straight to clipboard history.
-fn clipboard_shortcut() -> Shortcut {
-    Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::KeyV)
-}
-
 pub fn shortcut_plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
-    let toggle = toggle_shortcut();
-    let clipboard = clipboard_shortcut();
-    let ask = ask_shortcut();
     tauri_plugin_global_shortcut::Builder::new()
         .with_handler(move |app, shortcut, event| {
-            if event.state() != ShortcutState::Pressed
-                || (shortcut != &toggle && shortcut != &clipboard && shortcut != &ask)
-            {
+            if event.state() != ShortcutState::Pressed {
                 return;
             }
+            let action = BOUND
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .iter()
+                .find(|(s, _)| s == shortcut)
+                .map(|(_, a)| *a);
+            let Some(action) = action else { return };
             // The island on the screen the pointer is on.
             let Some(window) = islands::under_cursor(app) else {
                 return;
             };
             #[cfg(windows)]
-            if shortcut == &ask {
+            if action == ShortcutAction::Ask {
                 let (hwnd, app_name) = front_window();
                 app.state::<crate::ask::service::AskService>()
                     .set_target(hwnd, app_name);
@@ -228,18 +300,16 @@ pub fn shortcut_plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
             let _ = show_island(&window);
             let _ = window.set_focus();
             let label = window.label().to_owned();
-            let event = if shortcut == &ask {
-                AppEvent::ShellOpenModuleRequested {
+            let event = match action {
+                ShortcutAction::Ask => AppEvent::ShellOpenModuleRequested {
                     label,
                     module: "ask".into(),
-                }
-            } else if shortcut == &clipboard {
-                AppEvent::ShellOpenModuleRequested {
+                },
+                ShortcutAction::Clipboard => AppEvent::ShellOpenModuleRequested {
                     label,
                     module: "clipboard".into(),
-                }
-            } else {
-                AppEvent::ShellToggleRequested { label }
+                },
+                ShortcutAction::Toggle => AppEvent::ShellToggleRequested { label },
             };
             app.state::<AppState>().bus.emit("shell", event);
         })
@@ -250,16 +320,14 @@ pub fn shortcut_plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
 pub fn init(app: &AppHandle) -> AppResult<()> {
     setup_tray(app)?;
 
-    if let Err(error) = app.global_shortcut().register(toggle_shortcut()) {
-        // Another app may own the chord; the island still works by pointer and tray.
-        tracing::warn!(%error, "could not register the Ctrl+Alt+N shortcut");
-    }
-    if let Err(error) = app.global_shortcut().register(ask_shortcut()) {
-        tracing::warn!(%error, "could not register the Ctrl+Alt+A shortcut");
-    }
-    if let Err(error) = app.global_shortcut().register(clipboard_shortcut()) {
-        tracing::warn!(%error, "could not register the Ctrl+Alt+V shortcut");
-    }
+    let keys = app
+        .state::<AppState>()
+        .settings
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .shortcuts
+        .clone();
+    apply_shortcuts(app, &keys);
 
     // `main` comes from tauri.conf.json; other screens' islands are created by `sync`.
     if let Some(window) = app.get_webview_window(MAIN_WINDOW) {
@@ -299,7 +367,8 @@ fn attach_island(app: &AppHandle, window: &WebviewWindow) -> AppResult<()> {
     Ok(())
 }
 
-/// Re-sync islands when the "Show the notch on" setting changes.
+/// Follow settings the shell owns: which screens show the notch, where it sits, and the
+/// global shortcuts.
 fn watch_display_setting(app: &AppHandle) {
     let app = app.clone();
     let mut events = app.state::<AppState>().bus.subscribe();
@@ -309,16 +378,25 @@ fn watch_display_setting(app: &AppHandle) {
             .settings
             .lock()
             .unwrap_or_else(|e| e.into_inner())
-            .display
             .clone();
         loop {
             match events.recv().await {
                 Ok(envelope) => {
                     if let AppEvent::SettingsChanged(settings) = &envelope.event {
-                        if settings.display != last {
-                            last = settings.display.clone();
+                        if settings.display != last.display {
                             islands::sync(&app);
+                        } else if (settings.appearance.offset_x, settings.appearance.offset_y)
+                            != (last.appearance.offset_x, last.appearance.offset_y)
+                        {
+                            for window in islands::all(&app) {
+                                let size = app.state::<ShellState>().window_size(window.label());
+                                let _ = place(&window, size);
+                            }
                         }
+                        if settings.shortcuts != last.shortcuts {
+                            apply_shortcuts(&app, &settings.shortcuts);
+                        }
+                        last = settings.clone();
                     }
                 }
                 Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => continue,
@@ -609,5 +687,23 @@ fn refresh_fullscreen(app: &AppHandle) {
             })
         });
         set_fullscreen(app, window.label(), on_screen, switched && on_screen);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use tauri_plugin_global_shortcut::{Code, Modifiers, Shortcut};
+
+    #[test]
+    fn default_shortcut_text_parses_to_the_old_chords() {
+        let defaults = crate::settings::ShortcutSettings::default();
+        let chord = |code| Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), code);
+        assert_eq!(defaults.open.parse::<Shortcut>().unwrap(), chord(Code::KeyN));
+        assert_eq!(defaults.ask.parse::<Shortcut>().unwrap(), chord(Code::KeyA));
+        assert_eq!(defaults.clipboard.parse::<Shortcut>().unwrap(), chord(Code::KeyV));
+        // What the settings recorder produces for other keys.
+        assert!("Ctrl+Shift+Space".parse::<Shortcut>().is_ok());
+        assert!("Alt+F9".parse::<Shortcut>().is_ok());
+        assert!("Ctrl+Alt+Oops".parse::<Shortcut>().is_err());
     }
 }

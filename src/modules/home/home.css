@@ -223,7 +223,7 @@
   position: absolute;
   inset: 0 auto 0 0;
   border-radius: inherit;
-  background: var(--text-primary);
+  background: var(--active, var(--text-primary));
 }
 
 .level__value {
