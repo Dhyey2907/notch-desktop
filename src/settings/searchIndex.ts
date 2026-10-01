@@ -16,6 +16,7 @@ export type PageId =
   | "games"
   | "ai"
   | "vault"
+  | "developer"
   | "privacy"
   | "about";
 
@@ -71,6 +72,12 @@ export const PAGES: PageInfo[] = [
   { id: "focus", label: "Focus", group: "Features", lead: "Focus sessions, the pet and ambient sounds." },
   { id: "games", label: "Games", group: "Features", lead: "The game mode strip while you play." },
   { id: "ai", label: "AI", group: "Features", lead: "Ask Claude from the notch." },
+  {
+    id: "developer",
+    label: "Developer",
+    group: "Features",
+    lead: "Dev servers, coding time, the code runner and your own widgets.",
+  },
   {
     id: "vault",
     label: "Vault",
@@ -155,6 +162,9 @@ export const ENTRIES: Entry[] = [
   { page: "clipboard", label: "Text snippets", keywords: "expander autotext abbreviations shortcuts typing" },
   { page: "shortcuts", label: "Grab text from the screen", keywords: "ocr copy text image screenshot" },
   { page: "vault", label: "Obsidian vault", keywords: "passwords logins folder sync" },
+  { page: "developer", label: "Tell me when a dev server stops", keywords: "localhost port crash node vite" },
+  { page: "developer", label: "Count coding time", keywords: "wakatime editor project streak vscode" },
+  { page: "developer", label: "Widgets", keywords: "custom script url json command dashboard" },
   { page: "vault", label: "Ask for Windows Hello", keywords: "fingerprint face pin security" },
   { page: "vault", label: "Clear copied passwords after", keywords: "clipboard seconds" },
   { page: "vault", label: "Vault key", keywords: "another pc export import encryption" },

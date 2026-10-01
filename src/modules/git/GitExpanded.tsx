@@ -303,8 +303,23 @@ function CommitComposer({
   const { changes } = snapshot.branch;
   const [message, setMessage] = useState("");
   const [includeUntracked, setIncludeUntracked] = useState(false);
+  const [writing, setWriting] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
   const count = trackedChanges(changes) + (includeUntracked ? changes.untracked : 0);
   const busy = snapshot.running != null;
+
+  // Claude Code reads the changes (on this PC) and suggests a message to edit.
+  const suggest = async () => {
+    setWriting(true);
+    setAiError(null);
+    try {
+      setMessage(await ipc.gitSuggestMessage(includeUntracked));
+    } catch (e) {
+      setAiError(isIpcError(e) ? e.message.replace(/^invalid input: /, "") : "Couldn't write a message.");
+    } finally {
+      setWriting(false);
+    }
+  };
 
   return (
     <div className="git-compose">
@@ -322,7 +337,11 @@ function CommitComposer({
           onChange={setIncludeUntracked}
         />
       )}
+      {aiError && <p className="git__error">{aiError}</p>}
       <div className="git__actions">
+        <Button onClick={() => void suggest()} disabled={busy || writing || count === 0}>
+          {writing ? "Writing…" : "✨ Write with Claude"}
+        </Button>
         <Button
           variant="primary"
           disabled={busy || !message.trim() || count === 0}

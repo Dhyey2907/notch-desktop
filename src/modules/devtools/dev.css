@@ -1,0 +1,251 @@
+.dev {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  height: 100%;
+  min-height: 0;
+}
+
+.dev p {
+  margin: 0;
+}
+
+.dev-port {
+  flex: none;
+  min-width: 52px;
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-headline);
+  font-size: var(--text-md);
+  color: var(--success);
+}
+
+/* Time */
+.dev-time__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.dev-time__big {
+  font-size: 22px;
+  font-weight: var(--weight-headline);
+  line-height: 1.1;
+}
+
+.dev-time__sub {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.dev-time__streak {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--warning) 16%, transparent);
+  color: var(--warning);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-emphasis);
+}
+
+.dev-time__body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.dev-time__projects {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dev-time__projects li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.dev-time__project {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dev-time__minutes {
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.dev-time__empty {
+  color: var(--text-muted);
+  font-size: var(--text-xs) !important;
+}
+
+.dev-time__week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  align-items: end;
+}
+
+.dev-time__day {
+  height: 100%;
+  min-height: 80px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 4px;
+}
+
+.dev-time__bar {
+  width: 100%;
+  border-radius: 4px;
+  background: var(--active);
+  opacity: 0.85;
+}
+
+.dev-time__day:last-child .dev-time__bar {
+  background: var(--success);
+}
+
+.dev-time__label {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+/* Run */
+.dev-run__hint {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.dev-run .nd-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.dev-run__code {
+  flex: 1;
+  min-height: 70px;
+  resize: none;
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-primary);
+  font:
+    12px/1.45 ui-monospace,
+    "Cascadia Code",
+    Consolas,
+    monospace;
+  tab-size: 2;
+}
+
+.dev-run__out {
+  margin: 0;
+  max-height: 90px;
+  overflow: auto;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font:
+    12px/1.45 ui-monospace,
+    "Cascadia Code",
+    Consolas,
+    monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.dev-run__out--error {
+  color: var(--danger);
+}
+
+.dev-run__time {
+  color: var(--text-muted);
+}
+
+/* Widgets */
+.dev-widgets {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  align-content: start;
+  overflow-y: auto;
+}
+
+.dev-widget {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-3);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  min-width: 0;
+}
+
+.dev-widget__name {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dev-widget__value {
+  font-size: 20px;
+  font-weight: var(--weight-headline);
+}
+
+.dev-widget__sub {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.dev-widget__items {
+  margin: 4px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--text-xs);
+}
+
+.dev-widget__items div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.dev-widget__items dt {
+  color: var(--text-secondary);
+}
+
+.dev-widget__items dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.dev-widget__text {
+  margin: 0;
+  font:
+    11px/1.4 ui-monospace,
+    Consolas,
+    monospace;
+  white-space: pre-wrap;
+  color: var(--text-secondary);
+}
+
+.dev-widget__error {
+  font-size: var(--text-xs);
+  color: var(--warning);
+}

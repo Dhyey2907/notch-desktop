@@ -72,6 +72,7 @@ const defaults: Settings = {
   },
   shortcuts: { open: "Ctrl+Alt+N", ask: "Ctrl+Alt+A", clipboard: "Ctrl+Alt+V", grab: "Ctrl+Alt+G" },
   vault: { requireHello: false, clearSecs: 0 },
+  dev: { widgets: [], noServerAlerts: false, noCodingTracker: false },
   gestures: { disabled: false, sensitivity: "normal", noTrackSwipe: false },
   dock: { order: [], hidden: [] },
   home: { hiddenTiles: [], fahrenheit: false, clock24h: false },

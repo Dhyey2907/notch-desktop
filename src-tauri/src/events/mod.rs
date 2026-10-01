@@ -23,6 +23,7 @@ use crate::{
     claude::{approvals::ApprovalRequest, ClaudeStatus},
     clipboard::{ClipboardSnapshot, CopySuggestion},
     control::{ControlSnapshot, SystemAlert},
+    developer::DevServer,
     expander::Snippet,
     files::{DownloadDone, DownloadProgress, RecorderState},
     focus::FocusState,
@@ -179,6 +180,10 @@ pub enum AppEvent {
     SnippetsChanged(Vec<Snippet>),
     /// Text was read from the screen and copied (empty if none was found).
     TextGrabbed { text: String },
+    /// Local dev servers changed.
+    DevServersChanged(Vec<DevServer>),
+    /// A dev server that had been running stopped.
+    DevServerStopped { port: u16, name: String },
     /// A paired Bluetooth device connected or disconnected.
     BluetoothChanged(BluetoothDevice),
     /// Files on the drop shelf changed.
@@ -208,6 +213,8 @@ impl AppEvent {
             AppEvent::SoundChanged { .. } => "SoundChanged",
             AppEvent::BrightnessChanged { .. } => "BrightnessChanged",
             AppEvent::BluetoothChanged(_) => "BluetoothChanged",
+            AppEvent::DevServersChanged(_) => "DevServersChanged",
+            AppEvent::DevServerStopped { .. } => "DevServerStopped",
             AppEvent::VaultChanged(_) => "VaultChanged",
             AppEvent::LinkCleaned { .. } => "LinkCleaned",
             AppEvent::SnippetsChanged(_) => "SnippetsChanged",

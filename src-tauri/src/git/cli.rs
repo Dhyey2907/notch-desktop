@@ -156,6 +156,44 @@ pub fn commit(repo: &Path, message: &str, include_untracked: bool) -> AppResult<
     git(repo, &["commit", "--all", "-m", message], LOCAL_TIMEOUT).map(|_| ())
 }
 
+/// Largest diff sent for a commit message (the start of it; the summary covers the rest).
+const MAX_DIFF: usize = 40_000;
+
+/// What committing would include, for writing a message: a file summary and the diff.
+pub fn commit_diff(repo: &Path, include_untracked: bool) -> AppResult<String> {
+    let mut out = git(
+        repo,
+        &["--no-optional-locks", "diff", "HEAD", "--stat"],
+        LOCAL_TIMEOUT,
+    )
+    .unwrap_or_default();
+    let mut diff = git(repo, &["--no-optional-locks", "diff", "HEAD"], LOCAL_TIMEOUT).unwrap_or_default();
+    if include_untracked {
+        let new = git(
+            repo,
+            &["ls-files", "--others", "--exclude-standard"],
+            LOCAL_TIMEOUT,
+        )
+        .unwrap_or_default();
+        if !new.trim().is_empty() {
+            out.push_str("\nNew files:\n");
+            out.push_str(&new);
+        }
+    }
+    if out.trim().is_empty() && diff.trim().is_empty() {
+        return Err(AppError::InvalidInput("There are no changes to describe".into()));
+    }
+    if diff.len() > MAX_DIFF {
+        let mut end = MAX_DIFF;
+        while !diff.is_char_boundary(end) {
+            end -= 1;
+        }
+        diff.truncate(end);
+        diff.push_str("\n… (diff cut off)");
+    }
+    Ok(format!("{out}\n{diff}"))
+}
+
 pub fn push(repo: &Path, has_upstream: bool) -> AppResult<()> {
     let args: &[&str] = if has_upstream {
         &["push"]

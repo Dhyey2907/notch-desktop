@@ -445,6 +445,19 @@ pub struct ClipboardSettings {
     pub no_snippets: bool,
 }
 
+/// Developer tools.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export)]
+pub struct DevSettings {
+    /// Custom widgets (URL or command).
+    pub widgets: Vec<crate::developer::WidgetConfig>,
+    /// No note when a dev server stops.
+    pub no_server_alerts: bool,
+    /// Don't count coding time.
+    pub no_coding_tracker: bool,
+}
+
 /// The password vault in the user's Obsidian vault.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", default)]
@@ -501,6 +514,7 @@ pub struct Settings {
     pub dock: DockSettings,
     pub home: HomeSettings,
     pub vault: VaultSettings,
+    pub dev: DevSettings,
 }
 
 impl Settings {
@@ -572,6 +586,22 @@ impl Settings {
         }
         if self.vault.clear_secs > 600 || self.vault.folder.as_ref().is_some_and(|f| f.len() > 1000) {
             return Err(AppError::InvalidInput("invalid vault settings".into()));
+        }
+        let w = &self.dev.widgets;
+        if w.len() > 20
+            || w.iter().any(|w| {
+                w.name.trim().is_empty()
+                    || w.name.len() > 60
+                    || w.source.trim().is_empty()
+                    || w.source.len() > 2000
+                    || !valid_id(&w.id)
+                    || !["url", "command"].contains(&w.kind.as_str())
+                    || (w.kind == "url"
+                        && !(w.source.starts_with("https://") || w.source.starts_with("http://")))
+                    || !(10..=86_400).contains(&w.refresh_secs)
+            })
+        {
+            return Err(AppError::InvalidInput("invalid widget".into()));
         }
         if self.hud.charge_alert_at > 100 {
             return Err(AppError::InvalidInput("invalid charge level".into()));

@@ -8,6 +8,7 @@ import {
   House,
   Info,
   KeyRound,
+  Code2,
   Keyboard,
   LayoutGrid,
   MousePointerClick,
@@ -33,6 +34,7 @@ import { BehaviorSection } from "./BehaviorSection";
 import { CalendarSection } from "./CalendarSection";
 import { ClipboardSection } from "./ClipboardSection";
 import { Row } from "./controls";
+import { DeveloperSection } from "./DeveloperSection";
 import { DockSection } from "./DockSection";
 import { FocusSection } from "./FocusSection";
 import { GamesSection } from "./GamesSection";
@@ -62,6 +64,7 @@ const ICONS: Record<PageId, LucideIcon> = {
   games: Gamepad2,
   ai: Bot,
   vault: KeyRound,
+  developer: Code2,
   privacy: Shield,
   about: Info,
 };
@@ -81,6 +84,7 @@ const CONTENT: Record<PageId, () => ReactNode> = {
   games: () => <GamesSection />,
   ai: () => <AiSection />,
   vault: () => <VaultSection />,
+  developer: () => <DeveloperSection />,
   privacy: () => <PrivacySection />,
   about: () => <AboutSection />,
 };

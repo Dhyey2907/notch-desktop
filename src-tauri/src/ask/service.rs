@@ -51,7 +51,7 @@ pub struct AskService {
 }
 
 /// `claude` on PATH, or where the installer puts it.
-fn claude_exe() -> Option<PathBuf> {
+pub(crate) fn claude_exe() -> Option<PathBuf> {
     let exe = if cfg!(windows) { "claude.exe" } else { "claude" };
     std::env::var_os("PATH")
         .into_iter()

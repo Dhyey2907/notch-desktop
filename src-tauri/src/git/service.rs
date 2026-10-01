@@ -27,6 +27,11 @@ use crate::{
     state::AppState,
 };
 
+const COMMIT_PROMPT: &str = "You write git commit messages. The input is a diff summary and diff. \
+Reply with only the commit message: a subject line in the imperative mood, under 60 characters, no trailing period; \
+then, if the change needs it, a blank line and a short body (wrapped at 72 characters) saying what changed and why. \
+No code fences, no quotes, no preamble.";
+
 /// Days of commit history in the activity heatmap (26 weeks).
 const ACTIVITY_DAYS: u32 = 182;
 const RECENT_COMMITS: u32 = 5;
@@ -280,6 +285,34 @@ impl GitService {
         }
         self.refresh().await;
         result
+    }
+
+    /// Ask Claude Code for a commit message describing the current changes.
+    pub async fn suggest_message(
+        &self,
+        include_untracked: bool,
+        workdir: std::path::PathBuf,
+    ) -> AppResult<String> {
+        let repo = self
+            .inner
+            .lock()
+            .repo
+            .clone()
+            .ok_or_else(|| AppError::InvalidInput("choose a repository first".into()))?;
+        tauri::async_runtime::spawn_blocking(move || {
+            let diff = cli::commit_diff(&repo, include_untracked)?;
+            let message = crate::ask::once::answer(COMMIT_PROMPT, &diff, &workdir)?;
+            // Just the message, even if it came wrapped in a code block.
+            Ok(message
+                .trim()
+                .trim_start_matches("```text")
+                .trim_start_matches("```")
+                .trim_end_matches("```")
+                .trim()
+                .to_owned())
+        })
+        .await
+        .map_err(|e| AppError::Platform(e.to_string()))?
     }
 
     pub async fn pull_requests(&self) -> PullRequests {

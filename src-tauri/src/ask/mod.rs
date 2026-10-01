@@ -5,6 +5,7 @@
 
 #[cfg(windows)]
 pub mod capture;
+pub mod once;
 pub mod service;
 
 use base64::Engine;

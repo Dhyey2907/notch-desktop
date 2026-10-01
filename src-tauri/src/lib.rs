@@ -6,6 +6,7 @@ mod clipboard;
 mod commands;
 mod control;
 mod db;
+mod developer;
 mod error;
 mod events;
 mod expander;
@@ -191,6 +192,12 @@ macro_rules! app_commands {
             commands::vault::grab_finish,
             commands::vault::grab_cancel,
             commands::vault::qr_svg,
+            commands::developer::dev_servers,
+            commands::developer::dev_stop_server,
+            commands::developer::coding_stats,
+            commands::developer::dev_run,
+            commands::developer::dev_widgets,
+            commands::developer::git_suggest_message,
             commands::focus::focus_state,
             commands::focus::focus_start,
             commands::focus::focus_stop,
@@ -310,6 +317,9 @@ pub fn run() {
             expander.start();
             app.manage(expander);
             app.manage(grab::service::GrabService::new(handle.clone()));
+            let developer = developer::service::DeveloperService::new(handle.clone());
+            developer.start();
+            app.manage(developer);
             let files = files::service::FilesService::new(handle.clone());
             files.start();
             app.manage(files);

@@ -10,7 +10,12 @@ import type { BridgeState } from "./generated/BridgeState";
 import type { Dashboard } from "./generated/Dashboard";
 import type { ControlSnapshot } from "./generated/ControlSnapshot";
 import type { DownloadProgress } from "./generated/DownloadProgress";
+import type { CodingStats } from "./generated/CodingStats";
+import type { DevServer } from "./generated/DevServer";
 import type { GameStatus } from "./generated/GameStatus";
+import type { Language } from "./generated/Language";
+import type { RunResult } from "./generated/RunResult";
+import type { WidgetOutput } from "./generated/WidgetOutput";
 import type { Snippet } from "./generated/Snippet";
 import type { TotpCode } from "./generated/TotpCode";
 import type { VaultField } from "./generated/VaultField";
@@ -186,6 +191,16 @@ export const ipc = {
   grabFinish: (x: number, y: number, w: number, h: number) => invoke<string>("grab_finish", { x, y, w, h }),
   grabCancel: () => invoke<void>("grab_cancel"),
   qrSvg: (text: string) => invoke<string>("qr_svg", { text }),
+  /** Local dev servers, looked up now. */
+  devServers: () => invoke<DevServer[]>("dev_servers"),
+  devStopServer: (pid: number) => invoke<void>("dev_stop_server", { pid }),
+  codingStats: () => invoke<CodingStats>("coding_stats"),
+  /** Run a few lines of JavaScript (Node) or Python. */
+  devRun: (language: Language, code: string) => invoke<RunResult>("dev_run", { language, code }),
+  devWidgets: () => invoke<WidgetOutput[]>("dev_widgets"),
+  /** A commit message for the current changes, written by Claude Code. */
+  gitSuggestMessage: (includeUntracked: boolean) =>
+    invoke<string>("git_suggest_message", { includeUntracked }),
   gameStatus: () => invoke<GameStatus>("game_status"),
   /** Remember whether a fullscreen app is a game. */
   gameMark: (exe: string, isGame: boolean) => invoke<void>("game_mark", { exe, isGame }),

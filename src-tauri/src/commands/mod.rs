@@ -10,6 +10,7 @@ pub mod clipboard;
 pub mod control;
 #[cfg(debug_assertions)]
 pub mod dev;
+pub mod developer;
 pub mod diagnostics;
 pub mod files;
 pub mod focus;
