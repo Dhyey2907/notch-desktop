@@ -5,7 +5,9 @@ import { invoke } from "@tauri-apps/api/core";
 import type { AppInfo } from "./generated/AppInfo";
 import type { ClipboardSnapshot } from "./generated/ClipboardSnapshot";
 import type { ShelfSnapshot } from "./generated/ShelfSnapshot";
+import type { Dashboard } from "./generated/Dashboard";
 import type { SoundState } from "./generated/SoundState";
+import type { SystemStats } from "./generated/SystemStats";
 import type { DeviceCode } from "./generated/DeviceCode";
 import type { GithubRepo } from "./generated/GithubRepo";
 import type { GithubRepoOverview } from "./generated/GithubRepoOverview";
@@ -103,6 +105,16 @@ export const ipc = {
   /** Speaker volume, 0 to 1 (unmutes). */
   soundSetVolume: (level: number) => invoke<void>("sound_set_volume", { level }),
   soundToggleMute: () => invoke<void>("sound_toggle_mute"),
+  /** Everything the Home dashboard shows. */
+  systemDashboard: () => invoke<Dashboard>("system_dashboard"),
+  /** CPU, memory and battery right now. */
+  systemStats: () => invoke<SystemStats>("system_stats"),
+  /** Laptop screen brightness, 0 to 100. */
+  brightnessSet: (level: number) => invoke<void>("brightness_set", { level }),
+  /** Switch Windows virtual desktop (0-based). */
+  desktopSwitch: (index: number) => invoke<void>("desktop_switch", { index }),
+  weatherRefresh: () => invoke<void>("weather_refresh"),
+  openLocationSettings: () => invoke<void>("open_location_settings"),
   shelfSnapshot: () => invoke<ShelfSnapshot>("shelf_snapshot"),
   /** Park files on the drop shelf; resolves to how many were new. */
   shelfAdd: (paths: string[]) => invoke<number>("shelf_add", { paths }),

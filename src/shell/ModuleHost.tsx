@@ -64,7 +64,7 @@ export function ModuleHost() {
   );
 }
 
-/** Peek content: the active module's preview, or Home's as a fallback. */
+/** Peek content: a module with something live (music, a running timer), else Home's greeting. */
 // Every registered module's claim hook, in a fixed order that never changes at runtime.
 const CLAIM_HOOKS = MODULES.map((m) => m.usePeekClaim ?? (() => false));
 
@@ -77,11 +77,10 @@ function usePeekClaims(): boolean[] {
 }
 
 export function PeekHost() {
-  const activeId = useModuleNav((s) => s.activeId);
   const enabled = useEnabledModules();
   const claims = usePeekClaims();
   const claimant = MODULES.find((m, i) => claims[i] && enabled.includes(m));
-  const Peek = claimant?.Peek ?? findModule(activeId)?.Peek ?? MODULES[0].Peek;
+  const Peek = claimant?.Peek ?? findModule("home")?.Peek;
   return Peek ? <Peek /> : null;
 }
 

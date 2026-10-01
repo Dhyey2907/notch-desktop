@@ -493,6 +493,8 @@ fn watch_front_window(app: &AppHandle) {
                 std::thread::sleep(SETTLE);
                 PENDING.store(false, Ordering::SeqCst);
                 refresh_fullscreen(&app);
+                // Switching virtual desktops changes the front window too.
+                crate::system::service::desktops_maybe_changed(&app);
             });
         } else {
             PENDING.store(false, Ordering::SeqCst);

@@ -27,7 +27,7 @@ use crate::{
     settings::Settings,
     shelf::ShelfSnapshot,
     spotify::SpotifySnapshot,
-    system::{BluetoothDevice, SoundState},
+    system::{BluetoothDevice, Desktops, ScreenTime, SoundState, Weather},
     todo::{Task, TodoSnapshot},
 };
 
@@ -119,6 +119,12 @@ pub enum AppEvent {
     SoundChanged { state: SoundState, switched: bool },
     /// Laptop screen brightness changed (percent).
     BrightnessChanged { level: u8 },
+    /// Active screen time today changed (another minute counted).
+    ScreenTimeChanged(ScreenTime),
+    /// Windows virtual desktops were added, removed, renamed or switched.
+    DesktopsChanged(Desktops),
+    /// New weather for the Home dashboard.
+    WeatherChanged(Weather),
     /// A paired Bluetooth device connected or disconnected.
     BluetoothChanged(BluetoothDevice),
     /// Files on the drop shelf changed.
@@ -147,6 +153,9 @@ impl AppEvent {
             AppEvent::SoundChanged { .. } => "SoundChanged",
             AppEvent::BrightnessChanged { .. } => "BrightnessChanged",
             AppEvent::BluetoothChanged(_) => "BluetoothChanged",
+            AppEvent::ScreenTimeChanged(_) => "ScreenTimeChanged",
+            AppEvent::DesktopsChanged(_) => "DesktopsChanged",
+            AppEvent::WeatherChanged(_) => "WeatherChanged",
             AppEvent::SettingsChanged(_) => "SettingsChanged",
             AppEvent::MediaStateChanged { .. } => "MediaStateChanged",
             AppEvent::FullscreenChanged { .. } => "FullscreenChanged",
