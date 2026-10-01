@@ -5,6 +5,7 @@ import { invoke } from "@tauri-apps/api/core";
 import type { AppInfo } from "./generated/AppInfo";
 import type { ClipboardSnapshot } from "./generated/ClipboardSnapshot";
 import type { ShelfSnapshot } from "./generated/ShelfSnapshot";
+import type { AskSnapshot } from "./generated/AskSnapshot";
 import type { Dashboard } from "./generated/Dashboard";
 import type { Lyrics } from "./generated/Lyrics";
 import type { Palette } from "./generated/Palette";
@@ -103,6 +104,12 @@ export const ipc = {
   clipboardDelete: (id: string) => invoke<void>("clipboard_delete", { id }),
   /** Empty history; pinned clips stay. */
   clipboardClear: () => invoke<void>("clipboard_clear"),
+  askSnapshot: () => invoke<AskSnapshot>("ask_snapshot"),
+  /** Ask Claude Code; the answer streams in as AskDelta events. */
+  askQuestion: (question: string, includeScreen: boolean) =>
+    invoke<string>("ask_question", { question, includeScreen }),
+  askStop: () => invoke<void>("ask_stop"),
+  askClear: () => invoke<void>("ask_clear"),
   soundState: () => invoke<SoundState | null>("sound_state"),
   /** Synced lyrics for the song playing now, if found. */
   lyricsCurrent: () => invoke<Lyrics | null>("lyrics_current"),

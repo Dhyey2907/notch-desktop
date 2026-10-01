@@ -8,10 +8,12 @@ const out = process.argv[2] ?? "notch.png";
 const targets = await (await fetch(`http://127.0.0.1:${port}/json`)).json();
 // CDP_WINDOW=settings targets the settings window; otherwise the island.
 const wantSettings = process.env.CDP_WINDOW === "settings";
-const page = targets.find(
+// CDP_INDEX=n picks the n-th matching island when several screens have one.
+const matches = targets.filter(
   (t) =>
     t.type === "page" && t.url.includes("localhost:1420") && t.url.includes("#settings") === wantSettings,
 );
+const page = matches[Number(process.env.CDP_INDEX ?? 0)] ?? matches[0];
 if (!page) {
   console.error("no Notch Desktop webview found");
   process.exit(1);

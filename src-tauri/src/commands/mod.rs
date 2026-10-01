@@ -2,6 +2,7 @@
 //! commands only validate input, call into state, and map results.
 
 pub mod app;
+pub mod ask;
 pub mod calendar;
 pub mod claude;
 pub mod clipboard;

@@ -17,6 +17,7 @@ use tokio::sync::broadcast;
 use ts_rs::TS;
 
 use crate::{
+    ask::service::AskSnapshot,
     calendar::{CalendarEvent, CalendarSnapshot},
     claude::{approvals::ApprovalRequest, ClaudeStatus},
     clipboard::ClipboardSnapshot,
@@ -131,6 +132,10 @@ pub enum AppEvent {
     MusicPulse { level: f32, beat: bool },
     /// Synced lyrics for the current song (`None` while looking them up or between songs).
     LyricsChanged(Option<Lyrics>),
+    /// The Ask conversation changed (a question asked, an answer finished, cleared).
+    AskChanged(AskSnapshot),
+    /// More of an answer arrived. Never logged.
+    AskDelta { id: String, text: String },
     /// A paired Bluetooth device connected or disconnected.
     BluetoothChanged(BluetoothDevice),
     /// Files on the drop shelf changed.
@@ -159,6 +164,8 @@ impl AppEvent {
             AppEvent::SoundChanged { .. } => "SoundChanged",
             AppEvent::BrightnessChanged { .. } => "BrightnessChanged",
             AppEvent::BluetoothChanged(_) => "BluetoothChanged",
+            AppEvent::AskChanged(_) => "AskChanged",
+            AppEvent::AskDelta { .. } => "AskDelta",
             AppEvent::MusicPulse { .. } => "MusicPulse",
             AppEvent::LyricsChanged(_) => "LyricsChanged",
             AppEvent::ScreenTimeChanged(_) => "ScreenTimeChanged",
@@ -292,7 +299,10 @@ impl EventBus {
             tracing::trace!(event = envelope.event.name(), "duplicate event suppressed");
             return;
         }
-        if !matches!(envelope.event, AppEvent::MusicPulse { .. }) {
+        if !matches!(
+            envelope.event,
+            AppEvent::MusicPulse { .. } | AppEvent::AskDelta { .. }
+        ) {
             tracing::debug!(
                 id = %envelope.id,
                 event = envelope.event.name(),

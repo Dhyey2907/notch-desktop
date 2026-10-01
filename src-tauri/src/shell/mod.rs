@@ -176,6 +176,29 @@ fn toggle_shortcut() -> Shortcut {
     Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::KeyN)
 }
 
+/// Ctrl+Alt+A: ask Claude from anywhere.
+fn ask_shortcut() -> Shortcut {
+    Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::KeyA)
+}
+
+/// The window in front (before the notch takes focus) and its app's name, for Ask.
+#[cfg(windows)]
+fn front_window() -> (isize, Option<String>) {
+    use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowThreadProcessId};
+    // SAFETY: plain queries on the foreground window.
+    unsafe {
+        let hwnd = GetForegroundWindow();
+        let mut pid = 0;
+        GetWindowThreadProcessId(hwnd, Some(&mut pid));
+        let own = pid == std::process::id();
+        let app = (!own && pid != 0)
+            .then(|| crate::clipboard::win::exe_of(pid))
+            .flatten()
+            .map(|exe| crate::clipboard::app_label(&exe));
+        (hwnd.0 as isize, app)
+    }
+}
+
 /// Ctrl+Alt+V: open the notch straight to clipboard history.
 fn clipboard_shortcut() -> Shortcut {
     Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::KeyV)
@@ -184,19 +207,33 @@ fn clipboard_shortcut() -> Shortcut {
 pub fn shortcut_plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
     let toggle = toggle_shortcut();
     let clipboard = clipboard_shortcut();
+    let ask = ask_shortcut();
     tauri_plugin_global_shortcut::Builder::new()
         .with_handler(move |app, shortcut, event| {
-            if event.state() != ShortcutState::Pressed || (shortcut != &toggle && shortcut != &clipboard) {
+            if event.state() != ShortcutState::Pressed
+                || (shortcut != &toggle && shortcut != &clipboard && shortcut != &ask)
+            {
                 return;
             }
             // The island on the screen the pointer is on.
             let Some(window) = islands::under_cursor(app) else {
                 return;
             };
+            #[cfg(windows)]
+            if shortcut == &ask {
+                let (hwnd, app_name) = front_window();
+                app.state::<crate::ask::service::AskService>()
+                    .set_target(hwnd, app_name);
+            }
             let _ = show_island(&window);
             let _ = window.set_focus();
             let label = window.label().to_owned();
-            let event = if shortcut == &clipboard {
+            let event = if shortcut == &ask {
+                AppEvent::ShellOpenModuleRequested {
+                    label,
+                    module: "ask".into(),
+                }
+            } else if shortcut == &clipboard {
                 AppEvent::ShellOpenModuleRequested {
                     label,
                     module: "clipboard".into(),
@@ -216,6 +253,9 @@ pub fn init(app: &AppHandle) -> AppResult<()> {
     if let Err(error) = app.global_shortcut().register(toggle_shortcut()) {
         // Another app may own the chord; the island still works by pointer and tray.
         tracing::warn!(%error, "could not register the Ctrl+Alt+N shortcut");
+    }
+    if let Err(error) = app.global_shortcut().register(ask_shortcut()) {
+        tracing::warn!(%error, "could not register the Ctrl+Alt+A shortcut");
     }
     if let Err(error) = app.global_shortcut().register(clipboard_shortcut()) {
         tracing::warn!(%error, "could not register the Ctrl+Alt+V shortcut");

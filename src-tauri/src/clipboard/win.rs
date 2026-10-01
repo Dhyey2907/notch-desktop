@@ -275,7 +275,7 @@ fn source_pid() -> Option<u32> {
     }
 }
 
-fn exe_of(pid: u32) -> Option<String> {
+pub(crate) fn exe_of(pid: u32) -> Option<String> {
     // SAFETY: a limited query handle to read the image path, closed before returning.
     unsafe {
         let process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid).ok()?;

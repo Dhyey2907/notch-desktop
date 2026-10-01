@@ -1,3 +1,4 @@
+mod ask;
 mod calendar;
 mod claude;
 mod clipboard;
@@ -113,6 +114,10 @@ macro_rules! app_commands {
             commands::clipboard::clipboard_unpin,
             commands::clipboard::clipboard_delete,
             commands::clipboard::clipboard_clear,
+            commands::ask::ask_snapshot,
+            commands::ask::ask_question,
+            commands::ask::ask_stop,
+            commands::ask::ask_clear,
             commands::music::lyrics_current,
             commands::music::artwork_palette,
             commands::system::sound_state,
@@ -250,6 +255,11 @@ pub fn run() {
             );
             music.start();
             app.manage(music);
+
+            app.manage(ask::service::AskService::new(
+                handle.clone(),
+                app.path().app_cache_dir()?.join("ask"),
+            ));
 
             let todo = todo::service::TodoService::new(handle.clone());
             todo.start();

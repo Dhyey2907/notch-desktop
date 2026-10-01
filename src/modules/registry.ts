@@ -1,5 +1,6 @@
 // Static module registry. Settings-driven enable/disable arrives in M4; until then every
 // registered module is enabled.
+import { askModule } from "./ask";
 import { calendarModule } from "./calendar";
 import { claudeModule } from "./claude";
 import { clipboardModule } from "./clipboard";
@@ -27,6 +28,7 @@ const devModules: NotchModule[] =
 export const MODULES: readonly NotchModule[] = sortModules(
   [
     homeModule,
+    askModule,
     mediaModule,
     calendarModule,
     gitModule,
