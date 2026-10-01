@@ -13,6 +13,7 @@ import { useReduceMotion } from "../design/useReduceMotion";
 import { findModule } from "../modules/registry";
 import { Dock } from "./Dock";
 import { useFileDrop } from "./fileDrop";
+import { addWheel, idleSwipe } from "./gestures";
 import { useSystemHud } from "./systemHud";
 import { trackFullscreen, useFullscreen } from "./fullscreen";
 import { activityIslandSize, HUD_SIZE, islandRadius, WINDOW_MARGIN, type IslandMode } from "./geometry";
@@ -27,8 +28,6 @@ const PEEK_INTENT_MS = 140;
 /** Grace period before a peek collapses after the pointer leaves. */
 const PEEK_LEAVE_MS = 200;
 /** Horizontal scroll distance that switches module, and the cooldown between switches. */
-const SWIPE_THRESHOLD = 60;
-const SWIPE_COOLDOWN_MS = 350;
 /** Let the island finish collapsing before it hides over a fullscreen app. */
 const FULLSCREEN_HIDE_DELAY_MS = 450;
 
@@ -65,7 +64,7 @@ export function Island() {
   const queued = useActivities((s) => Math.max(0, s.activities.filter((a) => !a.minimized).length - 1));
   const reduceMotion = useReduceMotion();
   const hoverTimer = useRef<number | undefined>(undefined);
-  const swipe = useRef({ distance: 0, lockedUntil: 0 });
+  const swipe = useRef(idleSwipe());
 
   useModuleLifecycle();
   useEffect(() => trackFullscreen(), []);
@@ -194,15 +193,26 @@ export function Island() {
     void request("expanded");
   };
 
-  // Horizontal swipe / trackpad scroll switches module (design.md §18).
+  // Two-finger swipes (design.md §18). Expanded: left/right switches module. On the bubble or
+  // peek: left/right skips the track, up opens the notch, down puts it away.
   const onWheel = (e: WheelEvent) => {
-    if (mode !== "expanded" || Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
-    const now = performance.now();
-    if (now < swipe.current.lockedUntil) return;
-    swipe.current.distance += e.deltaX;
-    if (Math.abs(swipe.current.distance) >= SWIPE_THRESHOLD) {
-      useModuleNav.getState().step(swipe.current.distance > 0 ? 1 : -1);
-      swipe.current = { distance: 0, lockedUntil: now + SWIPE_COOLDOWN_MS };
+    if (mode === "activity") return;
+    const result = addWheel(swipe.current, e.deltaX, e.deltaY, performance.now());
+    swipe.current = result.state;
+    const fired = result.swipe;
+    if (!fired) return;
+    if (mode === "expanded") {
+      if (fired === "left" || fired === "right") useModuleNav.getState().step(fired === "right" ? 1 : -1);
+      return;
+    }
+    if (fired === "left" || fired === "right") {
+      void ipc.mediaCommand({ kind: fired === "right" ? "next" : "previous" }).catch(() => {});
+    } else if (fired === "up") {
+      window.clearTimeout(hoverTimer.current);
+      void request("expanded");
+    } else {
+      window.clearTimeout(hoverTimer.current);
+      void request("collapsed");
     }
   };
 
