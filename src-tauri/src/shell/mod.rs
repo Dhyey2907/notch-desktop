@@ -367,7 +367,11 @@ pub fn is_fullscreen(label: &str) -> bool {
         .unwrap_or(false)
 }
 
-fn set_fullscreen(app: &AppHandle, label: &str, active: bool) {
+/// The process whose window fills a screen right now (0: none).
+static FULLSCREEN_PID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+
+/// Record a screen's fullscreen state; `force` re-announces it when another app took over.
+fn set_fullscreen(app: &AppHandle, label: &str, active: bool, force: bool) {
     let changed = {
         let mut guard = FULLSCREEN.lock().unwrap_or_else(|e| e.into_inner());
         guard
@@ -375,7 +379,7 @@ fn set_fullscreen(app: &AppHandle, label: &str, active: bool) {
             .insert(label.to_owned(), active)
             != Some(active)
     };
-    if changed {
+    if changed || force {
         tracing::debug!(label, active, "fullscreen app changed");
         app.state::<AppState>().bus.emit(
             "shell",
@@ -590,8 +594,13 @@ fn refresh_fullscreen(app: &AppHandle) {
             && rect.top <= info.rcMonitor.top
             && rect.right >= info.rcMonitor.right
             && rect.bottom >= info.rcMonitor.bottom;
-        fills.then_some(monitor)
+        fills.then_some((monitor, pid))
     };
+    // A different app taking over a screen that was already fullscreen (alt-tab from a video
+    // to a game) is news too: game mode needs to know which app is in front.
+    let front_pid = covered.map_or(0, |(_, pid)| pid);
+    let switched = FULLSCREEN_PID.swap(front_pid, std::sync::atomic::Ordering::SeqCst) != front_pid;
+    let covered = covered.map(|(monitor, _)| monitor);
     for window in islands::all(app) {
         let on_screen = covered.is_some_and(|monitor| {
             window.hwnd().is_ok_and(|raw| {
@@ -599,6 +608,6 @@ fn refresh_fullscreen(app: &AppHandle) {
                 unsafe { MonitorFromWindow(HWND(raw.0), MONITOR_DEFAULTTONEAREST) == monitor }
             })
         });
-        set_fullscreen(app, window.label(), on_screen);
+        set_fullscreen(app, window.label(), on_screen, switched && on_screen);
     }
 }

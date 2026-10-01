@@ -23,6 +23,7 @@ use crate::{
     claude::{approvals::ApprovalRequest, ClaudeStatus},
     clipboard::{ClipboardSnapshot, CopySuggestion},
     focus::FocusState,
+    game::GameHud,
     git::GitSnapshot,
     github::{notifications::GithubNotification, GithubStatus},
     media::MediaState,
@@ -76,6 +77,8 @@ pub struct DevTestActivity {
     pub actionable: bool,
 }
 
+// Settings are the largest payload and are sent rarely; boxing them isn't worth the churn.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, Serialize, TS)]
 #[serde(tag = "type", content = "payload")]
 #[ts(export)]
@@ -148,6 +151,10 @@ pub enum AppEvent {
     BridgeChanged(Option<BridgeState>),
     /// A file arrived from the phone (saved to Downloads\Notch).
     BridgeReceived { name: String },
+    /// Game mode readings each second while playing; `None` when the game ends.
+    GameHud(Option<GameHud>),
+    /// An app went fullscreen that might be a game: ask once.
+    GameAsk { exe: String, app: String },
     /// A paired Bluetooth device connected or disconnected.
     BluetoothChanged(BluetoothDevice),
     /// Files on the drop shelf changed.
@@ -177,6 +184,8 @@ impl AppEvent {
             AppEvent::SoundChanged { .. } => "SoundChanged",
             AppEvent::BrightnessChanged { .. } => "BrightnessChanged",
             AppEvent::BluetoothChanged(_) => "BluetoothChanged",
+            AppEvent::GameHud(_) => "GameHud",
+            AppEvent::GameAsk { .. } => "GameAsk",
             AppEvent::BridgeChanged(_) => "BridgeChanged",
             AppEvent::BridgeReceived { .. } => "BridgeReceived",
             AppEvent::FocusChanged(_) => "FocusChanged",
@@ -318,7 +327,7 @@ impl EventBus {
         }
         if !matches!(
             envelope.event,
-            AppEvent::MusicPulse { .. } | AppEvent::AskDelta { .. }
+            AppEvent::MusicPulse { .. } | AppEvent::AskDelta { .. } | AppEvent::GameHud(_)
         ) {
             tracing::debug!(
                 id = %envelope.id,

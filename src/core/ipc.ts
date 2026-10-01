@@ -8,6 +8,7 @@ import type { ShelfSnapshot } from "./generated/ShelfSnapshot";
 import type { AskSnapshot } from "./generated/AskSnapshot";
 import type { BridgeState } from "./generated/BridgeState";
 import type { Dashboard } from "./generated/Dashboard";
+import type { GameStatus } from "./generated/GameStatus";
 import type { FocusState } from "./generated/FocusState";
 import type { Lyrics } from "./generated/Lyrics";
 import type { Palette } from "./generated/Palette";
@@ -112,6 +113,11 @@ export const ipc = {
     invoke<string>("ask_question", { question, includeScreen }),
   askStop: () => invoke<void>("ask_stop"),
   askClear: () => invoke<void>("ask_clear"),
+  gameStatus: () => invoke<GameStatus>("game_status"),
+  /** Remember whether a fullscreen app is a game. */
+  gameMark: (exe: string, isGame: boolean) => invoke<void>("game_mark", { exe, isGame }),
+  /** Download and verify PresentMon so the game HUD can show FPS. */
+  gameSetupFps: () => invoke<void>("game_setup_fps"),
   focusState: () => invoke<FocusState>("focus_state"),
   /** Start a focus session; non-urgent cards wait until it ends. */
   focusStart: (minutes: number) => invoke<void>("focus_start", { minutes }),

@@ -231,3 +231,41 @@
   font-size: var(--text-xs);
   color: var(--text-muted);
 }
+
+/* Game mode strip */
+.game-hud {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: 100%;
+  padding: 0 var(--space-4);
+  font-variant-numeric: tabular-nums;
+}
+
+.game-hud__stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+}
+
+.game-hud__value {
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.game-hud__label {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.game-hud__stat--warn .game-hud__value {
+  color: var(--warning);
+}
+
+.game-hud__time {
+  margin-left: auto;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}

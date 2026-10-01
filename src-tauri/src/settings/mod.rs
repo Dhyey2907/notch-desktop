@@ -119,6 +119,17 @@ pub struct DisplaySettings {
     pub monitor: Option<String>,
 }
 
+/// Game mode: which fullscreen apps are games (by exe name) and which aren't.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export)]
+pub struct GameSettings {
+    pub games: Vec<String>,
+    pub not_games: Vec<String>,
+    /// Game mode off entirely.
+    pub disabled: bool,
+}
+
 /// Ambient sound mixer (0–1 per sound) and the bubble's pet.
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", default)]
@@ -223,6 +234,7 @@ pub struct Settings {
     pub github_alerts: GithubAlertSettings,
     pub music: MusicSettings,
     pub focus: FocusSettings,
+    pub game: GameSettings,
 }
 
 impl Settings {
@@ -281,6 +293,16 @@ impl Settings {
             .any(|v| !v.is_finite() || !(0.0..=1.0).contains(v))
         {
             return Err(AppError::InvalidInput("invalid sound level".into()));
+        }
+        if self.game.games.len() + self.game.not_games.len() > 200
+            || self
+                .game
+                .games
+                .iter()
+                .chain(&self.game.not_games)
+                .any(|g| g.is_empty() || g.len() > 100)
+        {
+            return Err(AppError::InvalidInput("invalid games list".into()));
         }
         if self.calendar.reminder_minutes > 120 {
             return Err(AppError::InvalidInput("reminder lead is too long".into()));

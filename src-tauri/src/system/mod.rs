@@ -14,7 +14,7 @@ mod desktops;
 pub mod screentime;
 pub mod service;
 #[cfg(windows)]
-mod stats;
+pub(crate) mod stats;
 mod weather;
 
 use serde::Serialize;

@@ -11,6 +11,7 @@ pub mod clipboard;
 pub mod dev;
 pub mod diagnostics;
 pub mod focus;
+pub mod game;
 pub mod git;
 pub mod media;
 pub mod music;

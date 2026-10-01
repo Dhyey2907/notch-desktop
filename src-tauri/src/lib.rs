@@ -8,6 +8,7 @@ mod db;
 mod error;
 mod events;
 mod focus;
+mod game;
 mod git;
 mod github;
 mod logging;
@@ -142,6 +143,9 @@ macro_rules! app_commands {
             commands::shelf::shelf_copy,
             commands::shelf::shelf_reveal,
             commands::shelf::shelf_drag,
+            commands::game::game_status,
+            commands::game::game_mark,
+            commands::game::game_setup_fps,
             commands::focus::focus_state,
             commands::focus::focus_start,
             commands::focus::focus_stop,
@@ -271,6 +275,13 @@ pub fn run() {
                 handle.clone(),
                 app.path().app_cache_dir()?.join("ask"),
             ));
+
+            let game = game::service::GameService::new(
+                handle.clone(),
+                app.path().app_local_data_dir()?.join("tools"),
+            );
+            game.start();
+            app.manage(game);
 
             let focus = focus::service::FocusService::new(handle.clone());
             focus.run();

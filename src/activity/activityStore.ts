@@ -11,6 +11,7 @@ import type { LucideIcon } from "lucide-react";
 import { create } from "zustand";
 
 import type { ActivityPriority } from "../core/generated/ActivityPriority";
+import type { GameHud } from "../core/generated/GameHud";
 import type { Tone } from "../design/components";
 
 export type { ActivityPriority };
@@ -80,6 +81,8 @@ export interface ActivityInput {
   countRepeats?: boolean;
   /** Render as a level HUD (see `Hud`). */
   hud?: Hud;
+  /** Render as the game-mode HUD strip. */
+  game?: GameHud;
 }
 
 export interface Activity extends ActivityInput {

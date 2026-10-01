@@ -15,6 +15,7 @@ const defaults: Settings = {
   clipboard: { paused: false, blockedApps: [], noSuggestions: false },
   hud: { hideVolume: false, hideBrightness: false, hideBluetooth: false },
   music: { hideReactive: false, hideLyrics: false },
+  game: { games: [], notGames: [], disabled: false },
   focus: {
     rain: 0,
     wind: 0,

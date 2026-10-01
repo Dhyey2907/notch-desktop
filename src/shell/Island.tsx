@@ -15,13 +15,21 @@ import { Dock } from "./Dock";
 import { Pet } from "../focus/Pet";
 import { useAmbient } from "../focus/useAmbient";
 import { useFocusSession } from "../focus/useFocusSession";
+import { useGameMode } from "./gameMode";
 import { useSettings } from "../settings";
 import { useFileDrop } from "./fileDrop";
 import { useMusicPulse } from "./musicPulse";
 import { addWheel, idleSwipe } from "./gestures";
 import { useSystemHud } from "./systemHud";
 import { trackFullscreen, useFullscreen } from "./fullscreen";
-import { activityIslandSize, HUD_SIZE, islandRadius, WINDOW_MARGIN, type IslandMode } from "./geometry";
+import {
+  activityIslandSize,
+  GAME_HUD_SIZE,
+  HUD_SIZE,
+  islandRadius,
+  WINDOW_MARGIN,
+  type IslandMode,
+} from "./geometry";
 import { CompactHost, ModuleHost, PeekHost } from "./ModuleHost";
 import { useFirstRunPrompt } from "./useFirstRunPrompt";
 import { useIsland } from "./useIsland";
@@ -75,6 +83,7 @@ export function Island() {
   useEffect(() => trackFullscreen(), []);
   useFileDrop();
   useFocusSession();
+  useGameMode();
   useAmbient();
   const showPet = useSettings((s) => !s.settings?.focus.hidePet);
   const islandRef = useRef<HTMLElement>(null);
@@ -110,7 +119,14 @@ export function Island() {
     if (activity && (current !== "expanded" || activity.priority === "critical")) {
       const actions = activity.actions ?? [];
       const layout = actions.length === 0 ? "none" : actions.every((a) => a.icon) ? "inline" : "row";
-      void request("activity", activity.hud ? HUD_SIZE : activityIslandSize(layout, Boolean(activity.code)));
+      void request(
+        "activity",
+        activity.game
+          ? GAME_HUD_SIZE
+          : activity.hud
+            ? HUD_SIZE
+            : activityIslandSize(layout, Boolean(activity.code)),
+      );
     } else if (!activity && current === "activity") {
       void request("collapsed");
     }

@@ -12,6 +12,7 @@ import { useSettings } from ".";
 import { AiSection } from "./AiSection";
 import { CalendarSection } from "./CalendarSection";
 import { ClipboardSection } from "./ClipboardSection";
+import { GamesSection } from "./GamesSection";
 import { GitSection } from "./GitSection";
 import { HudSetting } from "./HudSetting";
 import { MediaSection } from "./MediaSection";
@@ -20,7 +21,16 @@ import { moduleSettings } from "./settingsStore";
 import "./settings.css";
 
 type SectionId =
-  "general" | "appearance" | "modules" | "media" | "calendar" | "git" | "clipboard" | "ai" | "diagnostics";
+  | "general"
+  | "appearance"
+  | "modules"
+  | "media"
+  | "calendar"
+  | "git"
+  | "clipboard"
+  | "games"
+  | "ai"
+  | "diagnostics";
 
 const SECTIONS: { id: SectionId; label: string }[] = [
   { id: "general", label: "General" },
@@ -30,6 +40,7 @@ const SECTIONS: { id: SectionId; label: string }[] = [
   { id: "calendar", label: "Calendar" },
   { id: "git", label: "Git" },
   { id: "clipboard", label: "Clipboard" },
+  { id: "games", label: "Games" },
   { id: "ai", label: "AI" },
   { id: "diagnostics", label: "Diagnostics & About" },
 ];
@@ -77,6 +88,7 @@ export function SettingsApp() {
             {section === "calendar" && <CalendarSection />}
             {section === "git" && <GitSection />}
             {section === "clipboard" && <ClipboardSection />}
+            {section === "games" && <GamesSection />}
             {section === "ai" && <AiSection />}
             {section === "diagnostics" && <DiagnosticsSection />}
           </>

@@ -18,6 +18,9 @@ export const ISLAND_SIZE: Record<IslandMode, Size> = {
   expanded: { width: 540, height: 300 },
 };
 
+/** Game mode readout: one slim row. */
+export const GAME_HUD_SIZE: Size = { width: 470, height: 36 };
+
 /** Volume / brightness HUD: one slim row. */
 export const HUD_SIZE: Size = { width: 300, height: 44 };
 

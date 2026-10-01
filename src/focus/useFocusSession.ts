@@ -11,7 +11,7 @@ import { focusActive, heldSummary, useFocus } from "./focusStore";
 /** Cards shown again from "Show" (the most recent ones). */
 const SHOW_HELD = 5;
 
-function showHeldSummary() {
+export function showHeldSummary(title = "While you focused") {
   const held = useFocus.getState().takeHeld();
   if (held.length === 0) return;
   useActivities.getState().push({
@@ -21,7 +21,7 @@ function showHeldSummary() {
     dedupKey: "focus-held",
     countRepeats: false,
     timeoutMs: 15_000,
-    title: "While you focused",
+    title,
     body: heldSummary(held, (id) => findModule(id)?.name ?? id),
     actions: [
       {
