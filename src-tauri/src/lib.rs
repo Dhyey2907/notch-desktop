@@ -4,6 +4,7 @@ mod calendar;
 mod claude;
 mod clipboard;
 mod commands;
+mod control;
 mod db;
 mod error;
 mod events;
@@ -150,6 +151,10 @@ macro_rules! app_commands {
             commands::game::game_status,
             commands::game::game_mark,
             commands::game::game_setup_fps,
+            commands::control::control_snapshot,
+            commands::control::control_speed,
+            commands::control::control_set_radio,
+            commands::control::control_open_settings,
             commands::focus::focus_state,
             commands::focus::focus_start,
             commands::focus::focus_stop,
@@ -267,6 +272,11 @@ pub fn run() {
             let system = system::service::SystemService::new(handle.clone());
             system.start();
             app.manage(system);
+
+            // After the system service: it reads Bluetooth batteries from there.
+            let control = control::service::ControlService::new(handle.clone());
+            app.manage(control.clone());
+            control.start();
 
             let music = music::service::MusicService::new(
                 handle.clone(),

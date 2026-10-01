@@ -1,6 +1,6 @@
 // Volume / brightness readout: icon, level bar, percent. When the level can be changed from
 // the notch, dragging or scrolling on the bar sets it and the icon toggles mute.
-import { Sun, SunDim, Volume1, Volume2, VolumeX } from "lucide-react";
+import { ArrowBigUp, Hash, Languages, Sun, SunDim, Volume1, Volume2, VolumeX } from "lucide-react";
 import { useRef, type PointerEvent, type WheelEvent } from "react";
 
 import type { Hud } from "./activityStore";
@@ -16,7 +16,25 @@ function HudIcon({ hud }: { hud: Hud }) {
 
 const clamp = (level: number) => Math.min(1, Math.max(0, level));
 
+/** A one-line state: "Caps Lock on", "English (United States)". */
+function StateHud({ hud }: { hud: Hud }) {
+  const Icon = hud.kind === "caps" ? ArrowBigUp : hud.kind === "numlock" ? Hash : Languages;
+  return (
+    <div className="hud hud--state" role="status">
+      <span className={`hud__icon${hud.level > 0 ? " hud__icon--on" : ""}`} aria-hidden>
+        <Icon size={16} />
+      </span>
+      <span className="hud__state">{hud.label}</span>
+    </div>
+  );
+}
+
 export function HudView({ hud }: { hud: Hud }) {
+  if (hud.kind === "caps" || hud.kind === "numlock" || hud.kind === "language") return <StateHud hud={hud} />;
+  return <LevelHud hud={hud} />;
+}
+
+function LevelHud({ hud }: { hud: Hud }) {
   const bar = useRef<HTMLDivElement>(null);
   const percent = Math.round(hud.level * 100);
   const name = hud.kind === "volume" ? "Volume" : "Brightness";

@@ -7,6 +7,7 @@ pub mod bridge;
 pub mod calendar;
 pub mod claude;
 pub mod clipboard;
+pub mod control;
 #[cfg(debug_assertions)]
 pub mod dev;
 pub mod diagnostics;

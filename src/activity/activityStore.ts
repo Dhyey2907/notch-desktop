@@ -47,7 +47,8 @@ export interface ActivityAction {
 
 /** A slim level readout (volume, brightness) instead of a notification card. */
 export interface Hud {
-  kind: "volume" | "brightness";
+  /** Level readouts (volume, brightness), or a one-line state (lock keys, keyboard language). */
+  kind: "volume" | "brightness" | "caps" | "numlock" | "language";
   /** 0 – 1. */
   level: number;
   muted?: boolean;

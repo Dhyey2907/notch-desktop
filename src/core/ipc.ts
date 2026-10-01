@@ -8,7 +8,10 @@ import type { ShelfSnapshot } from "./generated/ShelfSnapshot";
 import type { AskSnapshot } from "./generated/AskSnapshot";
 import type { BridgeState } from "./generated/BridgeState";
 import type { Dashboard } from "./generated/Dashboard";
+import type { ControlSnapshot } from "./generated/ControlSnapshot";
 import type { GameStatus } from "./generated/GameStatus";
+import type { NetSpeed } from "./generated/NetSpeed";
+import type { RadioKind } from "./generated/RadioKind";
 import type { ShortcutProblem } from "./generated/ShortcutProblem";
 import type { FocusState } from "./generated/FocusState";
 import type { Lyrics } from "./generated/Lyrics";
@@ -122,6 +125,12 @@ export const ipc = {
     invoke<string>("ask_question", { question, includeScreen }),
   askStop: () => invoke<void>("ask_stop"),
   askClear: () => invoke<void>("ask_clear"),
+  controlSnapshot: () => invoke<ControlSnapshot>("control_snapshot"),
+  /** Bytes per second since the last call (call about once a second while shown). */
+  controlSpeed: () => invoke<NetSpeed>("control_speed"),
+  controlSetRadio: (kind: RadioKind, on: boolean) => invoke<void>("control_set_radio", { kind, on }),
+  /** Open a Windows Settings page: nightlight, airplane, wifi, bluetooth, hotspot, battery, radios. */
+  controlOpenSettings: (page: string) => invoke<void>("control_open_settings", { page }),
   gameStatus: () => invoke<GameStatus>("game_status"),
   /** Remember whether a fullscreen app is a game. */
   gameMark: (exe: string, isGame: boolean) => invoke<void>("game_mark", { exe, isGame }),

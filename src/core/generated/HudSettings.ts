@@ -3,4 +3,32 @@
 /**
  * Volume, brightness and Bluetooth readouts in the notch (all shown unless turned off).
  */
-export type HudSettings = { hideVolume: boolean, hideBrightness: boolean, hideBluetooth: boolean, };
+export type HudSettings = { hideVolume: boolean, hideBrightness: boolean, hideBluetooth: boolean, 
+/**
+ * Caps Lock and Num Lock.
+ */
+hideCaps: boolean, 
+/**
+ * Keyboard language switches.
+ */
+hideLanguage: boolean, 
+/**
+ * "Internet is down" / "Back online".
+ */
+hideInternet: boolean, 
+/**
+ * An accessory's battery is low.
+ */
+hideDeviceLow: boolean, 
+/**
+ * The charger was plugged in.
+ */
+hideCharging: boolean, 
+/**
+ * Don't say "unplug" when charged to `charge_alert_at`.
+ */
+noChargeAlert: boolean, 
+/**
+ * Percent for the unplug reminder (0 = the default, 80).
+ */
+chargeAlertAt: number, };

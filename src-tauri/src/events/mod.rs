@@ -22,6 +22,7 @@ use crate::{
     calendar::{CalendarEvent, CalendarSnapshot},
     claude::{approvals::ApprovalRequest, ClaudeStatus},
     clipboard::{ClipboardSnapshot, CopySuggestion},
+    control::{ControlSnapshot, SystemAlert},
     focus::FocusState,
     game::GameHud,
     git::GitSnapshot,
@@ -155,6 +156,10 @@ pub enum AppEvent {
     GameHud(Option<GameHud>),
     /// An app went fullscreen that might be a game: ask once.
     GameAsk { exe: String, app: String },
+    /// Network, power, radios or accessories changed (Control center).
+    ControlChanged(ControlSnapshot),
+    /// Something worth a pop-up: internet down or back, unplug, a low accessory, lock keys.
+    SystemAlert(SystemAlert),
     /// A paired Bluetooth device connected or disconnected.
     BluetoothChanged(BluetoothDevice),
     /// Files on the drop shelf changed.
@@ -184,6 +189,8 @@ impl AppEvent {
             AppEvent::SoundChanged { .. } => "SoundChanged",
             AppEvent::BrightnessChanged { .. } => "BrightnessChanged",
             AppEvent::BluetoothChanged(_) => "BluetoothChanged",
+            AppEvent::ControlChanged(_) => "ControlChanged",
+            AppEvent::SystemAlert(_) => "SystemAlert",
             AppEvent::GameHud(_) => "GameHud",
             AppEvent::GameAsk { .. } => "GameAsk",
             AppEvent::BridgeChanged(_) => "BridgeChanged",

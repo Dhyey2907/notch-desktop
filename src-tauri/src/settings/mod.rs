@@ -410,6 +410,20 @@ pub struct HudSettings {
     pub hide_volume: bool,
     pub hide_brightness: bool,
     pub hide_bluetooth: bool,
+    /// Caps Lock and Num Lock.
+    pub hide_caps: bool,
+    /// Keyboard language switches.
+    pub hide_language: bool,
+    /// "Internet is down" / "Back online".
+    pub hide_internet: bool,
+    /// An accessory's battery is low.
+    pub hide_device_low: bool,
+    /// The charger was plugged in.
+    pub hide_charging: bool,
+    /// Don't say "unplug" when charged to `charge_alert_at`.
+    pub no_charge_alert: bool,
+    /// Percent for the unplug reminder (0 = the default, 80).
+    pub charge_alert_at: u8,
 }
 
 /// Clipboard history: pause it, or never keep copies from some apps (by exe name).
@@ -532,6 +546,9 @@ impl Settings {
                 .any(|g| g.is_empty() || g.len() > 100)
         {
             return Err(AppError::InvalidInput("invalid games list".into()));
+        }
+        if self.hud.charge_alert_at > 100 {
+            return Err(AppError::InvalidInput("invalid charge level".into()));
         }
         let a = &self.appearance;
         if !(40..=100).contains(&a.opacity)

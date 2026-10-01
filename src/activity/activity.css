@@ -269,3 +269,20 @@
   font-size: var(--text-xs);
   color: var(--text-muted);
 }
+
+/* One-line state HUD (lock keys, keyboard language) */
+.hud--state {
+  justify-content: center;
+}
+
+.hud__icon--on {
+  color: var(--active);
+}
+
+.hud__state {
+  font-size: var(--text-md);
+  font-weight: var(--weight-emphasis);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
