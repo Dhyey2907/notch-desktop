@@ -1,53 +1,20 @@
 // The drop shelf: files dragged onto the notch wait here. Drag one (or "Drag all") out into
 // any app, or copy them and paste. The shelf only remembers where files are, so moved or
-// deleted ones show as missing.
-import {
-  Copy,
-  File,
-  FileArchive,
-  FileAudio,
-  FileCode,
-  FileImage,
-  FileSpreadsheet,
-  FileText,
-  FileVideo,
-  Folder,
-  FolderOpen,
-  GripVertical,
-  Smartphone,
-  X,
-  type LucideIcon,
-} from "lucide-react";
-import { useRef, useState, type PointerEvent } from "react";
+// deleted ones show as missing. Images can be converted or shrunk, PDFs merged; downloads in
+// progress show on top, and the recorder saves what the PC plays here too.
+import { Circle, Copy, Files, FolderOpen, GripVertical, Smartphone, Square, Wand2, X } from "lucide-react";
+import { useState } from "react";
 
 import type { ShelfItem } from "../../core/generated/ShelfItem";
 import { ipc, isIpcError } from "../../core/ipc";
 import { Button, ConfirmButton, EmptyState, IconButton } from "../../design/components";
-import { useFileDrag } from "../../shell/fileDrag";
 import { age } from "./clips";
+import { FileIcon } from "./FileIcon";
+import { convertTargets, isConvertible, mergeablePdfs } from "./fileTools";
 import { formatSize, useShelf } from "./shelfStore";
 import { BridgePanel } from "./BridgePanel";
+import { useDragOut } from "./useDragOut";
 import { useMinuteClock } from "./useMinuteClock";
-
-/** Pointer travel before a press becomes a drag. */
-const DRAG_THRESHOLD = 6;
-
-const EXT_ICONS: [LucideIcon, string[]][] = [
-  [FileImage, ["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "heic", "ico"]],
-  [FileVideo, ["mp4", "mov", "mkv", "avi", "webm"]],
-  [FileAudio, ["mp3", "wav", "flac", "m4a", "ogg"]],
-  [FileArchive, ["zip", "rar", "7z", "tar", "gz"]],
-  [FileSpreadsheet, ["xlsx", "xls", "csv"]],
-  [FileCode, ["js", "ts", "tsx", "rs", "py", "json", "html", "css", "md"]],
-  [FileText, ["pdf", "doc", "docx", "txt", "rtf", "pptx"]],
-];
-
-function ItemIcon({ item }: { item: ShelfItem }) {
-  const Icon = item.isDir
-    ? Folder
-    : (EXT_ICONS.find(([, exts]) => item.ext && exts.includes(item.ext))?.[0] ?? File);
-  return <Icon size={14} />;
-}
 
 function message(error: unknown) {
   return isIpcError(error)
@@ -55,37 +22,59 @@ function message(error: unknown) {
     : "Something went wrong. Try again.";
 }
 
-/** Press and move: drag these files out of the notch (no ids: the whole shelf). */
-function useDragOut(ids: string[], onError: (message: string) => void) {
-  const start = useRef<{ x: number; y: number } | null>(null);
-  return {
-    onPointerDown: (e: PointerEvent) => {
-      if (e.button !== 0) return;
-      start.current = { x: e.clientX, y: e.clientY };
-      // Keep getting moves after the pointer leaves a small target (the "Drag all" grip).
-      e.currentTarget.setPointerCapture(e.pointerId);
-    },
-    onPointerMove: (e: PointerEvent) => {
-      const from = start.current;
-      if (!from) return;
-      if ((e.buttons & 1) === 0) {
-        start.current = null;
-        return;
+function Downloads() {
+  const downloads = useShelf((s) => s.downloads);
+  if (downloads.length === 0) return null;
+  return (
+    <div className="downloads" role="status" aria-label="Downloads in progress">
+      {downloads.map((d) => (
+        <div key={d.name}>
+          <div className="download">
+            <span className="download__name">{d.name}</span>
+            <span className="download__meta">
+              {formatSize(d.bytes)}
+              {d.speed > 0 && ` · ${formatSize(d.speed)}/s`}
+            </span>
+          </div>
+          <div className="download__bar" aria-hidden>
+            <span />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function RecordButton({ onStatus }: { onStatus: (text: string | null) => void }) {
+  const recording = useShelf((s) => s.recorder.recording);
+  const [busy, setBusy] = useState(false);
+  const toggle = async () => {
+    setBusy(true);
+    try {
+      if (recording) {
+        onStatus("Saving the recording…");
+        await ipc.recorderStop();
+        onStatus(null);
+      } else {
+        await ipc.recorderStart();
+        onStatus("Recording what your PC plays. Press stop to save it here.");
       }
-      if (Math.hypot(e.clientX - from.x, e.clientY - from.y) < DRAG_THRESHOLD) return;
-      start.current = null;
-      // Windows takes over the mouse for the drag.
-      e.currentTarget.releasePointerCapture(e.pointerId);
-      useFileDrag.setState({ draggingOut: true });
-      ipc
-        .shelfDrag(ids)
-        .catch((err) => onError(message(err)))
-        .finally(() => useFileDrag.setState({ draggingOut: false }));
-    },
-    onPointerUp: () => {
-      start.current = null;
-    },
+    } catch (e) {
+      onStatus(message(e));
+    } finally {
+      setBusy(false);
+    }
   };
+  return (
+    <IconButton
+      icon={recording ? Square : Circle}
+      label={recording ? "Stop and save the recording" : "Record what your PC plays (saved as MP3)"}
+      size="sm"
+      disabled={busy}
+      active={recording}
+      onClick={() => void toggle()}
+    />
+  );
 }
 
 export function ShelfView() {
@@ -94,8 +83,12 @@ export function ShelfView() {
   const bridge = useShelf((s) => s.bridge);
   const [status, setStatus] = useState<string | null>(null);
   const now = useMinuteClock();
-  const dragAll = useDragOut([], setStatus);
+  const dragAll = useDragOut(
+    () => ipc.shelfDrag([]),
+    (e) => setStatus(message(e)),
+  );
   const available = items.filter((i) => i.exists).length;
+  const pdfs = mergeablePdfs(items);
 
   const run = (action: Promise<unknown>, done?: string) =>
     void action.then(
@@ -116,28 +109,36 @@ export function ShelfView() {
 
   if (items.length === 0 || dropHover) {
     return (
-      <div className={`shelf-drop${dropHover ? " shelf-drop--active" : ""}`}>
-        <EmptyState
-          title={dropHover ? "Drop to park them here" : "Drop files on the notch"}
-          body={
-            dropHover
-              ? "They stay where they are on disk — the shelf just remembers them."
-              : "Drag files onto the notch to keep them handy, then drag them out into any app."
-          }
-          action={
-            dropHover ? undefined : (
-              <Button onClick={() => toPhone([])}>
-                <Smartphone size={14} aria-hidden /> Receive from phone
-              </Button>
-            )
-          }
-        />
+      <div className="clips">
+        <Downloads />
+        <div className={`shelf-drop${dropHover ? " shelf-drop--active" : ""}`}>
+          <EmptyState
+            title={dropHover ? "Drop to park them here" : "Drop files on the notch"}
+            body={
+              dropHover
+                ? "They stay where they are on disk — the shelf just remembers them."
+                : "Drag files onto the notch to keep them handy, convert pictures or merge PDFs, then drag them out into any app."
+            }
+            action={
+              dropHover ? undefined : (
+                <span className="settings-inline">
+                  <Button onClick={() => toPhone([])}>
+                    <Smartphone size={14} aria-hidden /> Receive from phone
+                  </Button>
+                  <RecordButton onStatus={setStatus} />
+                </span>
+              )
+            }
+          />
+        </div>
+        {status && <p className="clips-status">{status}</p>}
       </div>
     );
   }
 
   return (
     <div className="clips">
+      <Downloads />
       <div className="clips-bar">
         {available > 0 && (
           <span className="shelf-grip" title="Drag all files out" {...dragAll}>
@@ -145,6 +146,15 @@ export function ShelfView() {
           </span>
         )}
         <span className="clips-bar__spacer" />
+        {pdfs.length >= 2 && (
+          <IconButton
+            icon={Files}
+            label={`Merge the ${pdfs.length} PDFs into one (top to bottom)`}
+            size="sm"
+            onClick={() => run(ipc.filesMergePdfs(pdfs), "Merged — the new PDF is at the top")}
+          />
+        )}
+        <RecordButton onStatus={setStatus} />
         <IconButton
           icon={Smartphone}
           label={
@@ -186,7 +196,11 @@ function ShelfRow({
   onStatus: (message: string) => void;
   run: (action: Promise<unknown>, done?: string) => void;
 }) {
-  const drag = useDragOut([item.id], onStatus);
+  const [tools, setTools] = useState(false);
+  const drag = useDragOut(
+    () => ipc.shelfDrag([item.id]),
+    (e) => onStatus(message(e)),
+  );
   const meta = !item.exists
     ? "Missing — moved or deleted"
     : [
@@ -196,48 +210,86 @@ function ShelfRow({
       ]
         .filter(Boolean)
         .join(" · ");
+  const image = item.exists && !item.isDir && isConvertible(item.ext);
 
   return (
     <li className={`clip shelf-item${item.exists ? "" : " shelf-item--missing"}`} title={item.path}>
-      <div className="clip__main shelf-item__drag" {...(item.exists ? drag : {})}>
-        <span className="clip__icon" aria-hidden>
-          <ItemIcon item={item} />
-        </span>
-        <span className="clip__text">
-          <span className="clip__title">{item.name}</span>
-          <span className="clip__meta">{meta}</span>
-        </span>
+      <div className="shelf-item__row">
+        <div className="clip__main shelf-item__drag" {...(item.exists ? drag : {})}>
+          <span className="clip__icon" aria-hidden>
+            <FileIcon ext={item.ext} isDir={item.isDir} />
+          </span>
+          <span className="clip__text">
+            <span className="clip__title">{item.name}</span>
+            <span className="clip__meta">{meta}</span>
+          </span>
+        </div>
+        <div className="clip__actions">
+          {image && (
+            <IconButton
+              icon={Wand2}
+              label={`Convert or shrink ${item.name}`}
+              size="sm"
+              active={tools}
+              onClick={() => setTools((t) => !t)}
+            />
+          )}
+          {item.exists && (
+            <>
+              <IconButton
+                icon={Copy}
+                label={`Copy ${item.name}`}
+                size="sm"
+                onClick={() => run(ipc.shelfCopy([item.id]), "Copied — paste it anywhere")}
+              />
+              <IconButton
+                icon={Smartphone}
+                label={`Send ${item.name} to your phone`}
+                size="sm"
+                onClick={() => run(ipc.bridgeStart([item.path]))}
+              />
+              <IconButton
+                icon={FolderOpen}
+                label="Show in folder"
+                size="sm"
+                onClick={() => run(ipc.shelfReveal(item.id))}
+              />
+            </>
+          )}
+          <IconButton
+            icon={X}
+            label={`Remove ${item.name} from the shelf`}
+            size="sm"
+            onClick={() => run(ipc.shelfRemove([item.id]))}
+          />
+        </div>
       </div>
-      <div className="clip__actions">
-        {item.exists && (
-          <>
-            <IconButton
-              icon={Copy}
-              label={`Copy ${item.name}`}
-              size="sm"
-              onClick={() => run(ipc.shelfCopy([item.id]), "Copied — paste it anywhere")}
-            />
-            <IconButton
-              icon={Smartphone}
-              label={`Send ${item.name} to your phone`}
-              size="sm"
-              onClick={() => run(ipc.bridgeStart([item.path]))}
-            />
-            <IconButton
-              icon={FolderOpen}
-              label="Show in folder"
-              size="sm"
-              onClick={() => run(ipc.shelfReveal(item.id))}
-            />
-          </>
-        )}
-        <IconButton
-          icon={X}
-          label={`Remove ${item.name} from the shelf`}
-          size="sm"
-          onClick={() => run(ipc.shelfRemove([item.id]))}
-        />
-      </div>
+      {image && tools && (
+        <div className="shelf-tools" role="group" aria-label={`Tools for ${item.name}`}>
+          {convertTargets(item.ext).map((to) => (
+            <Button
+              key={to}
+              onClick={() => {
+                setTools(false);
+                run(
+                  ipc.filesConvertImage(item.path, to),
+                  `Saved a ${to.toUpperCase()} copy next to the original`,
+                );
+              }}
+            >
+              {to === "jpg" ? "JPG" : to === "png" ? "PNG" : "WebP"}
+            </Button>
+          ))}
+          <Button
+            onClick={() => {
+              setTools(false);
+              run(ipc.filesShrinkImage(item.path), "Saved a smaller copy, ready to share");
+            }}
+          >
+            Smaller copy
+          </Button>
+        </div>
+      )}
     </li>
   );
 }

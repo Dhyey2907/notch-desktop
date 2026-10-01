@@ -1,0 +1,52 @@
+/* Loaded with the bubble indicators (the module's main stylesheet loads only when it's opened). */
+/* Bubble indicators */
+.files-compact {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  font-weight: var(--weight-emphasis);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+.files-compact__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--danger);
+  animation: files-rec 1.2s ease-in-out infinite;
+}
+
+@keyframes files-rec {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.files-compact--down {
+  width: 2px;
+  height: 8px;
+  border-radius: 1px;
+  background: var(--info);
+  position: relative;
+  animation: files-down 1s ease-in-out infinite;
+}
+
+@keyframes files-down {
+  0% {
+    transform: translateY(-2px);
+    opacity: 0.4;
+  }
+  60% {
+    transform: translateY(1px);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .files-compact__dot,
+  .files-compact--down {
+    animation: none;
+  }
+}

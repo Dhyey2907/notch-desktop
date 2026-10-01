@@ -5,6 +5,8 @@
 pub mod service;
 #[cfg(windows)]
 mod win;
+#[cfg(windows)]
+pub(crate) use win::{drag_files, reveal};
 
 use std::path::{Path, PathBuf};
 

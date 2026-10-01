@@ -1,9 +1,11 @@
 import { create } from "zustand";
 
 import type { BridgeState } from "../../core/generated/BridgeState";
+import type { DownloadProgress } from "../../core/generated/DownloadProgress";
+import type { RecorderState } from "../../core/generated/RecorderState";
 import type { ShelfSnapshot } from "../../core/generated/ShelfSnapshot";
 
-export type ClipboardTab = "copied" | "files";
+export type ClipboardTab = "copied" | "files" | "recent";
 
 interface ShelfState {
   snapshot: ShelfSnapshot | null;
@@ -16,6 +18,10 @@ interface ShelfState {
   /** The phone bridge, while it runs. */
   bridge: BridgeState | null;
   setBridge: (bridge: BridgeState | null) => void;
+  /** Downloads in progress (from any browser). */
+  downloads: DownloadProgress[];
+  /** Recording what the PC plays. */
+  recorder: RecorderState;
 }
 
 export const useShelf = create<ShelfState>((set) => ({
@@ -27,6 +33,8 @@ export const useShelf = create<ShelfState>((set) => ({
   setDropHover: (dropHover) => set({ dropHover }),
   bridge: null,
   setBridge: (bridge) => set({ bridge }),
+  downloads: [],
+  recorder: { recording: false },
 }));
 
 const UNITS = ["B", "KB", "MB", "GB", "TB"];

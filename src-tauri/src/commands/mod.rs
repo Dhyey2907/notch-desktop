@@ -11,6 +11,7 @@ pub mod control;
 #[cfg(debug_assertions)]
 pub mod dev;
 pub mod diagnostics;
+pub mod files;
 pub mod focus;
 pub mod game;
 pub mod git;

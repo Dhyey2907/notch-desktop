@@ -23,6 +23,7 @@ use crate::{
     claude::{approvals::ApprovalRequest, ClaudeStatus},
     clipboard::{ClipboardSnapshot, CopySuggestion},
     control::{ControlSnapshot, SystemAlert},
+    files::{DownloadDone, DownloadProgress, RecorderState},
     focus::FocusState,
     game::GameHud,
     git::GitSnapshot,
@@ -160,6 +161,14 @@ pub enum AppEvent {
     ControlChanged(ControlSnapshot),
     /// Something worth a pop-up: internet down or back, unplug, a low accessory, lock keys.
     SystemAlert(SystemAlert),
+    /// Downloads in progress (empty once they're all done).
+    DownloadsChanged(Vec<DownloadProgress>),
+    /// A download finished.
+    DownloadDone(DownloadDone),
+    /// The audio recorder started or stopped.
+    RecorderChanged(RecorderState),
+    /// A recording was saved (and put on the shelf).
+    RecordingSaved { name: String, path: String },
     /// A paired Bluetooth device connected or disconnected.
     BluetoothChanged(BluetoothDevice),
     /// Files on the drop shelf changed.
@@ -189,6 +198,10 @@ impl AppEvent {
             AppEvent::SoundChanged { .. } => "SoundChanged",
             AppEvent::BrightnessChanged { .. } => "BrightnessChanged",
             AppEvent::BluetoothChanged(_) => "BluetoothChanged",
+            AppEvent::DownloadsChanged(_) => "DownloadsChanged",
+            AppEvent::DownloadDone(_) => "DownloadDone",
+            AppEvent::RecorderChanged(_) => "RecorderChanged",
+            AppEvent::RecordingSaved { .. } => "RecordingSaved",
             AppEvent::ControlChanged(_) => "ControlChanged",
             AppEvent::SystemAlert(_) => "SystemAlert",
             AppEvent::GameHud(_) => "GameHud",
@@ -334,7 +347,10 @@ impl EventBus {
         }
         if !matches!(
             envelope.event,
-            AppEvent::MusicPulse { .. } | AppEvent::AskDelta { .. } | AppEvent::GameHud(_)
+            AppEvent::MusicPulse { .. }
+                | AppEvent::AskDelta { .. }
+                | AppEvent::GameHud(_)
+                | AppEvent::DownloadsChanged(_)
         ) {
             tracing::debug!(
                 id = %envelope.id,

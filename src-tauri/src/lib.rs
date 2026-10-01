@@ -8,6 +8,7 @@ mod control;
 mod db;
 mod error;
 mod events;
+mod files;
 mod focus;
 mod game;
 mod git;
@@ -155,6 +156,17 @@ macro_rules! app_commands {
             commands::control::control_speed,
             commands::control::control_set_radio,
             commands::control::control_open_settings,
+            commands::files::files_downloads,
+            commands::files::files_recent,
+            commands::files::files_convert_image,
+            commands::files::files_shrink_image,
+            commands::files::files_merge_pdfs,
+            commands::files::files_open,
+            commands::files::files_reveal,
+            commands::files::files_drag,
+            commands::files::recorder_state,
+            commands::files::recorder_start,
+            commands::files::recorder_stop,
             commands::focus::focus_state,
             commands::focus::focus_start,
             commands::focus::focus_stop,
@@ -267,6 +279,9 @@ pub fn run() {
             app.manage(clipboard);
 
             app.manage(shelf::service::ShelfService::new(handle.clone()));
+            let files = files::service::FilesService::new(handle.clone());
+            files.start();
+            app.manage(files);
             app.manage(bridge::service::BridgeService::new(handle.clone()));
 
             let system = system::service::SystemService::new(handle.clone());

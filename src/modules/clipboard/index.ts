@@ -7,10 +7,10 @@ import { lazy } from "react";
 
 import { ipc } from "../../core/ipc";
 import type { ModuleContext, NotchModule } from "../types";
-import { ClipboardPeek } from "./ClipboardIndicators";
+import { ClipboardPeek, FilesCompact } from "./ClipboardIndicators";
 import { useClipboard } from "./clipboardStore";
 import { useFileDrag } from "../../shell/fileDrag";
-import { useShelf } from "./shelfStore";
+import { formatSize, useShelf } from "./shelfStore";
 import { suggestionCard } from "./suggestions";
 
 /** Files dropped on this island go on the shelf. */
@@ -71,6 +71,52 @@ function init({ events, activities }: ModuleContext) {
     (b) => useShelf.getState().setBridge(b),
     () => {},
   );
+  const offDownloads = events.on("DownloadsChanged", ({ event }) =>
+    useShelf.setState({ downloads: event.payload }),
+  );
+  const offDone = events.on("DownloadDone", ({ event }) => {
+    const { name, path, size } = event.payload;
+    activities.push({
+      moduleId: "clipboard",
+      priority: "normal",
+      tone: "success",
+      dedupKey: `download-${path}`,
+      countRepeats: false,
+      title: `Downloaded ${name}`,
+      body: formatSize(size),
+      actions: [
+        { id: "shelf", label: "Keep on shelf", variant: "secondary", run: () => void ipc.shelfAdd([path]) },
+        { id: "folder", label: "Show", variant: "secondary", run: () => ipc.filesReveal(path) },
+        { id: "open", label: "Open", variant: "primary", run: () => ipc.filesOpen(path) },
+      ],
+    });
+  });
+  const offRecorder = events.on("RecorderChanged", ({ event }) =>
+    useShelf.setState({ recorder: event.payload }),
+  );
+  const offSaved = events.on("RecordingSaved", ({ event }) => {
+    const { name, path } = event.payload;
+    activities.push({
+      moduleId: "clipboard",
+      priority: "normal",
+      tone: "success",
+      countRepeats: false,
+      title: "Recording saved",
+      body: `${name} · on the Files shelf`,
+      actions: [
+        { id: "folder", label: "Show", variant: "secondary", run: () => ipc.filesReveal(path) },
+        { id: "open", label: "Play", variant: "primary", run: () => ipc.filesOpen(path) },
+      ],
+    });
+  });
+  ipc.filesDownloads().then(
+    (downloads) => useShelf.setState({ downloads }),
+    () => {},
+  );
+  ipc.recorderState().then(
+    (recorder) => useShelf.setState({ recorder }),
+    () => {},
+  );
   const offSuggest = events.on("CopySuggestion", ({ event }) => {
     const card = suggestionCard(event.payload, {
       remind: ipc.todoAddReminder,
@@ -86,6 +132,10 @@ function init({ events, activities }: ModuleContext) {
     offBridge();
     offReceived();
     offSuggest();
+    offDownloads();
+    offDone();
+    offRecorder();
+    offSaved();
   };
 }
 
@@ -96,5 +146,6 @@ export const clipboardModule: NotchModule = {
   order: 55,
   init,
   Peek: ClipboardPeek,
+  Compact: FilesCompact,
   Expanded: lazy(() => import("./ClipboardExpanded")),
 };

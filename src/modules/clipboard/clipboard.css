@@ -260,3 +260,91 @@
   color: var(--text-muted);
   font-family: ui-monospace, Consolas, monospace;
 }
+
+/* Downloads in progress */
+.downloads {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--info) 10%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--info) 25%, transparent);
+}
+
+.download {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  min-width: 0;
+}
+
+.download__name {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-primary);
+}
+
+.download__meta {
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.download__bar {
+  height: 3px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface-hover);
+}
+
+.download__bar span {
+  display: block;
+  width: 30%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--info);
+  animation: download-sweep 1.4s ease-in-out infinite;
+}
+
+@keyframes download-sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(340%);
+  }
+}
+
+/* Shelf tools */
+.shelf-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 0 var(--space-2) var(--space-2) 38px;
+}
+
+.shelf-tools .nd-button {
+  padding: 2px 10px;
+  font-size: var(--text-xs);
+}
+
+.recorder-button--on {
+  color: var(--danger);
+}
+
+/* Shelf rows can open a tools row underneath */
+.shelf-item:has(.shelf-item__row) {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.shelf-item__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}

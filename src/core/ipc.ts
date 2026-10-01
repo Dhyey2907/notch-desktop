@@ -9,7 +9,11 @@ import type { AskSnapshot } from "./generated/AskSnapshot";
 import type { BridgeState } from "./generated/BridgeState";
 import type { Dashboard } from "./generated/Dashboard";
 import type { ControlSnapshot } from "./generated/ControlSnapshot";
+import type { DownloadProgress } from "./generated/DownloadProgress";
 import type { GameStatus } from "./generated/GameStatus";
+import type { ImageTarget } from "./generated/ImageTarget";
+import type { RecentFile } from "./generated/RecentFile";
+import type { RecorderState } from "./generated/RecorderState";
 import type { NetSpeed } from "./generated/NetSpeed";
 import type { RadioKind } from "./generated/RadioKind";
 import type { ShortcutProblem } from "./generated/ShortcutProblem";
@@ -131,6 +135,24 @@ export const ipc = {
   controlSetRadio: (kind: RadioKind, on: boolean) => invoke<void>("control_set_radio", { kind, on }),
   /** Open a Windows Settings page: nightlight, airplane, wifi, bluetooth, hotspot, battery, radios. */
   controlOpenSettings: (page: string) => invoke<void>("control_open_settings", { page }),
+  filesDownloads: () => invoke<DownloadProgress[]>("files_downloads"),
+  /** Files opened recently in any app. */
+  filesRecent: () => invoke<RecentFile[]>("files_recent"),
+  /** Save a copy as PNG/JPG/WebP (it goes on the shelf); returns its path. */
+  filesConvertImage: (path: string, to: ImageTarget) => invoke<string>("files_convert_image", { path, to }),
+  /** Save a smaller copy for sharing (it goes on the shelf). */
+  filesShrinkImage: (path: string) => invoke<string>("files_shrink_image", { path }),
+  /** Join PDFs in this order (the result goes on the shelf). */
+  filesMergePdfs: (paths: string[]) => invoke<string>("files_merge_pdfs", { paths }),
+  filesOpen: (path: string) => invoke<void>("files_open", { path }),
+  filesReveal: (path: string) => invoke<void>("files_reveal", { path }),
+  /** Drag files out by path; resolves when dropped (true) or cancelled. */
+  filesDrag: (paths: string[]) => invoke<boolean>("files_drag", { paths }),
+  recorderState: () => invoke<RecorderState>("recorder_state"),
+  /** Record what the PC plays. */
+  recorderStart: () => invoke<RecorderState>("recorder_start"),
+  /** Stop and save (MP3, on the shelf); returns the file's path. */
+  recorderStop: () => invoke<string | null>("recorder_stop"),
   gameStatus: () => invoke<GameStatus>("game_status"),
   /** Remember whether a fullscreen app is a game. */
   gameMark: (exe: string, isGame: boolean) => invoke<void>("game_mark", { exe, isGame }),

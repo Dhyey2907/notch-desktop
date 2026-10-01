@@ -37,6 +37,7 @@ import { useSettings } from "../../settings";
 import { age, clipTitle, matchesQuery, taskTitle } from "./clips";
 import { useClipboard } from "./clipboardStore";
 import { useShelf, type ClipboardTab } from "./shelfStore";
+import { RecentView } from "./RecentView";
 import { ShelfView } from "./ShelfView";
 import { useMinuteClock } from "./useMinuteClock";
 import "./clipboard.css";
@@ -83,12 +84,13 @@ export default function ClipboardExpanded() {
           options={[
             { value: "copied", label: "Copied" },
             { value: "files", label: shelfCount ? `Files · ${shelfCount}` : "Files" },
+            { value: "recent", label: "Recent" },
           ]}
           onChange={(t) => useShelf.getState().setTab(t)}
         />
       }
     >
-      {tab === "copied" ? <CopiedView /> : <ShelfView />}
+      {tab === "copied" ? <CopiedView /> : tab === "files" ? <ShelfView /> : <RecentView />}
     </ModuleContainer>
   );
 }
