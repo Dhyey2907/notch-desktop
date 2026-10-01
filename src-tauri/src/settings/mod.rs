@@ -119,6 +119,31 @@ pub struct DisplaySettings {
     pub monitor: Option<String>,
 }
 
+/// Ambient sound mixer (0–1 per sound) and the bubble's pet.
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export)]
+pub struct FocusSettings {
+    pub rain: f32,
+    pub wind: f32,
+    pub ocean: f32,
+    pub fire: f32,
+    pub brown: f32,
+    pub pink: f32,
+    /// Overall volume (0 = unset, treated as 0.6).
+    pub master: f32,
+    /// Sounds are playing.
+    pub sounds_on: bool,
+    /// Which screen's notch plays them (the one the mixer was last used on — it has the
+    /// click WebView2 needs before it may play audio).
+    pub sound_owner: String,
+    /// Sounds stop at this time (epoch ms), if a sleep timer is set.
+    #[ts(optional, type = "number")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sleep_until_ms: Option<i64>,
+    pub hide_pet: bool,
+}
+
 /// Music-reactive notch and lyrics (both on unless turned off).
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", default)]
@@ -180,7 +205,7 @@ pub struct GitSettings {
     pub github_repo: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", default)]
 #[ts(export)]
 pub struct Settings {
@@ -197,6 +222,7 @@ pub struct Settings {
     pub hud: HudSettings,
     pub github_alerts: GithubAlertSettings,
     pub music: MusicSettings,
+    pub focus: FocusSettings,
 }
 
 impl Settings {
@@ -248,6 +274,13 @@ impl Settings {
                 .any(|a| a.trim().is_empty() || a.len() > 100)
         {
             return Err(AppError::InvalidInput("invalid clipboard block list".into()));
+        }
+        let f = &self.focus;
+        if [f.rain, f.wind, f.ocean, f.fire, f.brown, f.pink, f.master]
+            .iter()
+            .any(|v| !v.is_finite() || !(0.0..=1.0).contains(v))
+        {
+            return Err(AppError::InvalidInput("invalid sound level".into()));
         }
         if self.calendar.reminder_minutes > 120 {
             return Err(AppError::InvalidInput("reminder lead is too long".into()));

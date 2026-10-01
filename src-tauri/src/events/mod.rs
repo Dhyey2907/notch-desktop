@@ -21,6 +21,7 @@ use crate::{
     calendar::{CalendarEvent, CalendarSnapshot},
     claude::{approvals::ApprovalRequest, ClaudeStatus},
     clipboard::{ClipboardSnapshot, CopySuggestion},
+    focus::FocusState,
     git::GitSnapshot,
     github::{notifications::GithubNotification, GithubStatus},
     media::MediaState,
@@ -138,6 +139,10 @@ pub enum AppEvent {
     AskChanged(AskSnapshot),
     /// More of an answer arrived. Never logged.
     AskDelta { id: String, text: String },
+    /// A focus session started, stopped or finished.
+    FocusChanged(FocusState),
+    /// A focus session ran its full length.
+    FocusDone,
     /// A paired Bluetooth device connected or disconnected.
     BluetoothChanged(BluetoothDevice),
     /// Files on the drop shelf changed.
@@ -167,6 +172,8 @@ impl AppEvent {
             AppEvent::SoundChanged { .. } => "SoundChanged",
             AppEvent::BrightnessChanged { .. } => "BrightnessChanged",
             AppEvent::BluetoothChanged(_) => "BluetoothChanged",
+            AppEvent::FocusChanged(_) => "FocusChanged",
+            AppEvent::FocusDone => "FocusDone",
             AppEvent::AskChanged(_) => "AskChanged",
             AppEvent::AskDelta { .. } => "AskDelta",
             AppEvent::MusicPulse { .. } => "MusicPulse",

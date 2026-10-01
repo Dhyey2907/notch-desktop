@@ -118,6 +118,8 @@ export interface ActivityState {
 export interface ActivityStoreOptions {
   now?: () => number;
   createId?: () => string;
+  /** Return true to keep an activity out of the queue (focus mode holds it for later). */
+  hold?: (input: ActivityInput) => boolean;
 }
 
 function lifetime(input: ActivityInput): number | null {
@@ -137,6 +139,7 @@ function compare(a: Activity, b: Activity): number {
 export function createActivityStore({
   now = Date.now,
   createId = () => crypto.randomUUID(),
+  hold = () => false,
 }: ActivityStoreOptions = {}) {
   let timer: ReturnType<typeof setTimeout> | undefined;
 
@@ -163,6 +166,7 @@ export function createActivityStore({
       activities: [],
 
       push: (input) => {
+        if (hold(input)) return "";
         const t = now();
         const ms = lifetime(input);
         const expiresAt = ms === null ? null : t + ms;

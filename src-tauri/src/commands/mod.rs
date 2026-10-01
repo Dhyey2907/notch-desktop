@@ -9,6 +9,7 @@ pub mod clipboard;
 #[cfg(debug_assertions)]
 pub mod dev;
 pub mod diagnostics;
+pub mod focus;
 pub mod git;
 pub mod media;
 pub mod music;

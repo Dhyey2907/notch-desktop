@@ -7,12 +7,13 @@ import type { Note } from "../../core/generated/Note";
 import type { Task } from "../../core/generated/Task";
 import { ipc, isIpcError } from "../../core/ipc";
 import { Button, EmptyState, IconButton, ModuleContainer, SegmentedControl } from "../../design/components";
+import { FocusView } from "./FocusView";
 import { formatCountdown, formatMinutes, parseQuickAdd } from "./parse";
 import { useSecondClock } from "./useSecondClock";
 import { runningTimers, useTodo } from "./todoStore";
 import "./todo.css";
 
-type Tab = "tasks" | "notes";
+type Tab = "tasks" | "notes" | "focus";
 const TIMER_CHOICES = [5, 15, 25, 60];
 
 function message(error: unknown) {
@@ -33,12 +34,13 @@ export default function TodoExpanded() {
           options={[
             { value: "tasks", label: "Tasks" },
             { value: "notes", label: "Notes" },
+            { value: "focus", label: "Focus" },
           ]}
           onChange={setTab}
         />
       }
     >
-      {tab === "tasks" ? <Tasks /> : <Notes />}
+      {tab === "tasks" ? <Tasks /> : tab === "notes" ? <Notes /> : <FocusView />}
     </ModuleContainer>
   );
 }

@@ -7,6 +7,7 @@ import type { ClipboardSnapshot } from "./generated/ClipboardSnapshot";
 import type { ShelfSnapshot } from "./generated/ShelfSnapshot";
 import type { AskSnapshot } from "./generated/AskSnapshot";
 import type { Dashboard } from "./generated/Dashboard";
+import type { FocusState } from "./generated/FocusState";
 import type { Lyrics } from "./generated/Lyrics";
 import type { Palette } from "./generated/Palette";
 import type { SoundState } from "./generated/SoundState";
@@ -110,6 +111,12 @@ export const ipc = {
     invoke<string>("ask_question", { question, includeScreen }),
   askStop: () => invoke<void>("ask_stop"),
   askClear: () => invoke<void>("ask_clear"),
+  focusState: () => invoke<FocusState>("focus_state"),
+  /** Start a focus session; non-urgent cards wait until it ends. */
+  focusStart: (minutes: number) => invoke<void>("focus_start", { minutes }),
+  focusStop: () => invoke<void>("focus_stop"),
+  /** Milliseconds since the last keyboard or mouse input. */
+  systemIdleMs: () => invoke<number>("system_idle_ms"),
   soundState: () => invoke<SoundState | null>("sound_state"),
   /** Synced lyrics for the song playing now, if found. */
   lyricsCurrent: () => invoke<Lyrics | null>("lyrics_current"),

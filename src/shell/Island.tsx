@@ -12,6 +12,10 @@ import { contentEnter, INSTANT, ISLAND_SPRING, SERIOUS_SPRING } from "../design/
 import { useReduceMotion } from "../design/useReduceMotion";
 import { findModule } from "../modules/registry";
 import { Dock } from "./Dock";
+import { Pet } from "../focus/Pet";
+import { useAmbient } from "../focus/useAmbient";
+import { useFocusSession } from "../focus/useFocusSession";
+import { useSettings } from "../settings";
 import { useFileDrop } from "./fileDrop";
 import { useMusicPulse } from "./musicPulse";
 import { addWheel, idleSwipe } from "./gestures";
@@ -70,6 +74,9 @@ export function Island() {
   useModuleLifecycle();
   useEffect(() => trackFullscreen(), []);
   useFileDrop();
+  useFocusSession();
+  useAmbient();
+  const showPet = useSettings((s) => !s.settings?.focus.hidePet);
   const islandRef = useRef<HTMLElement>(null);
   useMusicPulse(islandRef);
   useSystemHud();
@@ -254,6 +261,7 @@ export function Island() {
                   <span className="island-attention" role="img" aria-label="Something is waiting for you" />
                 )}
                 <CompactHost />
+                {showPet && <Pet />}
               </>
             )}
             {mode === "peek" && <PeekHost />}

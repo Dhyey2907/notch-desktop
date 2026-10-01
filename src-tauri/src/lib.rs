@@ -6,6 +6,7 @@ mod commands;
 mod db;
 mod error;
 mod events;
+mod focus;
 mod git;
 mod github;
 mod logging;
@@ -137,6 +138,10 @@ macro_rules! app_commands {
             commands::shelf::shelf_copy,
             commands::shelf::shelf_reveal,
             commands::shelf::shelf_drag,
+            commands::focus::focus_state,
+            commands::focus::focus_start,
+            commands::focus::focus_stop,
+            commands::system::system_idle_ms,
             commands::todo::todo_snapshot,
             commands::todo::todo_add_task,
             commands::todo::todo_add_reminder,
@@ -261,6 +266,10 @@ pub fn run() {
                 handle.clone(),
                 app.path().app_cache_dir()?.join("ask"),
             ));
+
+            let focus = focus::service::FocusService::new(handle.clone());
+            focus.run();
+            app.manage(focus);
 
             let todo = todo::service::TodoService::new(handle.clone());
             todo.start();

@@ -210,4 +210,11 @@ describe("closing", () => {
     const byTitle = Object.fromEntries(store.getState().activities.map((a) => [a.title, a.minimized]));
     expect(byTitle).toEqual({ "approve?": false, timer: true });
   });
+
+  it("keeps held activities out of the queue", () => {
+    const store = createActivityStore({ hold: (input) => input.priority === "low" });
+    expect(store.getState().push({ moduleId: "m", priority: "low", title: "later" })).toBe("");
+    store.getState().push({ moduleId: "m", priority: "high", title: "now" });
+    expect(store.getState().activities.map((a) => a.title)).toEqual(["now"]);
+  });
 });

@@ -77,3 +77,12 @@ pub fn open_location_settings(app: tauri::AppHandle) -> AppResult<()> {
         .open_url("ms-settings:privacy-location", None::<&str>)
         .map_err(|e| AppError::Platform(e.to_string()))
 }
+
+/// Milliseconds since the last keyboard or mouse input (the pet gets sleepy).
+#[tauri::command]
+pub fn system_idle_ms() -> u64 {
+    #[cfg(windows)]
+    return crate::system::screentime::probe::idle_ms();
+    #[cfg(not(windows))]
+    0
+}

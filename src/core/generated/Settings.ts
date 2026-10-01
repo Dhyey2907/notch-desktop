@@ -3,6 +3,7 @@ import type { AnimationPreference } from "./AnimationPreference";
 import type { CalendarSettings } from "./CalendarSettings";
 import type { ClipboardSettings } from "./ClipboardSettings";
 import type { DisplaySettings } from "./DisplaySettings";
+import type { FocusSettings } from "./FocusSettings";
 import type { GitSettings } from "./GitSettings";
 import type { GithubAlertSettings } from "./GithubAlertSettings";
 import type { HudSettings } from "./HudSettings";
@@ -18,4 +19,4 @@ firstRunCompleted: boolean, animation: AnimationPreference,
 /**
  * Per-module preferences keyed by module id. Missing modules use defaults.
  */
-modules: { [key in string]: ModuleSettings }, calendar: CalendarSettings, spotify: SpotifySettings, git: GitSettings, display: DisplaySettings, clipboard: ClipboardSettings, hud: HudSettings, githubAlerts: GithubAlertSettings, music: MusicSettings, };
+modules: { [key in string]: ModuleSettings }, calendar: CalendarSettings, spotify: SpotifySettings, git: GitSettings, display: DisplaySettings, clipboard: ClipboardSettings, hud: HudSettings, githubAlerts: GithubAlertSettings, music: MusicSettings, focus: FocusSettings, };

@@ -15,6 +15,18 @@ const defaults: Settings = {
   clipboard: { paused: false, blockedApps: [], noSuggestions: false },
   hud: { hideVolume: false, hideBrightness: false, hideBluetooth: false },
   music: { hideReactive: false, hideLyrics: false },
+  focus: {
+    rain: 0,
+    wind: 0,
+    ocean: 0,
+    fire: 0,
+    brown: 0,
+    pink: 0,
+    master: 0,
+    soundsOn: false,
+    soundOwner: "",
+    hidePet: false,
+  },
   githubAlerts: { hideReviews: false, hideCiFailures: false, showCiPasses: false, hideMentions: false },
 };
 
