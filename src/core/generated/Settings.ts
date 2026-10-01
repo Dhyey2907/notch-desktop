@@ -7,6 +7,7 @@ import type { GitSettings } from "./GitSettings";
 import type { GithubAlertSettings } from "./GithubAlertSettings";
 import type { HudSettings } from "./HudSettings";
 import type { ModuleSettings } from "./ModuleSettings";
+import type { MusicSettings } from "./MusicSettings";
 import type { SpotifySettings } from "./SpotifySettings";
 
 export type Settings = { 
@@ -17,4 +18,4 @@ firstRunCompleted: boolean, animation: AnimationPreference,
 /**
  * Per-module preferences keyed by module id. Missing modules use defaults.
  */
-modules: { [key in string]: ModuleSettings }, calendar: CalendarSettings, spotify: SpotifySettings, git: GitSettings, display: DisplaySettings, clipboard: ClipboardSettings, hud: HudSettings, githubAlerts: GithubAlertSettings, };
+modules: { [key in string]: ModuleSettings }, calendar: CalendarSettings, spotify: SpotifySettings, git: GitSettings, display: DisplaySettings, clipboard: ClipboardSettings, hud: HudSettings, githubAlerts: GithubAlertSettings, music: MusicSettings, };

@@ -7,6 +7,7 @@ import { ipc } from "../../core/ipc";
 import { EmptyState, MediaControl, MockBadge, ModuleContainer, Pill } from "../../design/components";
 import { currentPositionMs, formatTime, useMedia } from "./mediaStore";
 import { PlaylistTiles } from "./PlaylistTiles";
+import { LyricsView } from "./LyricsView";
 import "./media.css";
 
 /** Re-render twice a second while playing, to move the progress bar. Local only — no IPC. */
@@ -129,6 +130,8 @@ function NowPlaying({
                 </div>
               </div>
             )}
+
+            <LyricsView media={media} />
 
             <MediaControl
               playing={playing}

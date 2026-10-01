@@ -7,6 +7,7 @@ import { ipc, isIpcError } from "../core/ipc";
 import { Button, ConfirmButton, MockBadge, Pill, Surface, TextField } from "../design/components";
 import { MAX_PINNED, pinnedPlaylists, togglePinned } from "../modules/media/spotifyStore";
 import { useSettings } from ".";
+import { MusicSetting } from "./MusicSetting";
 import { Section } from "./Section";
 import { SignInWith } from "./SignInWith";
 
@@ -70,6 +71,7 @@ export function MediaSection() {
 
   return (
     <Section title="Media">
+      <MusicSetting />
       <Surface>
         <div className="settings__row">
           <span className="settings__row-text">

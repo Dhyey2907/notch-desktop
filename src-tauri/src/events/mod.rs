@@ -23,6 +23,7 @@ use crate::{
     git::GitSnapshot,
     github::{notifications::GithubNotification, GithubStatus},
     media::MediaState,
+    music::Lyrics,
     phone::{PhoneNotification, PhoneSnapshot},
     settings::Settings,
     shelf::ShelfSnapshot,
@@ -125,6 +126,11 @@ pub enum AppEvent {
     DesktopsChanged(Desktops),
     /// New weather for the Home dashboard.
     WeatherChanged(Weather),
+    /// Loudness of what's playing (0–1) and whether a beat just hit; ~30 per second while
+    /// music plays. Never logged.
+    MusicPulse { level: f32, beat: bool },
+    /// Synced lyrics for the current song (`None` while looking them up or between songs).
+    LyricsChanged(Option<Lyrics>),
     /// A paired Bluetooth device connected or disconnected.
     BluetoothChanged(BluetoothDevice),
     /// Files on the drop shelf changed.
@@ -153,6 +159,8 @@ impl AppEvent {
             AppEvent::SoundChanged { .. } => "SoundChanged",
             AppEvent::BrightnessChanged { .. } => "BrightnessChanged",
             AppEvent::BluetoothChanged(_) => "BluetoothChanged",
+            AppEvent::MusicPulse { .. } => "MusicPulse",
+            AppEvent::LyricsChanged(_) => "LyricsChanged",
             AppEvent::ScreenTimeChanged(_) => "ScreenTimeChanged",
             AppEvent::DesktopsChanged(_) => "DesktopsChanged",
             AppEvent::WeatherChanged(_) => "WeatherChanged",
@@ -284,13 +292,15 @@ impl EventBus {
             tracing::trace!(event = envelope.event.name(), "duplicate event suppressed");
             return;
         }
-        tracing::debug!(
-            id = %envelope.id,
-            event = envelope.event.name(),
-            source = %envelope.source,
-            correlation_id = envelope.correlation_id.as_deref(),
-            "event published"
-        );
+        if !matches!(envelope.event, AppEvent::MusicPulse { .. }) {
+            tracing::debug!(
+                id = %envelope.id,
+                event = envelope.event.name(),
+                source = %envelope.source,
+                correlation_id = envelope.correlation_id.as_deref(),
+                "event published"
+            );
+        }
         (self.emit_to_frontend)(&envelope);
         // No in-process subscribers is normal; ignore the send error.
         let _ = self.tx.send(envelope);

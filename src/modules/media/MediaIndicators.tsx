@@ -5,6 +5,7 @@ import type { MediaCommand } from "../../core/generated/MediaCommand";
 import { ipc } from "../../core/ipc";
 import { IconButton, MockBadge } from "../../design/components";
 import { useMedia } from "./mediaStore";
+import { useCurrentLyric } from "./useCurrentLyric";
 import "./media.css";
 
 /** Collapsed indicator: a small note while something is playing, nothing otherwise. */
@@ -16,6 +17,7 @@ export function MediaCompact() {
 
 export function MediaPeek() {
   const media = useMedia((s) => s.media);
+  const lyric = useCurrentLyric(media);
   if (!media) {
     return (
       <div className="module-peek">
@@ -38,7 +40,7 @@ export function MediaPeek() {
           {media.title || media.sourceApp} {media.mock && <MockBadge />}
         </span>
         <span className="module-peek__meta">
-          {[media.artist, media.sourceApp].filter(Boolean).join(" · ")}
+          {lyric && playing ? lyric.line : [media.artist, media.sourceApp].filter(Boolean).join(" · ")}
         </span>
       </div>
       {/* Above the island's click-to-open layer, so these act on playback instead. */}

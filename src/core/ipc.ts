@@ -6,6 +6,8 @@ import type { AppInfo } from "./generated/AppInfo";
 import type { ClipboardSnapshot } from "./generated/ClipboardSnapshot";
 import type { ShelfSnapshot } from "./generated/ShelfSnapshot";
 import type { Dashboard } from "./generated/Dashboard";
+import type { Lyrics } from "./generated/Lyrics";
+import type { Palette } from "./generated/Palette";
 import type { SoundState } from "./generated/SoundState";
 import type { SystemStats } from "./generated/SystemStats";
 import type { DeviceCode } from "./generated/DeviceCode";
@@ -102,6 +104,10 @@ export const ipc = {
   /** Empty history; pinned clips stay. */
   clipboardClear: () => invoke<void>("clipboard_clear"),
   soundState: () => invoke<SoundState | null>("sound_state"),
+  /** Synced lyrics for the song playing now, if found. */
+  lyricsCurrent: () => invoke<Lyrics | null>("lyrics_current"),
+  /** Two colors from a cached album-art file. */
+  artworkPalette: (path: string) => invoke<Palette | null>("artwork_palette", { path }),
   /** Speaker volume, 0 to 1 (unmutes). */
   soundSetVolume: (level: number) => invoke<void>("sound_set_volume", { level }),
   soundToggleMute: () => invoke<void>("sound_toggle_mute"),

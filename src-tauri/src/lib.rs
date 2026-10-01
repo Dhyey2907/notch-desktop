@@ -9,6 +9,7 @@ mod git;
 mod github;
 mod logging;
 mod media;
+mod music;
 mod oauth;
 mod oauth_clients;
 mod phone;
@@ -112,6 +113,8 @@ macro_rules! app_commands {
             commands::clipboard::clipboard_unpin,
             commands::clipboard::clipboard_delete,
             commands::clipboard::clipboard_clear,
+            commands::music::lyrics_current,
+            commands::music::artwork_palette,
             commands::system::sound_state,
             commands::system::sound_set_volume,
             commands::system::sound_toggle_mute,
@@ -240,6 +243,13 @@ pub fn run() {
             let system = system::service::SystemService::new(handle.clone());
             system.start();
             app.manage(system);
+
+            let music = music::service::MusicService::new(
+                handle.clone(),
+                app.path().app_cache_dir()?.join("artwork"),
+            );
+            music.start();
+            app.manage(music);
 
             let todo = todo::service::TodoService::new(handle.clone());
             todo.start();

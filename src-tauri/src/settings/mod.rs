@@ -119,6 +119,17 @@ pub struct DisplaySettings {
     pub monitor: Option<String>,
 }
 
+/// Music-reactive notch and lyrics (both on unless turned off).
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export)]
+pub struct MusicSettings {
+    /// Don't pulse or tint the notch with the music.
+    pub hide_reactive: bool,
+    /// Don't look up lyrics (that sends the song's title and artist to LRCLIB).
+    pub hide_lyrics: bool,
+}
+
 /// Which new GitHub notifications pop up in the notch (all are listed in the Git inbox).
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", default)]
@@ -183,6 +194,7 @@ pub struct Settings {
     pub clipboard: ClipboardSettings,
     pub hud: HudSettings,
     pub github_alerts: GithubAlertSettings,
+    pub music: MusicSettings,
 }
 
 impl Settings {

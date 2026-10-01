@@ -6,6 +6,7 @@ import { lazy } from "react";
 import type { MediaState } from "../../core/generated/MediaState";
 import { ipc } from "../../core/ipc";
 import type { ActivityAction } from "../../activity/activityStore";
+import { useLyrics } from "./lyrics";
 import type { ModuleContext, NotchModule } from "../types";
 import { MediaCompact, MediaPeek } from "./MediaIndicators";
 import { shouldAnnounce, trackKey, useMedia } from "./mediaStore";
@@ -79,6 +80,13 @@ function init({ events, activities }: ModuleContext) {
   };
 
   const off = events.on("MediaStateChanged", ({ event }) => apply(event.payload.state));
+  const offLyrics = events.on("LyricsChanged", ({ event }) => useLyrics.getState().set(event.payload));
+  ipc
+    .lyricsCurrent()
+    .then((lyrics) => {
+      if (!useLyrics.getState().lyrics) useLyrics.getState().set(lyrics);
+    })
+    .catch(() => {});
   const offSpotify = events.on("SpotifyChanged", ({ event }) => useSpotify.getState().set(event.payload));
   ipc
     .spotifyGetSnapshot()
@@ -95,6 +103,7 @@ function init({ events, activities }: ModuleContext) {
     .catch((error) => console.error("failed to read media state", error));
   return () => {
     off();
+    offLyrics();
     offSpotify();
   };
 }

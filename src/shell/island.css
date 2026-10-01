@@ -177,3 +177,26 @@
     animation: none;
   }
 }
+
+/* Music: glow in the album art's colors, swelling with loudness and flashing on beats. */
+.island[data-music="on"] {
+  --music-level: 0;
+  box-shadow:
+    var(--shadow-island),
+    0 0 calc(5px + var(--music-level) * 20px) calc(var(--music-level) * 3px)
+      color-mix(in srgb, var(--music-accent, #8ab4ff) calc(35% + var(--music-level) * 55%), transparent);
+  outline: 1.5px solid color-mix(in srgb, var(--music-accent, #8ab4ff) 45%, transparent);
+  transition:
+    box-shadow 90ms linear,
+    outline-color 160ms ease-out;
+}
+
+.island[data-music="on"].island--beat {
+  outline-color: color-mix(in srgb, var(--music-accent, #8ab4ff) 90%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .island[data-music="on"] {
+    transition: none;
+  }
+}

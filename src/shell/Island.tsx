@@ -13,6 +13,7 @@ import { useReduceMotion } from "../design/useReduceMotion";
 import { findModule } from "../modules/registry";
 import { Dock } from "./Dock";
 import { useFileDrop } from "./fileDrop";
+import { useMusicPulse } from "./musicPulse";
 import { addWheel, idleSwipe } from "./gestures";
 import { useSystemHud } from "./systemHud";
 import { trackFullscreen, useFullscreen } from "./fullscreen";
@@ -69,6 +70,8 @@ export function Island() {
   useModuleLifecycle();
   useEffect(() => trackFullscreen(), []);
   useFileDrop();
+  const islandRef = useRef<HTMLElement>(null);
+  useMusicPulse(islandRef);
   useSystemHud();
   useFirstRunPrompt();
 
@@ -222,6 +225,7 @@ export function Island() {
   return (
     <div className="island-frame" style={{ paddingTop: WINDOW_MARGIN.top }}>
       <motion.section
+        ref={islandRef}
         className="island"
         data-mode={mode}
         aria-label="Notch"
