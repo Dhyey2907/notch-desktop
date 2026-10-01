@@ -119,6 +119,16 @@ pub struct DisplaySettings {
     pub monitor: Option<String>,
 }
 
+/// Volume, brightness and Bluetooth readouts in the notch (all shown unless turned off).
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export)]
+pub struct HudSettings {
+    pub hide_volume: bool,
+    pub hide_brightness: bool,
+    pub hide_bluetooth: bool,
+}
+
 /// Clipboard history: pause it, or never keep copies from some apps (by exe name).
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", default)]
@@ -158,6 +168,7 @@ pub struct Settings {
     pub git: GitSettings,
     pub display: DisplaySettings,
     pub clipboard: ClipboardSettings,
+    pub hud: HudSettings,
 }
 
 impl Settings {

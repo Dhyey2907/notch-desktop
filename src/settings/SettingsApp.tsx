@@ -13,6 +13,7 @@ import { AiSection } from "./AiSection";
 import { CalendarSection } from "./CalendarSection";
 import { ClipboardSection } from "./ClipboardSection";
 import { GitSection } from "./GitSection";
+import { HudSetting } from "./HudSetting";
 import { MediaSection } from "./MediaSection";
 import { Section } from "./Section";
 import { moduleSettings } from "./settingsStore";
@@ -122,6 +123,7 @@ function GeneralSection() {
         )}
       </Surface>
       <ScreensSetting />
+      <HudSetting />
       <Surface>
         <div className="settings__row">
           <span className="settings__row-text">

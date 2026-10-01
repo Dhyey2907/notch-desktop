@@ -13,6 +13,7 @@ const defaults: Settings = {
   git: { repos: [] },
   display: { mode: "primary" },
   clipboard: { paused: false, blockedApps: [] },
+  hud: { hideVolume: false, hideBrightness: false, hideBluetooth: false },
 };
 
 function setup(initial: Settings = defaults) {

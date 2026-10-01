@@ -13,8 +13,9 @@ import { useReduceMotion } from "../design/useReduceMotion";
 import { findModule } from "../modules/registry";
 import { Dock } from "./Dock";
 import { useFileDrop } from "./fileDrop";
+import { useSystemHud } from "./systemHud";
 import { trackFullscreen, useFullscreen } from "./fullscreen";
-import { activityIslandSize, islandRadius, WINDOW_MARGIN, type IslandMode } from "./geometry";
+import { activityIslandSize, HUD_SIZE, islandRadius, WINDOW_MARGIN, type IslandMode } from "./geometry";
 import { CompactHost, ModuleHost, PeekHost } from "./ModuleHost";
 import { useFirstRunPrompt } from "./useFirstRunPrompt";
 import { useIsland } from "./useIsland";
@@ -69,6 +70,7 @@ export function Island() {
   useModuleLifecycle();
   useEffect(() => trackFullscreen(), []);
   useFileDrop();
+  useSystemHud();
   useFirstRunPrompt();
 
   // Fullscreen app in front: hidden while resting, shown while a notification is up (or
@@ -99,7 +101,7 @@ export function Island() {
     if (activity && (current !== "expanded" || activity.priority === "critical")) {
       const actions = activity.actions ?? [];
       const layout = actions.length === 0 ? "none" : actions.every((a) => a.icon) ? "inline" : "row";
-      void request("activity", activityIslandSize(layout, Boolean(activity.code)));
+      void request("activity", activity.hud ? HUD_SIZE : activityIslandSize(layout, Boolean(activity.code)));
     } else if (!activity && current === "activity") {
       void request("collapsed");
     }

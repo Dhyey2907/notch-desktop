@@ -27,6 +27,7 @@ use crate::{
     settings::Settings,
     shelf::ShelfSnapshot,
     spotify::SpotifySnapshot,
+    system::{BluetoothDevice, SoundState},
     todo::{Task, TodoSnapshot},
 };
 
@@ -110,6 +111,12 @@ pub enum AppEvent {
     PhoneNotification(PhoneNotification),
     /// Clipboard history or pinned clips changed.
     ClipboardChanged(ClipboardSnapshot),
+    /// Speaker volume or mute changed (`switched`: sound moved to another device).
+    SoundChanged { state: SoundState, switched: bool },
+    /// Laptop screen brightness changed (percent).
+    BrightnessChanged { level: u8 },
+    /// A paired Bluetooth device connected or disconnected.
+    BluetoothChanged(BluetoothDevice),
     /// Files on the drop shelf changed.
     ShelfChanged(ShelfSnapshot),
     /// Tasks, notes, or finished-timer alerts changed.
@@ -133,6 +140,9 @@ impl AppEvent {
             AppEvent::ShellOpenModuleRequested { .. } => "ShellOpenModuleRequested",
             AppEvent::ClipboardChanged(_) => "ClipboardChanged",
             AppEvent::ShelfChanged(_) => "ShelfChanged",
+            AppEvent::SoundChanged { .. } => "SoundChanged",
+            AppEvent::BrightnessChanged { .. } => "BrightnessChanged",
+            AppEvent::BluetoothChanged(_) => "BluetoothChanged",
             AppEvent::SettingsChanged(_) => "SettingsChanged",
             AppEvent::MediaStateChanged { .. } => "MediaStateChanged",
             AppEvent::FullscreenChanged { .. } => "FullscreenChanged",

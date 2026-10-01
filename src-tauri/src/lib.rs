@@ -18,6 +18,7 @@ mod shelf;
 mod shell;
 mod spotify;
 mod state;
+mod system;
 mod todo;
 
 use tauri::Manager;
@@ -109,6 +110,10 @@ macro_rules! app_commands {
             commands::clipboard::clipboard_unpin,
             commands::clipboard::clipboard_delete,
             commands::clipboard::clipboard_clear,
+            commands::system::sound_state,
+            commands::system::sound_set_volume,
+            commands::system::sound_toggle_mute,
+            commands::system::bluetooth_devices,
             commands::shelf::shelf_snapshot,
             commands::shelf::shelf_add,
             commands::shelf::shelf_remove,
@@ -223,6 +228,10 @@ pub fn run() {
             app.manage(clipboard);
 
             app.manage(shelf::service::ShelfService::new(handle.clone()));
+
+            let system = system::service::SystemService::new(handle.clone());
+            system.start();
+            app.manage(system);
 
             let todo = todo::service::TodoService::new(handle.clone());
             todo.start();

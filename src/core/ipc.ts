@@ -5,6 +5,7 @@ import { invoke } from "@tauri-apps/api/core";
 import type { AppInfo } from "./generated/AppInfo";
 import type { ClipboardSnapshot } from "./generated/ClipboardSnapshot";
 import type { ShelfSnapshot } from "./generated/ShelfSnapshot";
+import type { SoundState } from "./generated/SoundState";
 import type { DeviceCode } from "./generated/DeviceCode";
 import type { GithubRepo } from "./generated/GithubRepo";
 import type { GithubRepoOverview } from "./generated/GithubRepoOverview";
@@ -97,6 +98,10 @@ export const ipc = {
   clipboardDelete: (id: string) => invoke<void>("clipboard_delete", { id }),
   /** Empty history; pinned clips stay. */
   clipboardClear: () => invoke<void>("clipboard_clear"),
+  soundState: () => invoke<SoundState | null>("sound_state"),
+  /** Speaker volume, 0 to 1 (unmutes). */
+  soundSetVolume: (level: number) => invoke<void>("sound_set_volume", { level }),
+  soundToggleMute: () => invoke<void>("sound_toggle_mute"),
   shelfSnapshot: () => invoke<ShelfSnapshot>("shelf_snapshot"),
   /** Park files on the drop shelf; resolves to how many were new. */
   shelfAdd: (paths: string[]) => invoke<number>("shelf_add", { paths }),

@@ -44,6 +44,19 @@ export interface ActivityAction {
   keepOpen?: boolean;
 }
 
+/** A slim level readout (volume, brightness) instead of a notification card. */
+export interface Hud {
+  kind: "volume" | "brightness";
+  /** 0 – 1. */
+  level: number;
+  muted?: boolean;
+  /** e.g. the output device. */
+  label?: string;
+  /** Present when the level can be changed from the notch (drag or scroll the bar). */
+  onSet?: (level: number) => void;
+  onToggleMute?: () => void;
+}
+
 export interface ActivityInput {
   moduleId: string;
   priority: ActivityPriority;
@@ -65,6 +78,8 @@ export interface ActivityInput {
   onClose?: () => void;
   /** Show a "×N" count when replaced via `dedupKey` (default true). Off for e.g. track changes. */
   countRepeats?: boolean;
+  /** Render as a level HUD (see `Hud`). */
+  hud?: Hud;
 }
 
 export interface Activity extends ActivityInput {

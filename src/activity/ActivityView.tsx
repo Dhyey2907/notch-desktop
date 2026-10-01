@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import { Button, ConfirmButton, Dot, IconButton, Pill } from "../design/components";
 import { findModule } from "../modules/registry";
 import { isPersistent, type Activity } from "./activityStore";
+import { HudView } from "./HudView";
 import "./activity.css";
 
 function relativeTime(from: number, now: number): string {
@@ -31,6 +32,7 @@ export function ActivityView({
   /** Dismiss, or put away a must-answer activity (it stays pending). */
   onClose: () => void;
 }) {
+  if (activity.hud) return <HudView hud={activity.hud} />;
   const moduleName = findModule(activity.moduleId)?.name ?? activity.moduleId;
   const actions = activity.actions ?? [];
   // Icon-only actions (media controls) sit inline on the main row; text actions get their own row.

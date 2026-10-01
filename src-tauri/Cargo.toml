@@ -57,16 +57,25 @@ strip = true
 
 [target.'cfg(windows)'.dependencies]
 windows-core = "0.61"
+windows-collections = "0.2"
 # Same major as Tauri's own `windows` dependency so HWND types line up.
 windows = { version = "0.61", features = [
     "ApplicationModel",
     "Foundation",
+    "Devices_Enumeration",
     "Foundation_Collections",
     "Media_Control",
     "Storage_Streams",
     "UI_Notifications",
     "UI_Notifications_Management",
     "Win32_Foundation",
+    "Win32_UI_Shell_PropertiesSystem",
+    "Win32_System_Variant",
+    "Win32_System_SystemServices",
+    "Win32_System_Power",
+    "Win32_System_Com_StructuredStorage",
+    "Win32_Media_Audio_Endpoints",
+    "Win32_Devices_FunctionDiscovery",
     "Win32_Graphics_Gdi",
     "Win32_Media_Audio",
     "Win32_NetworkManagement_IpHelper",

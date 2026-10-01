@@ -18,6 +18,9 @@ export const ISLAND_SIZE: Record<IslandMode, Size> = {
   expanded: { width: 540, height: 300 },
 };
 
+/** Volume / brightness HUD: one slim row. */
+export const HUD_SIZE: Size = { width: 300, height: 44 };
+
 /**
  * Island size for an activity: taller when it has a row of text buttons, wider when it has
  * inline icon controls, and wider and taller still when it shows an exact command.

@@ -16,4 +16,5 @@ pub mod shelf;
 pub mod shell;
 pub mod signin;
 pub mod spotify;
+pub mod system;
 pub mod todo;
