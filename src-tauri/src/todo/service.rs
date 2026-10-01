@@ -77,6 +77,10 @@ impl TodoService {
         self.change(|conn, now| super::set_done(conn, id, done, now))
     }
 
+    pub fn add_reminder(&self, title: &str, at: DateTime<Utc>) -> AppResult<Task> {
+        self.change(|conn, now| super::add_reminder(conn, title, at, now))
+    }
+
     pub fn rename(&self, id: &str, title: &str) -> AppResult<()> {
         self.change(|conn, _| super::rename(conn, id, title))
     }

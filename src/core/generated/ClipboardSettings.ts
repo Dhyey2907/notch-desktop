@@ -7,4 +7,8 @@ export type ClipboardSettings = { paused: boolean,
 /**
  * e.g. `["slack.exe"]`. Password managers are always skipped.
  */
-blockedApps: Array<string>, };
+blockedApps: Array<string>, 
+/**
+ * Don't offer "Remind me" / "Open in Maps" for copied dates and addresses.
+ */
+noSuggestions: boolean, };

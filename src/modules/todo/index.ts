@@ -26,8 +26,13 @@ function init({ events, activities }: ModuleContext) {
       tone: "info",
       dedupKey: `timer-${task.id}`,
       countRepeats: false,
-      title: late ? `Finished while you were away: ${task.title}` : `Time's up: ${task.title}`,
-      body: length ? `${length} timer` : "Timer finished",
+      // No length means a reminder at a time (e.g. from a copied date).
+      title: late
+        ? `Missed while you were away: ${task.title}`
+        : length
+          ? `Time's up: ${task.title}`
+          : `Reminder: ${task.title}`,
+      body: length ? `${length} timer` : "Now",
       // Closing the card counts as dismissing the timer (stops the ring everywhere).
       onClose: () => void ipc.todoAcknowledge(task.id),
       actions: [

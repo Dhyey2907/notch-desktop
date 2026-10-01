@@ -38,4 +38,8 @@ describe("formatting", () => {
     expect(formatCountdown(-5000)).toBe("0:00");
     expect(formatCountdown(400)).toBe("0:01");
   });
+
+  it("shows days for long reminders", () => {
+    expect(formatCountdown((26 * 3600 + 5) * 1000)).toBe("1d 2h");
+  });
 });

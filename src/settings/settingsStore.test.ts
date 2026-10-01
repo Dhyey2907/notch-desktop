@@ -12,7 +12,7 @@ const defaults: Settings = {
   spotify: { pinnedPlaylists: [] },
   git: { repos: [] },
   display: { mode: "primary" },
-  clipboard: { paused: false, blockedApps: [] },
+  clipboard: { paused: false, blockedApps: [], noSuggestions: false },
   hud: { hideVolume: false, hideBrightness: false, hideBluetooth: false },
   music: { hideReactive: false, hideLyrics: false },
   githubAlerts: { hideReviews: false, hideCiFailures: false, showCiPasses: false, hideMentions: false },

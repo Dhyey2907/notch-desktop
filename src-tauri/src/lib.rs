@@ -139,6 +139,7 @@ macro_rules! app_commands {
             commands::shelf::shelf_drag,
             commands::todo::todo_snapshot,
             commands::todo::todo_add_task,
+            commands::todo::todo_add_reminder,
             commands::todo::todo_set_done,
             commands::todo::todo_rename,
             commands::todo::todo_delete,

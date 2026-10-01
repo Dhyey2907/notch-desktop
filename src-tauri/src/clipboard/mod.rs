@@ -8,6 +8,7 @@
 
 pub mod image;
 pub mod service;
+pub mod suggest;
 #[cfg(windows)]
 pub(crate) mod win;
 
@@ -98,6 +99,44 @@ pub struct Clip {
     pub app: Option<String>,
     pub at: DateTime<Utc>,
     pub pinned: bool,
+}
+
+/// Something useful in a copy: a date/time to be reminded of, or an address to look up.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct CopySuggestion {
+    /// The copied text, on one line and shortened.
+    pub text: String,
+    /// Local date-time, `YYYY-MM-DDTHH:MM:SS` (no zone).
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub remind_at: Option<String>,
+    /// Only a date was copied.
+    pub all_day: bool,
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub address: Option<String>,
+}
+
+/// Look for a date/time or an address in copied text.
+pub fn suggestion_for(text: &str, now: chrono::NaiveDateTime) -> Option<CopySuggestion> {
+    let one_line: String = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    let short: String = one_line.chars().take(120).collect();
+    if let Some(when) = suggest::find_when(text, now) {
+        return Some(CopySuggestion {
+            text: short,
+            remind_at: Some(when.at.format("%Y-%m-%dT%H:%M:%S").to_string()),
+            all_day: when.all_day,
+            address: None,
+        });
+    }
+    suggest::find_address(text).map(|address| CopySuggestion {
+        text: short,
+        remind_at: None,
+        all_day: false,
+        address: Some(address),
+    })
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]

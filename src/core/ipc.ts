@@ -189,6 +189,8 @@ export const ipc = {
   phoneOpenAccessSettings: () => invoke<void>("phone_open_access_settings"),
   todoSnapshot: () => invoke<TodoSnapshot>("todo_snapshot"),
   /** Add a task; with `timerMinutes` its timer starts right away (`ring`: sound when done). */
+  /** A reminder that rings at `atMs` (epoch ms), e.g. from a copied date. */
+  todoAddReminder: (title: string, atMs: number) => invoke<Task>("todo_add_reminder", { title, atMs }),
   todoAddTask: (title: string, timerMinutes: number | null, ring: boolean) =>
     invoke<Task>("todo_add_task", { title, timerMinutes, ring }),
   todoSetDone: (id: string, done: boolean) => invoke<void>("todo_set_done", { id, done }),

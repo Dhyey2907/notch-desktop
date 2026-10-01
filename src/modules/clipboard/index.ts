@@ -11,6 +11,7 @@ import { ClipboardPeek } from "./ClipboardIndicators";
 import { useClipboard } from "./clipboardStore";
 import { useFileDrag } from "../../shell/fileDrag";
 import { useShelf } from "./shelfStore";
+import { suggestionCard } from "./suggestions";
 
 /** Files dropped on this island go on the shelf. */
 function watchDrops(): () => void {
@@ -39,7 +40,7 @@ function watchDrops(): () => void {
   return () => void unlisten.then((off) => off());
 }
 
-function init({ events }: ModuleContext) {
+function init({ events, activities }: ModuleContext) {
   const offClips = events.on("ClipboardChanged", ({ event }) => useClipboard.getState().set(event.payload));
   const offShelf = events.on("ShelfChanged", ({ event }) => useShelf.getState().set(event.payload));
   ipc
@@ -55,10 +56,19 @@ function init({ events }: ModuleContext) {
     })
     .catch((error) => console.error("failed to read the shelf", error));
   const offDrops = watchDrops();
+  const offSuggest = events.on("CopySuggestion", ({ event }) => {
+    const card = suggestionCard(event.payload, {
+      remind: ipc.todoAddReminder,
+      open: ipc.openExternal,
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    });
+    if (card) activities.push(card);
+  });
   return () => {
     offClips();
     offShelf();
     offDrops();
+    offSuggest();
   };
 }
 

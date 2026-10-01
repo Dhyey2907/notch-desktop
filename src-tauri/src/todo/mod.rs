@@ -162,6 +162,33 @@ pub fn add_task(
     get_task(conn, &id)?.ok_or_else(|| AppError::InvalidInput("task vanished".into()))
 }
 
+/// A task that rings at `at` (e.g. "Remind me" on a copied date). No length is recorded, so
+/// the alert reads as a reminder rather than a timer.
+pub fn add_reminder(
+    conn: &Connection,
+    title: &str,
+    at: DateTime<Utc>,
+    now: DateTime<Utc>,
+) -> AppResult<Task> {
+    let title = clean_title(title)?;
+    if at <= now || at > now + chrono::Duration::days(366) {
+        return Err(AppError::InvalidInput("Pick a time in the next year".into()));
+    }
+    let count: i64 = conn.query_row("SELECT COUNT(*) FROM todo_tasks", [], |r| r.get(0))?;
+    if count >= MAX_TASKS {
+        return Err(AppError::InvalidInput(
+            "That's a lot of tasks — clear some done ones first".into(),
+        ));
+    }
+    let id = uuid::Uuid::new_v4().to_string();
+    conn.execute(
+        "INSERT INTO todo_tasks (id, title, created_at, timer_ends_at, timer_secs, ring)
+         VALUES (?1, ?2, ?3, ?4, NULL, 1)",
+        params![id, title, now.timestamp(), at.timestamp()],
+    )?;
+    get_task(conn, &id)?.ok_or_else(|| AppError::InvalidInput("task vanished".into()))
+}
+
 pub fn set_done(conn: &Connection, id: &str, done: bool, now: DateTime<Utc>) -> AppResult<()> {
     // Finishing a task also stops its timer.
     changed(conn.execute(
@@ -405,5 +432,16 @@ mod tests {
         assert!(update_note(&conn, &a.id, &"x".repeat(MAX_NOTE + 1), at(3)).is_err());
         delete_note(&conn, &b.id).unwrap();
         assert_eq!(list_notes(&conn).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn reminders_can_be_days_ahead() {
+        let conn = db();
+        let task = add_reminder(&conn, "Dentist", at(3 * 24 * 3600), at(0)).unwrap();
+        assert_eq!(task.timer_ends_at, Some(at(3 * 24 * 3600)));
+        assert_eq!(task.timer_secs, None, "a reminder, not a timer");
+        assert!(task.ring);
+        assert!(add_reminder(&conn, "Past", at(-60), at(0)).is_err());
+        assert!(add_reminder(&conn, "Far", at(400 * 24 * 3600), at(0)).is_err());
     }
 }

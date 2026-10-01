@@ -72,3 +72,11 @@ pub fn note_update(id: String, body: String, todo: State<'_, TodoService>) -> Ap
 pub fn note_delete(id: String, todo: State<'_, TodoService>) -> AppResult<()> {
     todo.delete_note(&id)
 }
+
+/// A reminder that rings at `at_ms` (epoch milliseconds), e.g. from a copied date.
+#[tauri::command]
+pub fn todo_add_reminder(title: String, at_ms: i64, todo: State<'_, TodoService>) -> AppResult<Task> {
+    let at = chrono::DateTime::from_timestamp_millis(at_ms)
+        .ok_or_else(|| crate::error::AppError::InvalidInput("invalid time".into()))?;
+    todo.add_reminder(&title, at)
+}

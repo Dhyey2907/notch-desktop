@@ -20,7 +20,7 @@ use crate::{
     ask::service::AskSnapshot,
     calendar::{CalendarEvent, CalendarSnapshot},
     claude::{approvals::ApprovalRequest, ClaudeStatus},
-    clipboard::ClipboardSnapshot,
+    clipboard::{ClipboardSnapshot, CopySuggestion},
     git::GitSnapshot,
     github::{notifications::GithubNotification, GithubStatus},
     media::MediaState,
@@ -115,6 +115,8 @@ pub enum AppEvent {
     PhoneChanged(PhoneSnapshot),
     /// A new phone notification arrived through Phone Link.
     PhoneNotification(PhoneNotification),
+    /// A copied date/time or address worth acting on ("Remind me", "Open in Maps").
+    CopySuggestion(CopySuggestion),
     /// Clipboard history or pinned clips changed.
     ClipboardChanged(ClipboardSnapshot),
     /// Speaker volume or mute changed (`switched`: sound moved to another device).
@@ -160,6 +162,7 @@ impl AppEvent {
             AppEvent::ShellToggleRequested { .. } => "ShellToggleRequested",
             AppEvent::ShellOpenModuleRequested { .. } => "ShellOpenModuleRequested",
             AppEvent::ClipboardChanged(_) => "ClipboardChanged",
+            AppEvent::CopySuggestion(_) => "CopySuggestion",
             AppEvent::ShelfChanged(_) => "ShelfChanged",
             AppEvent::SoundChanged { .. } => "SoundChanged",
             AppEvent::BrightnessChanged { .. } => "BrightnessChanged",

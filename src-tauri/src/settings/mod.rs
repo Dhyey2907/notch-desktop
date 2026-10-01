@@ -161,6 +161,8 @@ pub struct ClipboardSettings {
     pub paused: bool,
     /// e.g. `["slack.exe"]`. Password managers are always skipped.
     pub blocked_apps: Vec<String>,
+    /// Don't offer "Remind me" / "Open in Maps" for copied dates and addresses.
+    pub no_suggestions: bool,
 }
 
 /// Repositories the Git module knows about (most recent first) and the one shown.

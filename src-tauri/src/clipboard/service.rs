@@ -19,6 +19,8 @@ use crate::{
 struct Inner {
     app: AppHandle,
     history: Mutex<History>,
+    /// The last copy a suggestion was offered for (the same copy again doesn't re-offer).
+    last_suggested: Mutex<Option<u64>>,
     /// PNGs of copied pictures.
     dir: PathBuf,
 }
@@ -34,6 +36,7 @@ impl ClipboardService {
             inner: Arc::new(Inner {
                 app,
                 history: Mutex::new(History::default()),
+                last_suggested: Mutex::new(None),
                 dir,
             }),
         }
@@ -157,7 +160,7 @@ impl Inner {
         if captured.own {
             return;
         }
-        let (paused, blocked) = {
+        let (paused, blocked, suggestions) = {
             let settings = self
                 .app
                 .state::<AppState>()
@@ -166,7 +169,7 @@ impl Inner {
                 .unwrap_or_else(|e| e.into_inner())
                 .clipboard
                 .clone();
-            (settings.paused, settings.blocked_apps)
+            (settings.paused, settings.blocked_apps, !settings.no_suggestions)
         };
         if paused {
             return;
@@ -190,9 +193,33 @@ impl Inner {
             None => None,
         };
         let Some(entry) = entry else { return };
+        if suggestions {
+            self.suggest(&entry);
+        }
         let evicted = self.history().add(entry);
         self.forget(evicted);
         self.publish();
+    }
+
+    /// Offer a reminder or map for a copied date or address (once per distinct copy).
+    #[cfg(windows)]
+    fn suggest(&self, entry: &Entry) {
+        let Content::Text(text) = &entry.content else {
+            return;
+        };
+        {
+            let mut last = self.last_suggested.lock().unwrap_or_else(|e| e.into_inner());
+            if *last == Some(entry.hash) {
+                return;
+            }
+            *last = Some(entry.hash);
+        }
+        if let Some(suggestion) = super::suggestion_for(text, chrono::Local::now().naive_local()) {
+            self.app
+                .state::<AppState>()
+                .bus
+                .emit("clipboard", AppEvent::CopySuggestion(suggestion));
+        }
     }
 
     /// Store a copied picture under its content hash (the same picture is stored once).

@@ -15,7 +15,7 @@ export function ClipboardSection() {
   const [error, setError] = useState<string | null>(null);
   const blocked = clipboard?.blockedApps ?? [];
 
-  const save = (change: { paused?: boolean; blockedApps?: string[] }) =>
+  const save = (change: { paused?: boolean; blockedApps?: string[]; noSuggestions?: boolean }) =>
     void useSettings
       .getState()
       .update((s) => ({ ...s, clipboard: { ...s.clipboard, ...change } }))
@@ -39,6 +39,14 @@ export function ClipboardSection() {
           description="Everything you copy shows up in the Clipboard module (Ctrl+Alt+V). History stays in memory and is gone when Notch restarts; only pinned clips are saved."
           checked={!clipboard?.paused}
           onChange={(on) => save({ paused: !on })}
+        />
+      </Surface>
+      <Surface>
+        <Switch
+          label="Suggest reminders and maps"
+          description="Copy a date or time (meeting Thu 4pm) to get Remind me or Add to Calendar, or an address to open it in Maps. Checked on this PC only."
+          checked={!clipboard?.noSuggestions}
+          onChange={(on) => save({ noSuggestions: !on })}
         />
       </Surface>
       <p className="settings__note">
