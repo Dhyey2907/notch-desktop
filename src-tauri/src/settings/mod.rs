@@ -66,6 +66,12 @@ pub struct CalendarSettings {
     pub account_email: Option<String>,
     /// Minutes before a meeting to show the countdown; 0 turns reminders off.
     pub reminder_minutes: u32,
+    /// Also ask Google for Gmail (glance, archive, mark read).
+    pub gmail: bool,
+    /// Also ask Google for Classroom (assignment deadlines).
+    pub classroom: bool,
+    /// Scopes Google granted at the last sign-in.
+    pub granted_scopes: Vec<String>,
 }
 
 impl Default for CalendarSettings {
@@ -74,6 +80,9 @@ impl Default for CalendarSettings {
             client_id: None,
             account_email: None,
             reminder_minutes: 5,
+            gmail: false,
+            classroom: false,
+            granted_scopes: Vec::new(),
         }
     }
 }
@@ -445,6 +454,34 @@ pub struct ClipboardSettings {
     pub no_snippets: bool,
 }
 
+/// Your day: the workday hours and the morning plan.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export)]
+pub struct DaySettings {
+    /// Workday start and end, minutes after midnight.
+    pub start_min: u32,
+    pub end_min: u32,
+    /// 1 = Monday … 7 = Sunday.
+    pub work_days: Vec<u8>,
+    /// Don't make a plan by itself on workday mornings.
+    pub no_auto_plan: bool,
+    /// Hide the workday progress line under the bubble.
+    pub no_workday_bar: bool,
+}
+
+impl Default for DaySettings {
+    fn default() -> Self {
+        Self {
+            start_min: 9 * 60,
+            end_min: 18 * 60,
+            work_days: vec![1, 2, 3, 4, 5],
+            no_auto_plan: false,
+            no_workday_bar: false,
+        }
+    }
+}
+
 /// Developer tools.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", default)]
@@ -515,6 +552,7 @@ pub struct Settings {
     pub home: HomeSettings,
     pub vault: VaultSettings,
     pub dev: DevSettings,
+    pub day: DaySettings,
 }
 
 impl Settings {
@@ -586,6 +624,15 @@ impl Settings {
         }
         if self.vault.clear_secs > 600 || self.vault.folder.as_ref().is_some_and(|f| f.len() > 1000) {
             return Err(AppError::InvalidInput("invalid vault settings".into()));
+        }
+        let d = &self.day;
+        if d.start_min >= 24 * 60
+            || d.end_min > 24 * 60
+            || d.start_min >= d.end_min
+            || d.work_days.len() > 7
+            || d.work_days.iter().any(|w| !(1..=7).contains(w))
+        {
+            return Err(AppError::InvalidInput("invalid workday".into()));
         }
         let w = &self.dev.widgets;
         if w.len() > 20

@@ -227,3 +227,23 @@
   color: var(--text-secondary);
   pointer-events: none;
 }
+
+/* Workday progress: a hairline along the bottom of the resting bubble. */
+.island-workday {
+  position: absolute;
+  left: 20%;
+  right: 20%;
+  bottom: 1px;
+  height: 2px;
+  border-radius: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.island-workday span {
+  display: block;
+  height: 100%;
+  background: var(--active);
+  opacity: 0.7;
+}

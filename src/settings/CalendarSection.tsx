@@ -10,6 +10,7 @@ import {
   Pill,
   SegmentedControl,
   Surface,
+  Switch,
   TextField,
 } from "../design/components";
 import { useSettings } from ".";
@@ -187,6 +188,25 @@ export function CalendarSection() {
           Notch Desktop asks for read-only access to your calendar and your email address (to label the
           account). It never edits events.
         </p>
+      </Surface>
+
+      <Surface>
+        <div id="setting-gmail-glance">
+          <Switch
+            label="Gmail glance"
+            description="Unread mail in the Mail module, with Archive and Mark read, and a card for new mail. Notch can read your inbox and change labels — it can't send or delete. Sign in with Google again after turning this on."
+            checked={settings?.calendar.gmail ?? false}
+            onChange={(gmail) => void update((s) => ({ ...s, calendar: { ...s.calendar, gmail } }))}
+          />
+        </div>
+        <div id="setting-assignment-deadlines">
+          <Switch
+            label="Assignment deadlines (Google Classroom)"
+            description="Work that's due in your classes, in the Day module, with a reminder when it's due within a day. Read-only. Sign in with Google again after turning this on."
+            checked={settings?.calendar.classroom ?? false}
+            onChange={(classroom) => void update((s) => ({ ...s, calendar: { ...s.calendar, classroom } }))}
+          />
+        </div>
       </Surface>
 
       <Surface>

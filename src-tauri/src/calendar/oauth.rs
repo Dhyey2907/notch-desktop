@@ -12,14 +12,36 @@ const TOKEN_URL: &str = "https://oauth2.googleapis.com/token";
 const REVOKE_URL: &str = "https://oauth2.googleapis.com/revoke";
 /// Least privilege: read-only calendar access, plus the email to label the account.
 pub const SCOPES: &str = "https://www.googleapis.com/auth/calendar.readonly openid email";
+/// Gmail glance: read the inbox, archive and mark read (not send, not delete).
+pub const GMAIL_SCOPE: &str = "https://www.googleapis.com/auth/gmail.modify";
+/// Assignment deadlines: your classes and your own course work, read-only.
+pub const CLASSROOM_SCOPES: &str = "https://www.googleapis.com/auth/classroom.courses.readonly https://www.googleapis.com/auth/classroom.coursework.me.readonly";
 
-pub fn authorization_url(client_id: &str, redirect_uri: &str, challenge: &str, state: &str) -> String {
+/// Calendar's scopes plus the extras the user turned on.
+pub fn scopes_for(gmail: bool, classroom: bool) -> String {
+    let mut scopes = SCOPES.to_owned();
+    if gmail {
+        scopes = format!("{scopes} {GMAIL_SCOPE}");
+    }
+    if classroom {
+        scopes = format!("{scopes} {CLASSROOM_SCOPES}");
+    }
+    scopes
+}
+
+pub fn authorization_url(
+    client_id: &str,
+    redirect_uri: &str,
+    challenge: &str,
+    state: &str,
+    scopes: &str,
+) -> String {
     let mut url = Url::parse(AUTH_URL).expect("static URL");
     url.query_pairs_mut()
         .append_pair("client_id", client_id)
         .append_pair("redirect_uri", redirect_uri)
         .append_pair("response_type", "code")
-        .append_pair("scope", SCOPES)
+        .append_pair("scope", scopes)
         .append_pair("code_challenge", challenge)
         .append_pair("code_challenge_method", "S256")
         .append_pair("state", state)
@@ -37,6 +59,9 @@ pub struct TokenResponse {
     pub refresh_token: Option<String>,
     #[serde(default)]
     pub id_token: Option<String>,
+    /// What the user actually allowed (they can untick extras on Google's screen).
+    #[serde(default)]
+    pub scope: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -137,7 +162,14 @@ mod tests {
 
     #[test]
     fn authorization_url_requests_offline_read_only_access_with_pkce() {
-        let url = Url::parse(&authorization_url("cid", "http://127.0.0.1:5000", "chal", "st")).unwrap();
+        let url = Url::parse(&authorization_url(
+            "cid",
+            "http://127.0.0.1:5000",
+            "chal",
+            "st",
+            SCOPES,
+        ))
+        .unwrap();
         let q: std::collections::HashMap<_, _> = url.query_pairs().into_owned().collect();
         assert_eq!(q["scope"], SCOPES);
         assert_eq!(q["code_challenge_method"], "S256");

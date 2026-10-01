@@ -12,7 +12,10 @@ import type { ControlSnapshot } from "./generated/ControlSnapshot";
 import type { DownloadProgress } from "./generated/DownloadProgress";
 import type { CodingStats } from "./generated/CodingStats";
 import type { DevServer } from "./generated/DevServer";
+import type { DayPlan } from "./generated/DayPlan";
+import type { DayState } from "./generated/DayState";
 import type { GameStatus } from "./generated/GameStatus";
+import type { MailState } from "./generated/MailState";
 import type { Language } from "./generated/Language";
 import type { RunResult } from "./generated/RunResult";
 import type { WidgetOutput } from "./generated/WidgetOutput";
@@ -201,6 +204,15 @@ export const ipc = {
   /** A commit message for the current changes, written by Claude Code. */
   gitSuggestMessage: (includeUntracked: boolean) =>
     invoke<string>("git_suggest_message", { includeUntracked }),
+  mailState: () => invoke<MailState>("mail_state"),
+  mailRefresh: () => invoke<void>("mail_refresh"),
+  /** Take a message out of the inbox (it stays in All Mail). */
+  mailArchive: (id: string) => invoke<void>("mail_archive", { id }),
+  mailMarkRead: (id: string) => invoke<void>("mail_mark_read", { id }),
+  dayState: () => invoke<DayState>("day_state"),
+  /** Plan the rest of today now (Claude Code). */
+  dayPlan: () => invoke<DayPlan>("day_plan"),
+  dayRefresh: () => invoke<void>("day_refresh"),
   gameStatus: () => invoke<GameStatus>("game_status"),
   /** Remember whether a fullscreen app is a game. */
   gameMark: (exe: string, isGame: boolean) => invoke<void>("game_mark", { exe, isGame }),

@@ -5,6 +5,7 @@ mod claude;
 mod clipboard;
 mod commands;
 mod control;
+mod day;
 mod db;
 mod developer;
 mod error;
@@ -17,6 +18,7 @@ mod git;
 mod github;
 mod grab;
 mod logging;
+mod mail;
 mod media;
 mod music;
 mod oauth;
@@ -198,6 +200,13 @@ macro_rules! app_commands {
             commands::developer::dev_run,
             commands::developer::dev_widgets,
             commands::developer::git_suggest_message,
+            commands::day::mail_state,
+            commands::day::mail_refresh,
+            commands::day::mail_archive,
+            commands::day::mail_mark_read,
+            commands::day::day_state,
+            commands::day::day_plan,
+            commands::day::day_refresh,
             commands::focus::focus_state,
             commands::focus::focus_start,
             commands::focus::focus_stop,
@@ -360,6 +369,14 @@ pub fn run() {
             let todo = todo::service::TodoService::new(handle.clone());
             todo.start();
             app.manage(todo);
+
+            // After Calendar and To-do: they use its sign-in and tasks.
+            let mail = mail::service::MailService::new(handle.clone());
+            app.manage(mail.clone());
+            mail.start();
+            let day = day::service::DayService::new(handle.clone());
+            app.manage(day.clone());
+            day.start();
 
             let spotify = spotify::service::SpotifyService::new(handle.clone(), mock_enabled("spotify"));
             spotify.start();

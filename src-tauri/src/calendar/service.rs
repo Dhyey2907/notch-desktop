@@ -225,6 +225,31 @@ impl CalendarService {
         Ok(())
     }
 
+    /// A Google access token for other features (Gmail, Classroom) using the same sign-in.
+    pub async fn google_token(&self) -> AppResult<String> {
+        self.inner.access_token().await.map_err(|error| match error {
+            SyncError::AuthExpired => {
+                AppError::InvalidInput("Sign in with Google again in Settings → Calendar".into())
+            }
+            SyncError::Network => AppError::InvalidInput("You're offline".into()),
+            _ => AppError::Platform("Google didn't answer".into()),
+        })
+    }
+
+    /// Whether the user allowed this extra (Gmail, Classroom) when signing in.
+    pub fn granted(&self, scope: &str) -> bool {
+        let calendar = settings_of(&self.inner.app).calendar;
+        calendar.account_email.is_some()
+            && scope
+                .split_whitespace()
+                .all(|s| calendar.granted_scopes.iter().any(|g| g == s))
+    }
+
+    /// Today's events (already synced).
+    pub fn events(&self) -> Vec<super::CalendarEvent> {
+        self.snapshot().events
+    }
+
     /// Open an event or meeting link in the default browser. Only https is allowed.
     pub fn open_link(&self, url: &str) -> AppResult<()> {
         let parsed = url::Url::parse(url).map_err(|_| AppError::InvalidInput("invalid link".into()))?;
@@ -277,7 +302,9 @@ impl Inner {
         let redirect_uri = loopback.redirect_uri()?;
         let (verifier, challenge) = crate::oauth::pkce_pair();
         let state_token = uuid::Uuid::new_v4().to_string();
-        let url = oauth::authorization_url(client_id, &redirect_uri, &challenge, &state_token);
+        let calendar = settings_of(&self.app).calendar;
+        let scopes = oauth::scopes_for(calendar.gmail, calendar.classroom);
+        let url = oauth::authorization_url(client_id, &redirect_uri, &challenge, &state_token, &scopes);
         self.app
             .opener()
             .open_url(url, None::<&str>)
@@ -310,7 +337,17 @@ impl Inner {
             .ok_or_else(|| AppError::Platform("Google did not return a refresh token".into()))?;
         secrets::set(Credential::GoogleRefreshToken, &refresh_token)?;
         let email = tokens.id_token.as_deref().and_then(oauth::email_from_id_token);
-        update_settings(&self.app, |s| s.calendar.account_email = email)?;
+        let granted: Vec<String> = tokens
+            .scope
+            .as_deref()
+            .unwrap_or(&scopes)
+            .split_whitespace()
+            .map(str::to_owned)
+            .collect();
+        update_settings(&self.app, |s| {
+            s.calendar.account_email = email;
+            s.calendar.granted_scopes = granted;
+        })?;
         self.lock().access_token = Some((
             tokens.access_token,
             Instant::now() + std::time::Duration::from_secs(tokens.expires_in.saturating_sub(60)),

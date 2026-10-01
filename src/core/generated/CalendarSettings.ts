@@ -12,4 +12,16 @@ accountEmail?: string,
 /**
  * Minutes before a meeting to show the countdown; 0 turns reminders off.
  */
-reminderMinutes: number, };
+reminderMinutes: number, 
+/**
+ * Also ask Google for Gmail (glance, archive, mark read).
+ */
+gmail: boolean, 
+/**
+ * Also ask Google for Classroom (assignment deadlines).
+ */
+classroom: boolean, 
+/**
+ * Scopes Google granted at the last sign-in.
+ */
+grantedScopes: Array<string>, };

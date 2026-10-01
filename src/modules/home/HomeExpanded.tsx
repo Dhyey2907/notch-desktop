@@ -24,9 +24,11 @@ import { useEffect, useRef, useState, type PointerEvent, type WheelEvent } from 
 
 import { eventBus } from "../../core/eventBus";
 import type { Dashboard } from "../../core/generated/Dashboard";
+import type { DaySettings } from "../../core/generated/DaySettings";
 import type { SystemStats } from "../../core/generated/SystemStats";
 import type { Weather } from "../../core/generated/Weather";
 import { formatTemperature } from "../../core/clock";
+import { span, weekendIn, workday } from "../../core/workday";
 import { ipc } from "../../core/ipc";
 import { useReduceMotion } from "../../design/useReduceMotion";
 import { useSettings } from "../../settings";
@@ -109,6 +111,7 @@ export default function HomeExpanded() {
   const stats = useStats();
   const now = useNow();
   const home = useSettings((s) => s.settings?.home);
+  const day = useSettings((s) => s.settings?.day);
   const show = (tile: string) => !home?.hiddenTiles.includes(tile);
 
   return (
@@ -116,7 +119,10 @@ export default function HomeExpanded() {
       <header className="home__head">
         <div>
           <h2 className="home__greeting">{greeting(now.getHours())}</h2>
-          <p className="home__date">{longDate(now)}</p>
+          <p className="home__date">
+            {longDate(now)}
+            {workdayText(day, now)}
+          </p>
         </div>
         {show("desktops") && dash && dash.desktops.desktops.length > 0 && <DesktopPicker dash={dash} />}
       </header>
@@ -128,6 +134,19 @@ export default function HomeExpanded() {
       </div>
     </section>
   );
+}
+
+/** " · 3h 20m of work left · weekend in 1d 2h". */
+function workdayText(day: DaySettings | undefined, now: Date): string {
+  if (!day) return "";
+  const w = workday(day, now);
+  const parts: string[] = [];
+  if (w.phase === "during") parts.push(`${span(w.minutes)} of work left`);
+  if (w.phase === "before") parts.push(`work starts in ${span(w.minutes)}`);
+  if (w.phase === "off") parts.push("day off");
+  const weekend = weekendIn(day, now);
+  if (weekend !== null) parts.push(`weekend in ${span(weekend)}`);
+  return parts.length ? ` · ${parts.join(" · ")}` : "";
 }
 
 function DesktopPicker({ dash }: { dash: Dashboard }) {

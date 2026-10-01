@@ -25,6 +25,7 @@ import { trackFullscreen, useFullscreen } from "./fullscreen";
 import { scaledRadius } from "./appearance";
 import { HOVER_CLOSE_MS, hideOverFullscreen, OPEN_DELAY_MS, PEEK_DELAY_MS, SWIPE_DISTANCE } from "./behavior";
 import { BubbleClock } from "./BubbleClock";
+import { WorkdayLine } from "./WorkdayLine";
 import { useAlertSound, useCardTime, useLook, useQuietHours } from "./useNotchPrefs";
 import {
   activityIslandSize,
@@ -320,6 +321,7 @@ export function Island() {
                 <CompactHost />
                 {showPet && look?.bubble === "pill" && <Pet />}
                 {look?.bubbleClock && look.bubble === "pill" && <BubbleClock />}
+                {look?.bubble !== "dot" && <WorkdayLine />}
               </>
             )}
             {mode === "peek" && <PeekHost />}

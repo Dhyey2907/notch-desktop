@@ -967,3 +967,28 @@ html.settings-window #root {
   word-break: break-all;
   user-select: all;
 }
+
+/* Work day picker */
+.settings-days {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.settings-days__day {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-emphasis);
+  cursor: pointer;
+}
+
+.settings-days__day--on {
+  background: var(--info);
+  border-color: transparent;
+  color: #0a0a0a;
+}

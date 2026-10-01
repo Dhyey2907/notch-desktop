@@ -8,6 +8,7 @@ pub mod calendar;
 pub mod claude;
 pub mod clipboard;
 pub mod control;
+pub mod day;
 #[cfg(debug_assertions)]
 pub mod dev;
 pub mod developer;

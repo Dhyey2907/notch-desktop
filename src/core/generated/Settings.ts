@@ -4,6 +4,7 @@ import type { AppearanceSettings } from "./AppearanceSettings";
 import type { BehaviorSettings } from "./BehaviorSettings";
 import type { CalendarSettings } from "./CalendarSettings";
 import type { ClipboardSettings } from "./ClipboardSettings";
+import type { DaySettings } from "./DaySettings";
 import type { DevSettings } from "./DevSettings";
 import type { DisplaySettings } from "./DisplaySettings";
 import type { DockSettings } from "./DockSettings";
@@ -28,4 +29,4 @@ firstRunCompleted: boolean, animation: AnimationPreference,
 /**
  * Per-module preferences keyed by module id. Missing modules use defaults.
  */
-modules: { [key in string]: ModuleSettings }, calendar: CalendarSettings, spotify: SpotifySettings, git: GitSettings, display: DisplaySettings, clipboard: ClipboardSettings, hud: HudSettings, githubAlerts: GithubAlertSettings, music: MusicSettings, focus: FocusSettings, game: GameSettings, appearance: AppearanceSettings, behavior: BehaviorSettings, shortcuts: ShortcutSettings, gestures: GestureSettings, dock: DockSettings, home: HomeSettings, vault: VaultSettings, dev: DevSettings, };
+modules: { [key in string]: ModuleSettings }, calendar: CalendarSettings, spotify: SpotifySettings, git: GitSettings, display: DisplaySettings, clipboard: ClipboardSettings, hud: HudSettings, githubAlerts: GithubAlertSettings, music: MusicSettings, focus: FocusSettings, game: GameSettings, appearance: AppearanceSettings, behavior: BehaviorSettings, shortcuts: ShortcutSettings, gestures: GestureSettings, dock: DockSettings, home: HomeSettings, vault: VaultSettings, dev: DevSettings, day: DaySettings, };

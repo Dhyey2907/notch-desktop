@@ -23,6 +23,7 @@ use crate::{
     claude::{approvals::ApprovalRequest, ClaudeStatus},
     clipboard::{ClipboardSnapshot, CopySuggestion},
     control::{ControlSnapshot, SystemAlert},
+    day::{Assignment, DayState},
     developer::DevServer,
     expander::Snippet,
     files::{DownloadDone, DownloadProgress, RecorderState},
@@ -30,6 +31,7 @@ use crate::{
     game::GameHud,
     git::GitSnapshot,
     github::{notifications::GithubNotification, GithubStatus},
+    mail::{MailMessage, MailState},
     media::MediaState,
     music::Lyrics,
     phone::{PhoneNotification, PhoneSnapshot},
@@ -184,6 +186,16 @@ pub enum AppEvent {
     DevServersChanged(Vec<DevServer>),
     /// A dev server that had been running stopped.
     DevServerStopped { port: u16, name: String },
+    /// Gmail glance changed.
+    MailChanged(MailState),
+    /// New unread mail arrived.
+    NewMail(MailMessage),
+    /// The day plan or deadlines changed.
+    DayChanged(DayState),
+    /// The morning plan was made by itself.
+    DayPlanReady { first_line: String },
+    /// A Classroom assignment is due within a day.
+    AssignmentDue(Assignment),
     /// A paired Bluetooth device connected or disconnected.
     BluetoothChanged(BluetoothDevice),
     /// Files on the drop shelf changed.
@@ -213,6 +225,11 @@ impl AppEvent {
             AppEvent::SoundChanged { .. } => "SoundChanged",
             AppEvent::BrightnessChanged { .. } => "BrightnessChanged",
             AppEvent::BluetoothChanged(_) => "BluetoothChanged",
+            AppEvent::MailChanged(_) => "MailChanged",
+            AppEvent::NewMail(_) => "NewMail",
+            AppEvent::DayChanged(_) => "DayChanged",
+            AppEvent::DayPlanReady { .. } => "DayPlanReady",
+            AppEvent::AssignmentDue(_) => "AssignmentDue",
             AppEvent::DevServersChanged(_) => "DevServersChanged",
             AppEvent::DevServerStopped { .. } => "DevServerStopped",
             AppEvent::VaultChanged(_) => "VaultChanged",

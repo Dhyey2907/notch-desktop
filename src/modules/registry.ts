@@ -6,7 +6,9 @@ import { claudeModule } from "./claude";
 import { clipboardModule } from "./clipboard";
 import { controlModule } from "./control";
 import { devEventsModule } from "./devEvents";
+import { dayModule } from "./day";
 import { devToolsModule } from "./devtools";
+import { mailModule } from "./mail";
 import { galleryModule } from "./gallery";
 import { gitModule } from "./git";
 import { homeModule } from "./home";
@@ -31,6 +33,8 @@ const devModules: NotchModule[] =
 export const MODULES: readonly NotchModule[] = sortModules(
   [
     homeModule,
+    dayModule,
+    mailModule,
     controlModule,
     askModule,
     mediaModule,
