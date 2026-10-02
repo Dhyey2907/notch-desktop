@@ -70,7 +70,12 @@ export const PAGES: PageInfo[] = [
     group: "Features",
     lead: "Clipboard history, smart suggestions and the file shelf.",
   },
-  { id: "focus", label: "Focus", group: "Features", lead: "Focus sessions, the pet and ambient sounds." },
+  {
+    id: "focus",
+    label: "Focus",
+    group: "Features",
+    lead: "Focus sessions, the pet, healthy breaks, ambient sounds and RGB lights.",
+  },
   { id: "games", label: "Games", group: "Features", lead: "The game mode strip while you play." },
   { id: "ai", label: "AI", group: "Features", lead: "Ask Claude from the notch." },
   {
@@ -184,6 +189,13 @@ export const ENTRIES: Entry[] = [
   { page: "vault", label: "2FA codes", keywords: "authenticator totp two factor otp" },
   { page: "focus", label: "Pet", keywords: "character bubble mood" },
   { page: "focus", label: "Ambient volume", keywords: "rain ocean sounds noise" },
+  {
+    page: "focus",
+    label: "Healthy breaks",
+    keywords: "eye 20-20-20 stretch water reminder streak wellbeing",
+  },
+  { page: "focus", label: "Pet walks the taskbar", keywords: "idle away walk character" },
+  { page: "focus", label: "RGB lights", keywords: "openrgb led keyboard mouse color sync beat" },
   { page: "games", label: "Game mode", keywords: "fps gpu ping hud" },
   { page: "ai", label: "Claude", keywords: "ask ai assistant" },
   { page: "privacy", label: "Export settings", keywords: "backup save move file" },

@@ -8,6 +8,7 @@ import type { ShelfSnapshot } from "./generated/ShelfSnapshot";
 import type { AskSnapshot } from "./generated/AskSnapshot";
 import type { BridgeState } from "./generated/BridgeState";
 import type { Dashboard } from "./generated/Dashboard";
+import type { RgbStatus } from "./generated/RgbStatus";
 import type { ControlSnapshot } from "./generated/ControlSnapshot";
 import type { DownloadProgress } from "./generated/DownloadProgress";
 import type { CodingStats } from "./generated/CodingStats";
@@ -239,6 +240,8 @@ export const ipc = {
   focusStop: () => invoke<void>("focus_stop"),
   /** Milliseconds since the last keyboard or mouse input. */
   systemIdleMs: () => invoke<number>("system_idle_ms"),
+  rgbMusicColor: (hex: string | null) => invoke<void>("rgb_music_color", { hex }),
+  rgbStatus: () => invoke<RgbStatus>("rgb_status"),
   soundState: () => invoke<SoundState | null>("sound_state"),
   /** Synced lyrics for the song playing now, if found. */
   lyricsCurrent: () => invoke<Lyrics | null>("lyrics_current"),

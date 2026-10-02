@@ -14,6 +14,7 @@ mod events;
 mod expander;
 mod files;
 mod focus;
+mod fun;
 mod game;
 mod git;
 mod github;
@@ -202,6 +203,8 @@ macro_rules! app_commands {
             commands::developer::dev_run,
             commands::developer::dev_widgets,
             commands::developer::git_suggest_message,
+            commands::fun::rgb_music_color,
+            commands::fun::rgb_status,
             commands::desk::desk_windows,
             commands::desk::desk_set_on_top,
             commands::desk::desk_set_opacity,
@@ -388,6 +391,9 @@ pub fn run() {
             let desk = desk::service::DeskService::new(handle.clone());
             app.manage(desk.clone());
             desk.start();
+            let fun = fun::service::FunService::new(handle.clone());
+            app.manage(fun.clone());
+            fun.start();
             let day = day::service::DayService::new(handle.clone());
             app.manage(day.clone());
             day.start();

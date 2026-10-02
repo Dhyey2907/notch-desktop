@@ -103,3 +103,96 @@
     animation: none;
   }
 }
+
+/* The walk along the taskbar (#pet window). */
+html.pet-window,
+html.pet-window body,
+html.pet-window #root {
+  background: transparent !important;
+  overflow: hidden;
+}
+
+.petwalk {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  --pet-w: 30px;
+}
+
+.petwalk__track {
+  position: absolute;
+  bottom: 2px;
+  left: 0;
+  width: var(--pet-w);
+  animation: petwalk-move 70s linear infinite;
+}
+
+.petwalk__pet {
+  animation: petwalk-face 70s step-end infinite;
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.45));
+}
+
+.petwalk__pet svg {
+  display: block;
+  animation: pet-bounce 0.5s ease-in-out infinite;
+}
+
+.petwalk .pet__body {
+  fill: #f2f2f2;
+  opacity: 1;
+}
+
+.petwalk__leg {
+  stroke: #f2f2f2;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  transform-box: fill-box;
+  transform-origin: top;
+  animation: petwalk-leg 0.5s ease-in-out infinite alternate;
+}
+
+.petwalk__leg--b {
+  animation-direction: alternate-reverse;
+}
+
+@keyframes petwalk-move {
+  0%,
+  4% {
+    transform: translateX(4vw);
+  }
+  48%,
+  52% {
+    transform: translateX(calc(96vw - var(--pet-w)));
+  }
+  96%,
+  100% {
+    transform: translateX(4vw);
+  }
+}
+
+@keyframes petwalk-face {
+  0% {
+    transform: scaleX(1);
+  }
+  50% {
+    transform: scaleX(-1);
+  }
+}
+
+@keyframes petwalk-leg {
+  from {
+    transform: rotate(-22deg);
+  }
+  to {
+    transform: rotate(22deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .petwalk__track,
+  .petwalk__pet,
+  .petwalk__pet svg,
+  .petwalk__leg {
+    animation: none;
+  }
+}

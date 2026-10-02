@@ -16,6 +16,7 @@ pub mod developer;
 pub mod diagnostics;
 pub mod files;
 pub mod focus;
+pub mod fun;
 pub mod game;
 pub mod git;
 pub mod media;

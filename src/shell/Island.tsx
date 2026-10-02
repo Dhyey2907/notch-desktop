@@ -38,6 +38,8 @@ import {
 } from "./geometry";
 import { CompactHost, ModuleHost, PeekHost } from "./ModuleHost";
 import { useFirstRunPrompt } from "./useFirstRunPrompt";
+import { useBreaks } from "../focus/useBreaks";
+import { usePetCheers } from "../focus/usePetCheers";
 import { useIsland } from "./useIsland";
 import { openFirstModule, useModuleLifecycle, useModuleNav } from "./useModules";
 import "./island.css";
@@ -95,6 +97,8 @@ export function Island() {
   useMusicPulse(islandRef);
   useSystemHud();
   useFirstRunPrompt();
+  useBreaks();
+  usePetCheers();
   useLook();
   useCardTime();
   useQuietHours();

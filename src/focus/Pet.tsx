@@ -1,5 +1,6 @@
 // A tiny face in the bubble: content most of the time, focused during a session, dozing when
-// you're away, bouncing when you finish something. A star after three sessions in a day.
+// you're away, bouncing when you finish something or take a break. A star after three sessions
+// in a day or three days in a row of healthy breaks.
 import { usePetMood } from "./usePetMood";
 import "./pet.css";
 
@@ -11,9 +12,10 @@ const LABELS = {
 };
 
 export function Pet() {
-  const { mood, streak } = usePetMood();
+  const { mood, streak, breakStreak } = usePetMood();
+  const label = breakStreak > 0 ? `${LABELS[mood]}, ${breakStreak}-day break streak` : LABELS[mood];
   return (
-    <span className={`pet pet--${mood}`} role="img" aria-label={LABELS[mood]}>
+    <span className={`pet pet--${mood}`} role="img" aria-label={label} title={label}>
       <svg viewBox="0 0 18 14" width="18" height="14" aria-hidden>
         <path className="pet__body" d="M2 13 C2 5 5 1.5 9 1.5 C13 1.5 16 5 16 13 Z" />
         {mood === "sleepy" ? (
@@ -40,7 +42,7 @@ export function Pet() {
         {mood === "working" && <path className="pet__band" d="M3.6 4.6 Q9 2.6 14.4 4.6" />}
       </svg>
       {mood === "sleepy" && <span className="pet__z">z</span>}
-      {streak && <span className="pet__star">★</span>}
+      {(streak || breakStreak >= 3) && <span className="pet__star">★</span>}
     </span>
   );
 }

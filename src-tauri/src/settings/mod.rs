@@ -487,6 +487,58 @@ impl Default for DaySettings {
     }
 }
 
+/// Healthy breaks and the streak the pet keeps.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export)]
+pub struct BreakSettings {
+    pub no_eyes: bool,
+    pub no_stretch: bool,
+    pub no_water: bool,
+    /// Minutes at the PC between reminders.
+    pub eye_min: u32,
+    pub stretch_min: u32,
+    pub water_min: u32,
+    /// Breaks taken on `day` (YYYY-MM-DD).
+    pub day: String,
+    pub count: u32,
+    /// Days in a row with three breaks, the last of them `counted_day`.
+    pub streak: u32,
+    pub counted_day: String,
+    pub best: u32,
+}
+
+impl Default for BreakSettings {
+    fn default() -> Self {
+        Self {
+            no_eyes: false,
+            no_stretch: false,
+            no_water: true,
+            eye_min: 20,
+            stretch_min: 60,
+            water_min: 90,
+            day: String::new(),
+            count: 0,
+            streak: 0,
+            counted_day: String::new(),
+            best: 0,
+        }
+    }
+}
+
+/// Fun extras: the pet walking the taskbar and PC lights following the notch.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export)]
+pub struct FunSettings {
+    /// The pet walks along the taskbar while you're away.
+    pub pet_walk: bool,
+    /// Light up PC RGB through OpenRGB.
+    pub rgb: bool,
+    /// OpenRGB's SDK server port (0 = 6742).
+    pub rgb_port: u16,
+}
+
 /// Desk routines.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", default)]
@@ -569,6 +621,8 @@ pub struct Settings {
     pub dev: DevSettings,
     pub day: DaySettings,
     pub desk: DeskSettings,
+    pub breaks: BreakSettings,
+    pub fun: FunSettings,
 }
 
 impl Settings {
@@ -649,6 +703,15 @@ impl Settings {
                 .any(|r| !valid_id(&r.id) || crate::desk::validate(r).is_err())
         {
             return Err(AppError::InvalidInput("invalid routine".into()));
+        }
+        let br = &self.breaks;
+        if [br.eye_min, br.stretch_min, br.water_min]
+            .iter()
+            .any(|m| !(5..=480).contains(m))
+            || br.day.len() > 10
+            || br.counted_day.len() > 10
+        {
+            return Err(AppError::InvalidInput("invalid break settings".into()));
         }
         let d = &self.day;
         if d.start_min >= 24 * 60

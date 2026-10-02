@@ -1083,3 +1083,15 @@ html.settings-window #root {
 .desk-empty p {
   margin: 0;
 }
+
+.settings-rgb-dot {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.settings-rgb-dot[data-ok="true"] {
+  background: var(--success, #4ade80);
+}

@@ -5,6 +5,7 @@ import { useEffect, type RefObject } from "react";
 
 import { eventBus } from "../core/eventBus";
 import { ipc } from "../core/ipc";
+import { isLeadIsland } from "../core/window";
 import { useReduceMotion } from "../design/useReduceMotion";
 import { useMedia } from "../modules/media/mediaStore";
 import { useSettings } from "../settings";
@@ -23,8 +24,11 @@ export function useMusicPulse(island: RefObject<HTMLElement | null>) {
   useEffect(() => {
     const el = island.current;
     if (!el) return;
+    // The PC lights (OpenRGB) follow the music's color too.
+    const lead = isLeadIsland();
     if (!on) {
       el.removeAttribute("data-music");
+      if (lead) ipc.rgbMusicColor(null).catch(() => {});
       return;
     }
     el.setAttribute("data-music", "on");
@@ -37,6 +41,7 @@ export function useMusicPulse(island: RefObject<HTMLElement | null>) {
         if (!alive || !palette) return;
         el.style.setProperty("--music-primary", palette.primary);
         el.style.setProperty("--music-accent", palette.accent);
+        if (lead) ipc.rgbMusicColor(palette.accent).catch(() => {});
       })
       .catch(() => {});
     return () => {

@@ -6,6 +6,7 @@ import { connectEventBus } from "./core/eventBus";
 import "./design/tokens.css";
 import "./index.css";
 import { useSettings } from "./settings";
+import { PetWalk } from "./focus/PetWalk";
 import { GrabApp } from "./grab/GrabApp";
 import { SettingsApp } from "./settings/SettingsApp";
 
@@ -22,9 +23,12 @@ const isSettingsWindow = window.location.hash.startsWith("#settings");
 const isGrabWindow = window.location.hash.startsWith("#grab");
 if (isSettingsWindow) document.documentElement.classList.add("settings-window");
 if (isGrabWindow) document.documentElement.classList.add("grab-window");
+// The pet's walk along the taskbar (#pet).
+const isPetWindow = window.location.hash.startsWith("#pet");
+if (isPetWindow) document.documentElement.classList.add("pet-window");
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
-    {isSettingsWindow ? <SettingsApp /> : isGrabWindow ? <GrabApp /> : <App />}
+    {isSettingsWindow ? <SettingsApp /> : isGrabWindow ? <GrabApp /> : isPetWindow ? <PetWalk /> : <App />}
   </React.StrictMode>,
 );
