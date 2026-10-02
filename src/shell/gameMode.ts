@@ -10,6 +10,20 @@ import { showHeldSummary } from "../focus/useFocusSession";
 
 const HUD_KEY = "game-hud";
 
+/** Save the answer; say so if it couldn't be saved (instead of asking again later). */
+function mark(exe: string, app: string, isGame: boolean) {
+  return ipc.gameMark(exe, isGame).catch(() => {
+    useActivities.getState().push({
+      moduleId: "system",
+      priority: "normal",
+      tone: "warning",
+      dedupKey: `game-mark-${exe}`,
+      title: "Couldn't save that",
+      body: `Add ${app} in Settings → Games instead.`,
+    });
+  });
+}
+
 export function useGameMode() {
   useEffect(() => {
     let hudId: string | null = null;
@@ -45,8 +59,8 @@ export function useGameMode() {
         title: `Is ${app} a game?`,
         body: "Shows FPS, GPU and ping, and holds alerts while you play.",
         actions: [
-          { id: "no", label: "No", variant: "secondary", run: () => ipc.gameMark(exe, false) },
-          { id: "yes", label: "Use game mode", variant: "primary", run: () => ipc.gameMark(exe, true) },
+          { id: "no", label: "No", variant: "secondary", run: () => mark(exe, app, false) },
+          { id: "yes", label: "Use game mode", variant: "primary", run: () => mark(exe, app, true) },
         ],
       });
     });

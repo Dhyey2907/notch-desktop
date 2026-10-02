@@ -3,6 +3,7 @@
 //! fullscreen. Unknown fullscreen apps are asked about once.
 
 use std::{
+    collections::HashSet,
     io::{BufRead, BufReader},
     path::PathBuf,
     process::{Child, Command, Stdio},
@@ -24,6 +25,9 @@ use crate::{
     state::AppState,
 };
 
+/// Only ask about an app that stays fullscreen this long: screenshot overlays and other
+/// brief fullscreen moments shouldn't trigger the question.
+const ASK_AFTER: Duration = Duration::from_secs(10);
 const TICK: Duration = Duration::from_secs(1);
 /// Ping every few ticks (a round trip each second would be noisy and pointless).
 const PING_EVERY_TICKS: u64 = 3;
@@ -63,6 +67,8 @@ pub struct GameService {
     active: Arc<Mutex<Option<Active>>>,
     meter: Arc<Mutex<FpsMeter>>,
     session: Arc<AtomicU64>,
+    /// Apps already asked about since Notch started (answered or not): never asked twice.
+    asked: Arc<Mutex<HashSet<String>>>,
 }
 
 fn front_app() -> Option<(u32, String)> {
@@ -87,6 +93,7 @@ impl GameService {
             active: Arc::default(),
             meter: Arc::default(),
             session: Arc::default(),
+            asked: Arc::default(),
         }
     }
 
@@ -129,10 +136,10 @@ impl GameService {
             loop {
                 match events.recv().await {
                     Ok(envelope) => {
-                        if let AppEvent::FullscreenChanged { active, .. } = envelope.event {
+                        if let AppEvent::FullscreenChanged { label, active } = envelope.event {
                             let this = this.clone();
                             // Process lookups and PresentMon start off the async runtime.
-                            tauri::async_runtime::spawn_blocking(move || this.fullscreen(active));
+                            tauri::async_runtime::spawn_blocking(move || this.fullscreen(&label, active));
                         }
                     }
                     Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => continue,
@@ -142,7 +149,7 @@ impl GameService {
         });
     }
 
-    fn fullscreen(&self, active: bool) {
+    fn fullscreen(&self, label: &str, active: bool) {
         let settings = self.settings();
         if !active || settings.disabled {
             // Fullscreen ended on some screen: if our game is no longer in front, stop.
@@ -177,11 +184,43 @@ impl GameService {
         if settings.games.contains(&exe) {
             self.begin(pid, app);
         } else if !super::never_a_game(&exe) && !settings.not_games.contains(&exe) {
-            self.app
+            self.ask_later(label.to_string(), pid, exe, app);
+        }
+    }
+
+    /// Ask "is this a game?" once the app has stayed fullscreen for a while, at most once
+    /// per app while Notch runs.
+    fn ask_later(&self, label: String, pid: u32, exe: String, app: String) {
+        if self
+            .asked
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .contains(&exe)
+        {
+            return;
+        }
+        let this = self.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(ASK_AFTER);
+            let settings = this.settings();
+            let still = crate::shell::is_fullscreen(&label) && front_app().is_some_and(|(p, _)| p == pid);
+            if !still
+                || settings.disabled
+                || settings.games.contains(&exe)
+                || settings.not_games.contains(&exe)
+                || !this
+                    .asked
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .insert(exe.clone())
+            {
+                return;
+            }
+            this.app
                 .state::<AppState>()
                 .bus
                 .emit("game", AppEvent::GameAsk { exe, app });
-        }
+        });
     }
 
     /// Remember whether an app is a game; a "yes" starts game mode if it's in front now.
