@@ -14,6 +14,7 @@ import type { CodingStats } from "./generated/CodingStats";
 import type { DevServer } from "./generated/DevServer";
 import type { DayPlan } from "./generated/DayPlan";
 import type { DayState } from "./generated/DayState";
+import type { DeskWindow } from "./generated/DeskWindow";
 import type { GameStatus } from "./generated/GameStatus";
 import type { MailState } from "./generated/MailState";
 import type { Language } from "./generated/Language";
@@ -143,6 +144,8 @@ export const ipc = {
   askStop: () => invoke<void>("ask_stop"),
   askClear: () => invoke<void>("ask_clear"),
   controlSnapshot: () => invoke<ControlSnapshot>("control_snapshot"),
+  /** Read radios, battery and accessories again now. */
+  controlRefresh: () => invoke<ControlSnapshot>("control_refresh"),
   /** Bytes per second since the last call (call about once a second while shown). */
   controlSpeed: () => invoke<NetSpeed>("control_speed"),
   controlSetRadio: (kind: RadioKind, on: boolean) => invoke<void>("control_set_radio", { kind, on }),
@@ -213,6 +216,18 @@ export const ipc = {
   /** Plan the rest of today now (Claude Code). */
   dayPlan: () => invoke<DayPlan>("day_plan"),
   dayRefresh: () => invoke<void>("day_refresh"),
+  deskWindows: () => invoke<DeskWindow[]>("desk_windows"),
+  deskSetOnTop: (id: number, on: boolean) => invoke<void>("desk_set_on_top", { id, on }),
+  /** 20–100; 100 makes the window solid again. */
+  deskSetOpacity: (id: number, percent: number) => invoke<void>("desk_set_opacity", { id, percent }),
+  deskFocus: (id: number) => invoke<void>("desk_focus", { id }),
+  /** Draw a live view of a window into this notch at a physical-pixel rectangle. */
+  deskMiniShow: (id: number, left: number, top: number, right: number, bottom: number) =>
+    invoke<void>("desk_mini_show", { id, left, top, right, bottom }),
+  deskMiniHide: () => invoke<void>("desk_mini_hide"),
+  routineRun: (id: string) => invoke<number>("routine_run", { id }),
+  routinePickApp: () => invoke<string | null>("routine_pick_app"),
+  routinePickFolder: () => invoke<string | null>("routine_pick_folder"),
   gameStatus: () => invoke<GameStatus>("game_status"),
   /** Remember whether a fullscreen app is a game. */
   gameMark: (exe: string, isGame: boolean) => invoke<void>("game_mark", { exe, isGame }),

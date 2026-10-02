@@ -11,4 +11,8 @@ hideReactive: boolean,
 /**
  * Don't look up lyrics (that sends the song's title and artist to LRCLIB).
  */
-hideLyrics: boolean, };
+hideLyrics: boolean, 
+/**
+ * Keep the glow but no colored outline around the notch.
+ */
+hideBorder: boolean, };

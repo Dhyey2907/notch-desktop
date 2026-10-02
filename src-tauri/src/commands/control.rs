@@ -10,6 +10,18 @@ pub fn control_snapshot(control: State<'_, ControlService>) -> ControlSnapshot {
     control.snapshot()
 }
 
+/// Read radios, battery and accessories again now (the panel was opened).
+#[tauri::command]
+pub async fn control_refresh(control: State<'_, ControlService>) -> AppResult<ControlSnapshot> {
+    let control = control.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        control.refresh();
+        control.snapshot()
+    })
+    .await
+    .map_err(|e| AppError::Platform(e.to_string()))
+}
+
 /// Download and upload speed since the last call; the open panel asks every second.
 #[tauri::command]
 pub fn control_speed(control: State<'_, ControlService>) -> NetSpeed {

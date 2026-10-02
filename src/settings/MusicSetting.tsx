@@ -17,6 +17,13 @@ export function MusicSetting() {
         onChange={(on) => set({ hideReactive: !on })}
       />
       <Switch
+        label="Colored border"
+        description="An outline around the notch in the album's colors that brightens on the beat."
+        checked={!music.hideBorder}
+        disabled={music.hideReactive}
+        onChange={(on) => set({ hideBorder: !on })}
+      />
+      <Switch
         label="Show lyrics"
         description="Time-synced lyrics in Media, from LRCLIB. This sends the song's title and artist to lrclib.net."
         checked={!music.hideLyrics}

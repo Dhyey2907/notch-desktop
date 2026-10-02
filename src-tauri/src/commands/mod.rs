@@ -9,6 +9,7 @@ pub mod claude;
 pub mod clipboard;
 pub mod control;
 pub mod day;
+pub mod desk;
 #[cfg(debug_assertions)]
 pub mod dev;
 pub mod developer;

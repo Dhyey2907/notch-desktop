@@ -32,6 +32,12 @@ const SHORTCUTS: { key: keyof ShortcutSettings; label: string; description: stri
     description: "Draw a box around any text — in a picture, video or PDF — to copy it.",
     fallback: "Ctrl+Alt+G",
   },
+  {
+    key: "pin",
+    label: "Keep the window in front on top",
+    description: "Press again to let it go. Handy for a video, a calculator or notes.",
+    fallback: "Ctrl+Alt+P",
+  },
 ];
 
 export function ShortcutsSection() {

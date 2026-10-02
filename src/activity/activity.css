@@ -286,3 +286,55 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* Live window view */
+.mini {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 8px 10px 10px;
+  box-sizing: border-box;
+  gap: 6px;
+}
+
+.mini__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.mini__title {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mini__close {
+  display: grid;
+  place-items: center;
+  padding: 3px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.mini__close:hover {
+  color: var(--text-primary);
+  background: var(--surface-hover);
+}
+
+/* Windows draws the live view over this area. */
+.mini__view {
+  flex: 1;
+  border: 0;
+  border-radius: 10px;
+  background: #000;
+  cursor: pointer;
+}

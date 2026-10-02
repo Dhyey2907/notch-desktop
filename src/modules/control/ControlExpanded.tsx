@@ -19,7 +19,7 @@ import {
   WifiOff,
   type LucideIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { ControlSnapshot } from "../../core/generated/ControlSnapshot";
 import type { RadioKind } from "../../core/generated/RadioKind";
@@ -246,6 +246,13 @@ function Devices({ snapshot }: { snapshot: ControlSnapshot }) {
 export default function ControlExpanded() {
   const snapshot = useControl((s) => s.snapshot);
   const [error, setError] = useState<string | null>(null);
+  // Fresh readings each time the panel opens (headphones may have just connected).
+  useEffect(() => {
+    ipc.controlRefresh().then(
+      (s) => useControl.getState().set(s),
+      () => {},
+    );
+  }, []);
   if (!snapshot) return <section className="control" aria-label="Control" />;
   return (
     <section className="control" aria-label="Control">

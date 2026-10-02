@@ -15,4 +15,8 @@ requireHello: boolean,
 /**
  * Seconds before a copied password or code is cleared (0 = 30).
  */
-clearSecs: number, };
+clearSecs: number, 
+/**
+ * Never clear copied passwords and codes (they still stay out of clipboard history).
+ */
+neverClear: boolean, };

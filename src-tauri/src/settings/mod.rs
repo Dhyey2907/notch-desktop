@@ -306,6 +306,8 @@ pub struct ShortcutSettings {
     pub clipboard: String,
     /// Grab text from the screen.
     pub grab: String,
+    /// Pin the window in front on top (or unpin it).
+    pub pin: String,
 }
 
 impl Default for ShortcutSettings {
@@ -315,6 +317,7 @@ impl Default for ShortcutSettings {
             ask: "Ctrl+Alt+A".into(),
             clipboard: "Ctrl+Alt+V".into(),
             grab: "Ctrl+Alt+G".into(),
+            pin: "Ctrl+Alt+P".into(),
         }
     }
 }
@@ -399,6 +402,8 @@ pub struct MusicSettings {
     pub hide_reactive: bool,
     /// Don't look up lyrics (that sends the song's title and artist to LRCLIB).
     pub hide_lyrics: bool,
+    /// Keep the glow but no colored outline around the notch.
+    pub hide_border: bool,
 }
 
 /// Which new GitHub notifications pop up in the notch (all are listed in the Git inbox).
@@ -482,6 +487,14 @@ impl Default for DaySettings {
     }
 }
 
+/// Desk routines.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export)]
+pub struct DeskSettings {
+    pub routines: Vec<crate::desk::Routine>,
+}
+
 /// Developer tools.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", default)]
@@ -508,6 +521,8 @@ pub struct VaultSettings {
     pub require_hello: bool,
     /// Seconds before a copied password or code is cleared (0 = 30).
     pub clear_secs: u32,
+    /// Never clear copied passwords and codes (they still stay out of clipboard history).
+    pub never_clear: bool,
 }
 
 /// Repositories the Git module knows about (most recent first) and the one shown.
@@ -553,6 +568,7 @@ pub struct Settings {
     pub vault: VaultSettings,
     pub dev: DevSettings,
     pub day: DaySettings,
+    pub desk: DeskSettings,
 }
 
 impl Settings {
@@ -625,6 +641,15 @@ impl Settings {
         if self.vault.clear_secs > 600 || self.vault.folder.as_ref().is_some_and(|f| f.len() > 1000) {
             return Err(AppError::InvalidInput("invalid vault settings".into()));
         }
+        if self.desk.routines.len() > crate::desk::MAX_ROUTINES
+            || self
+                .desk
+                .routines
+                .iter()
+                .any(|r| !valid_id(&r.id) || crate::desk::validate(r).is_err())
+        {
+            return Err(AppError::InvalidInput("invalid routine".into()));
+        }
         let d = &self.day;
         if d.start_min >= 24 * 60
             || d.end_min > 24 * 60
@@ -672,7 +697,7 @@ impl Settings {
             return Err(AppError::InvalidInput("invalid behavior settings".into()));
         }
         let k = &self.shortcuts;
-        if [&k.open, &k.ask, &k.clipboard, &k.grab]
+        if [&k.open, &k.ask, &k.clipboard, &k.grab, &k.pin]
             .iter()
             .any(|s| s.len() > 40)
         {

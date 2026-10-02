@@ -186,6 +186,8 @@
     0 0 calc(5px + var(--music-level) * 20px) calc(var(--music-level) * 3px)
       color-mix(in srgb, var(--music-accent, #8ab4ff) calc(35% + var(--music-level) * 55%), transparent);
   outline: 1.5px solid color-mix(in srgb, var(--music-accent, #8ab4ff) 45%, transparent);
+  /* Inside the edge, so it never pokes past the island. */
+  outline-offset: -1.5px;
   transition:
     box-shadow 90ms linear,
     outline-color 160ms ease-out;
@@ -246,4 +248,16 @@
   height: 100%;
   background: var(--active);
   opacity: 0.7;
+}
+
+/* The resting bubble's window has no room around it, so an outer glow gets cut off at the
+   window edge (a hard line along the top). There it's just a clean inner border. */
+.island[data-music="on"][data-mode="collapsed"] {
+  box-shadow: none;
+}
+
+/* Settings → Media: no colored outline (the glow stays when the notch is open). */
+.island[data-music="on"][data-music-noborder] {
+  outline: 1px solid var(--border);
+  outline-offset: -1px;
 }

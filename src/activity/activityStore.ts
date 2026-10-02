@@ -45,6 +45,14 @@ export interface ActivityAction {
   keepOpen?: boolean;
 }
 
+/** A window shown live in the notch. */
+export interface Mini {
+  /** Window handle, as a number. */
+  id: number;
+  title: string;
+  app: string;
+}
+
 /** A slim level readout (volume, brightness) instead of a notification card. */
 export interface Hud {
   /** Level readouts (volume, brightness), or a one-line state (lock keys, keyboard language). */
@@ -84,6 +92,8 @@ export interface ActivityInput {
   hud?: Hud;
   /** Render as the game-mode HUD strip. */
   game?: GameHud;
+  /** Render as a live view of another window (Desk). */
+  mini?: Mini;
 }
 
 export interface Activity extends ActivityInput {

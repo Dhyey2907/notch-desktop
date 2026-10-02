@@ -16,6 +16,7 @@ export function useMusicPulse(island: RefObject<HTMLElement | null>) {
   const playing = useMedia((s) => s.media?.status === "playing" && !s.media.mock);
   const artwork = useMedia((s) => s.media?.artworkPath);
   const off = useSettings((s) => s.settings?.music.hideReactive ?? false);
+  const noBorder = useSettings((s) => s.settings?.music.hideBorder ?? false);
   const on = playing && !off;
 
   // Colors from the current album art.
@@ -27,6 +28,7 @@ export function useMusicPulse(island: RefObject<HTMLElement | null>) {
       return;
     }
     el.setAttribute("data-music", "on");
+    el.toggleAttribute("data-music-noborder", noBorder);
     if (!artwork) return;
     let alive = true;
     ipc
@@ -40,7 +42,7 @@ export function useMusicPulse(island: RefObject<HTMLElement | null>) {
     return () => {
       alive = false;
     };
-  }, [island, on, artwork]);
+  }, [island, on, artwork, noBorder]);
 
   // Loudness and beats.
   useEffect(() => {

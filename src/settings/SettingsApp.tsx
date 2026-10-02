@@ -9,6 +9,7 @@ import {
   Info,
   KeyRound,
   Code2,
+  AppWindow,
   Keyboard,
   LayoutGrid,
   MousePointerClick,
@@ -34,6 +35,7 @@ import { BehaviorSection } from "./BehaviorSection";
 import { CalendarSection } from "./CalendarSection";
 import { ClipboardSection } from "./ClipboardSection";
 import { Row } from "./controls";
+import { DeskSection } from "./DeskSection";
 import { DeveloperSection } from "./DeveloperSection";
 import { DockSection } from "./DockSection";
 import { FocusSection } from "./FocusSection";
@@ -65,6 +67,7 @@ const ICONS: Record<PageId, LucideIcon> = {
   ai: Bot,
   vault: KeyRound,
   developer: Code2,
+  desk: AppWindow,
   privacy: Shield,
   about: Info,
 };
@@ -85,6 +88,7 @@ const CONTENT: Record<PageId, () => ReactNode> = {
   ai: () => <AiSection />,
   vault: () => <VaultSection />,
   developer: () => <DeveloperSection />,
+  desk: () => <DeskSection />,
   privacy: () => <PrivacySection />,
   about: () => <AboutSection />,
 };

@@ -195,6 +195,8 @@ enum ShortcutAction {
     Clipboard,
     /// Grab text from the screen (default Ctrl+Alt+G).
     Grab,
+    /// Pin the window in front on top (default Ctrl+Alt+P).
+    Pin,
 }
 
 /// The shortcuts registered now, and why any of the user's choices failed.
@@ -230,6 +232,7 @@ pub fn apply_shortcuts(app: &AppHandle, keys: &crate::settings::ShortcutSettings
         ("ask", &keys.ask, ShortcutAction::Ask),
         ("clipboard", &keys.clipboard, ShortcutAction::Clipboard),
         ("grab", &keys.grab, ShortcutAction::Grab),
+        ("pin", &keys.pin, ShortcutAction::Pin),
     ] {
         if text.trim().is_empty() {
             continue;
@@ -290,6 +293,11 @@ pub fn shortcut_plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
                 .find(|(s, _)| s == shortcut)
                 .map(|(_, a)| *a);
             let Some(action) = action else { return };
+            if action == ShortcutAction::Pin {
+                let desk = app.state::<crate::desk::service::DeskService>().inner().clone();
+                std::thread::spawn(move || desk.toggle_front_on_top());
+                return;
+            }
             if action == ShortcutAction::Grab {
                 let grab = app.state::<crate::grab::service::GrabService>().inner().clone();
                 tauri::async_runtime::spawn(async move {
@@ -321,7 +329,9 @@ pub fn shortcut_plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
                     label,
                     module: "clipboard".into(),
                 },
-                ShortcutAction::Toggle | ShortcutAction::Grab => AppEvent::ShellToggleRequested { label },
+                ShortcutAction::Toggle | ShortcutAction::Grab | ShortcutAction::Pin => {
+                    AppEvent::ShellToggleRequested { label }
+                }
             };
             app.state::<AppState>().bus.emit("shell", event);
         })

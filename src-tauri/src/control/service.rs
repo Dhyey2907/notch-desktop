@@ -77,6 +77,16 @@ impl ControlService {
         NetSpeed::default()
     }
 
+    /// Read everything again now (the panel was opened).
+    pub fn refresh(&self) {
+        #[cfg(windows)]
+        {
+            self.refresh_radios();
+            self.refresh_power(false);
+            self.refresh_devices(false);
+        }
+    }
+
     pub fn set_radio(&self, kind: RadioKind, on: bool) -> AppResult<()> {
         #[cfg(windows)]
         {
@@ -131,6 +141,32 @@ impl ControlService {
             self.refresh_radios();
             self.refresh_power(true);
             self.refresh_devices(true);
+
+            // A headset that connects reports its battery a little later: look now and twice more.
+            let this = self.clone();
+            let mut events = self.app.state::<AppState>().bus.subscribe();
+            tauri::async_runtime::spawn(async move {
+                loop {
+                    match events.recv().await {
+                        Ok(envelope) => {
+                            if matches!(envelope.event, AppEvent::BluetoothChanged(_)) {
+                                for wait in [1u64, 8, 30] {
+                                    let this = this.clone();
+                                    tauri::async_runtime::spawn(async move {
+                                        tokio::time::sleep(Duration::from_secs(wait)).await;
+                                        let _ = tauri::async_runtime::spawn_blocking(move || {
+                                            this.refresh_devices(false)
+                                        })
+                                        .await;
+                                    });
+                                }
+                            }
+                        }
+                        Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => continue,
+                        Err(_) => break,
+                    }
+                }
+            });
 
             let this = self.clone();
             let pending = Arc::new(std::sync::atomic::AtomicBool::new(false));

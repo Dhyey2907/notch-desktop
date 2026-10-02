@@ -196,6 +196,15 @@ pub enum AppEvent {
     DayPlanReady { first_line: String },
     /// A Classroom assignment is due within a day.
     AssignmentDue(Assignment),
+    /// The pin shortcut pinned (or unpinned) the window in front.
+    WindowPinned { title: String, on: bool, ok: bool },
+    /// A routine ran.
+    RoutineRan {
+        name: String,
+        done: u32,
+        failed: u32,
+        scheduled: bool,
+    },
     /// A paired Bluetooth device connected or disconnected.
     BluetoothChanged(BluetoothDevice),
     /// Files on the drop shelf changed.
@@ -225,6 +234,8 @@ impl AppEvent {
             AppEvent::SoundChanged { .. } => "SoundChanged",
             AppEvent::BrightnessChanged { .. } => "BrightnessChanged",
             AppEvent::BluetoothChanged(_) => "BluetoothChanged",
+            AppEvent::WindowPinned { .. } => "WindowPinned",
+            AppEvent::RoutineRan { .. } => "RoutineRan",
             AppEvent::MailChanged(_) => "MailChanged",
             AppEvent::NewMail(_) => "NewMail",
             AppEvent::DayChanged(_) => "DayChanged",

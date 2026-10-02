@@ -7,4 +7,8 @@ export type ShortcutSettings = { open: string, ask: string, clipboard: string,
 /**
  * Grab text from the screen.
  */
-grab: string, };
+grab: string, 
+/**
+ * Pin the window in front on top (or unpin it).
+ */
+pin: string, };

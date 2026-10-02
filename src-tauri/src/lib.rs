@@ -7,6 +7,7 @@ mod commands;
 mod control;
 mod day;
 mod db;
+mod desk;
 mod developer;
 mod error;
 mod events;
@@ -160,6 +161,7 @@ macro_rules! app_commands {
             commands::game::game_setup_fps,
             commands::control::control_snapshot,
             commands::control::control_speed,
+            commands::control::control_refresh,
             commands::control::control_set_radio,
             commands::control::control_open_settings,
             commands::files::files_downloads,
@@ -200,6 +202,15 @@ macro_rules! app_commands {
             commands::developer::dev_run,
             commands::developer::dev_widgets,
             commands::developer::git_suggest_message,
+            commands::desk::desk_windows,
+            commands::desk::desk_set_on_top,
+            commands::desk::desk_set_opacity,
+            commands::desk::desk_focus,
+            commands::desk::desk_mini_show,
+            commands::desk::desk_mini_hide,
+            commands::desk::routine_run,
+            commands::desk::routine_pick_app,
+            commands::desk::routine_pick_folder,
             commands::day::mail_state,
             commands::day::mail_refresh,
             commands::day::mail_archive,
@@ -374,6 +385,9 @@ pub fn run() {
             let mail = mail::service::MailService::new(handle.clone());
             app.manage(mail.clone());
             mail.start();
+            let desk = desk::service::DeskService::new(handle.clone());
+            app.manage(desk.clone());
+            desk.start();
             let day = day::service::DayService::new(handle.clone());
             app.manage(day.clone());
             day.start();

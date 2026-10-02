@@ -18,6 +18,9 @@ export const ISLAND_SIZE: Record<IslandMode, Size> = {
   expanded: { width: 540, height: 300 },
 };
 
+/** A live window view (Desk): 16:10 with a title bar. */
+export const MINI_SIZE: Size = { width: 440, height: 290 };
+
 /** Game mode readout: one slim row. */
 export const GAME_HUD_SIZE: Size = { width: 470, height: 36 };
 

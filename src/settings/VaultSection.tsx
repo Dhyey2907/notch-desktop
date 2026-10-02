@@ -77,14 +77,20 @@ export function VaultSection() {
         >
           <Select
             label="Clear copied passwords after"
-            value={String(vault.clearSecs || 30)}
+            value={vault.neverClear ? "never" : String(vault.clearSecs || 30)}
             options={[
               { value: "15", label: "15 seconds" },
               { value: "30", label: "30 seconds" },
               { value: "60", label: "1 minute" },
               { value: "120", label: "2 minutes" },
+              { value: "never", label: "Never" },
             ]}
-            onChange={(v) => patch("vault", { clearSecs: Number(v) })}
+            onChange={(v) =>
+              patch(
+                "vault",
+                v === "never" ? { neverClear: true } : { neverClear: false, clearSecs: Number(v) },
+              )
+            }
           />
         </Row>
       </Surface>

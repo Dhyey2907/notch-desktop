@@ -57,7 +57,8 @@ html.settings-window #root {
 
 .settings__nav-item:focus-visible {
   outline: none;
-  box-shadow: var(--focus-ring);
+  /* A quiet ring: the page change already shows where you are. */
+  box-shadow: inset 0 0 0 1px var(--border-strong);
 }
 
 .settings__content {
@@ -991,4 +992,94 @@ html.settings-window #root {
   background: var(--info);
   border-color: transparent;
   color: #0a0a0a;
+}
+
+/* Routine editor */
+.routine-steps {
+  list-style: none;
+  margin: 0 0 var(--space-2);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.routine-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.routine-add .nd-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.routine-inline {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+.routine-inline .nd-field {
+  flex: 1;
+}
+
+.routine-inline .nd-button {
+  margin-bottom: var(--space-2);
+}
+
+/* Desk: no routines yet */
+.desk-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--space-3) 0 var(--space-2);
+}
+
+.desk-templates {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-2);
+  padding-bottom: var(--space-3);
+}
+
+.desk-template {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.desk-template:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+
+.desk-template--blank {
+  border-style: dashed;
+  background: transparent;
+}
+
+.desk-template__name {
+  font-size: var(--text-md);
+  font-weight: var(--weight-emphasis);
+}
+
+.desk-template__description {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.desk-empty p {
+  margin: 0;
 }

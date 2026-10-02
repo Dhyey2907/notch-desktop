@@ -30,6 +30,7 @@ import { useAlertSound, useCardTime, useLook, useQuietHours } from "./useNotchPr
 import {
   activityIslandSize,
   GAME_HUD_SIZE,
+  MINI_SIZE,
   HUD_SIZE,
   islandRadius,
   WINDOW_MARGIN,
@@ -130,11 +131,13 @@ export function Island() {
       const layout = actions.length === 0 ? "none" : actions.every((a) => a.icon) ? "inline" : "row";
       void request(
         "activity",
-        activity.game
-          ? GAME_HUD_SIZE
-          : activity.hud
-            ? HUD_SIZE
-            : activityIslandSize(layout, Boolean(activity.code)),
+        activity.mini
+          ? MINI_SIZE
+          : activity.game
+            ? GAME_HUD_SIZE
+            : activity.hud
+              ? HUD_SIZE
+              : activityIslandSize(layout, Boolean(activity.code)),
       );
     } else if (!activity && current === "activity") {
       void request("collapsed");

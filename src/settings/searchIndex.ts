@@ -17,6 +17,7 @@ export type PageId =
   | "ai"
   | "vault"
   | "developer"
+  | "desk"
   | "privacy"
   | "about";
 
@@ -77,6 +78,12 @@ export const PAGES: PageInfo[] = [
     label: "Developer",
     group: "Features",
     lead: "Dev servers, coding time, the code runner and your own widgets.",
+  },
+  {
+    id: "desk",
+    label: "Desk",
+    group: "Features",
+    lead: "Routines that set up your desk in one click, and window tricks.",
   },
   {
     id: "vault",
@@ -166,6 +173,8 @@ export const ENTRIES: Entry[] = [
   { page: "clipboard", label: "Text snippets", keywords: "expander autotext abbreviations shortcuts typing" },
   { page: "shortcuts", label: "Grab text from the screen", keywords: "ocr copy text image screenshot" },
   { page: "vault", label: "Obsidian vault", keywords: "passwords logins folder sync" },
+  { page: "desk", label: "Routines", keywords: "start work gaming open apps automation schedule morning" },
+  { page: "shortcuts", label: "Keep the window in front on top", keywords: "pin always on top topmost" },
   { page: "developer", label: "Tell me when a dev server stops", keywords: "localhost port crash node vite" },
   { page: "developer", label: "Count coding time", keywords: "wakatime editor project streak vscode" },
   { page: "developer", label: "Widgets", keywords: "custom script url json command dashboard" },

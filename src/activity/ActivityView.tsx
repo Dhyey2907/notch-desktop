@@ -2,8 +2,10 @@ import { X } from "lucide-react";
 
 import { Button, ConfirmButton, Dot, IconButton, Pill } from "../design/components";
 import { findModule } from "../modules/registry";
+import { useActivities } from ".";
 import { isPersistent, type Activity } from "./activityStore";
 import { GameHudView } from "./GameHudView";
+import { MiniView } from "./MiniView";
 import { HudView } from "./HudView";
 import "./activity.css";
 
@@ -35,6 +37,9 @@ export function ActivityView({
 }) {
   if (activity.hud) return <HudView hud={activity.hud} />;
   if (activity.game) return <GameHudView hud={activity.game} />;
+  // Stopping the live view ends it (persistent cards would otherwise just be put away).
+  if (activity.mini)
+    return <MiniView mini={activity.mini} onClose={() => useActivities.getState().dismiss(activity.id)} />;
   const moduleName = findModule(activity.moduleId)?.name ?? activity.moduleId;
   const actions = activity.actions ?? [];
   // Icon-only actions (media controls) sit inline on the main row; text actions get their own row.

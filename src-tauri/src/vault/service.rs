@@ -361,7 +361,11 @@ impl VaultService {
             }
             write(Put::PrivateText(text))?;
             let copied = sequence();
-            let secs = match self.settings().clear_secs {
+            let settings = self.settings();
+            if settings.never_clear {
+                return Ok(());
+            }
+            let secs = match settings.clear_secs {
                 0 => DEFAULT_CLEAR_SECS,
                 s => u64::from(s),
             };
