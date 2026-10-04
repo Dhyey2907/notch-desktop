@@ -2,10 +2,10 @@
 //! counts when the keyboard or mouse was used in the last few minutes (or media is playing)
 //! and the lock screen isn't up.
 
-use chrono::{DateTime, Local, Timelike};
+use chrono::{DateTime, Local, NaiveDate, Timelike};
 use rusqlite::{params, Connection};
 
-use super::ScreenTime;
+use super::{DayMinutes, ScreenTime};
 use crate::error::AppResult;
 
 /// No input for this long means you've stepped away (unless media is playing).
@@ -33,7 +33,12 @@ pub fn add_minute(conn: &Connection, at: DateTime<Local>) -> AppResult<()> {
 }
 
 pub fn today(conn: &Connection, now: DateTime<Local>) -> AppResult<ScreenTime> {
-    let day = now.format("%Y-%m-%d").to_string();
+    day(conn, now.date_naive())
+}
+
+/// Screen time on one day, per hour.
+pub fn day(conn: &Connection, date: NaiveDate) -> AppResult<ScreenTime> {
+    let day = date.format("%Y-%m-%d").to_string();
     let mut hours = vec![0u32; 24];
     let mut stmt = conn.prepare("SELECT hour, seconds FROM screen_time WHERE day = ?1")?;
     let rows = stmt.query_map([day], |r| Ok((r.get::<_, u32>(0)?, r.get::<_, u32>(1)?)))?;
@@ -47,6 +52,24 @@ pub fn today(conn: &Connection, now: DateTime<Local>) -> AppResult<ScreenTime> {
         minutes: hours.iter().sum(),
         hours,
     })
+}
+
+/// Minutes per day for the last `days` days up to `today`, oldest first (days with none = 0).
+pub fn recent_days(conn: &Connection, today: NaiveDate, days: i64) -> AppResult<Vec<DayMinutes>> {
+    let first = today - chrono::Duration::days(days - 1);
+    let mut stmt = conn.prepare("SELECT day, SUM(seconds) FROM screen_time WHERE day >= ?1 GROUP BY day")?;
+    let totals: std::collections::HashMap<String, i64> = stmt
+        .query_map([first.format("%Y-%m-%d").to_string()], |r| {
+            Ok((r.get(0)?, r.get(1)?))
+        })?
+        .collect::<Result<_, _>>()?;
+    Ok((0..days)
+        .map(|i| {
+            let date = (first + chrono::Duration::days(i)).format("%Y-%m-%d").to_string();
+            let minutes = (totals.get(&date).copied().unwrap_or(0).max(0) / 60) as u32;
+            DayMinutes { date, minutes }
+        })
+        .collect())
 }
 
 #[cfg(windows)]
@@ -115,6 +138,30 @@ mod tests {
     use chrono::TimeZone;
 
     use super::*;
+
+    #[test]
+    fn reads_past_days() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        crate::db::migrate_for_tests(&mut conn);
+        let at = |d: &str, h: u32| {
+            chrono::NaiveDateTime::parse_from_str(&format!("{d} {h:02}:10:00"), "%Y-%m-%d %H:%M:%S")
+                .unwrap()
+                .and_local_timezone(Local)
+                .unwrap()
+        };
+        // Recorded "now", so nothing is old enough to be pruned.
+        for _ in 0..5 {
+            add_minute(&conn, at("2026-10-02", 9)).unwrap();
+        }
+        add_minute(&conn, at("2026-10-04", 14)).unwrap();
+        let day2 = day(&conn, NaiveDate::from_ymd_opt(2026, 10, 2).unwrap()).unwrap();
+        assert_eq!(day2.minutes, 5);
+        assert_eq!(day2.hours[9], 5);
+        let days = recent_days(&conn, NaiveDate::from_ymd_opt(2026, 10, 4).unwrap(), 3).unwrap();
+        let minutes: Vec<u32> = days.iter().map(|d| d.minutes).collect();
+        assert_eq!(minutes, [5, 0, 1]);
+        assert_eq!(days[0].date, "2026-10-02");
+    }
 
     #[test]
     fn counts_active_minutes_only() {

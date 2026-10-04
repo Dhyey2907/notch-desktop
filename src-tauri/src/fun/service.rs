@@ -26,8 +26,16 @@ pub const PET_WINDOW: &str = "petwalk";
 /// Away this long and the pet goes for a walk.
 const PET_AFTER_MS: u64 = 2 * 60_000;
 const PET_TICK: Duration = Duration::from_secs(3);
+/// While the pet is out, how often to look for a click.
+const PET_WATCH: Duration = Duration::from_millis(80);
+/// Steady typing for this long also sends it away.
+const PET_BUSY_FOR: Duration = Duration::from_secs(15);
+/// The jump and the run off the screen (matches the pet window's animation).
+const PET_LEAVE: Duration = Duration::from_millis(1700);
+/// Tells the pet window to jump and run off.
+pub const PET_LEAVE_EVENT: &str = "pet-leave";
 /// Logical pixels; scaled for the screen.
-const PET_HEIGHT: f64 = 40.0;
+const PET_HEIGHT: f64 = 80.0;
 
 #[derive(Default)]
 struct Inner {
@@ -115,13 +123,13 @@ impl FunService {
             .name("rgb".into())
             .spawn(move || this.rgb_loop())
             .ok();
+        // Its own thread: window calls wait on the main thread, and must never tie up the
+        // async runtime's workers while they do.
         let this = self.clone();
-        tauri::async_runtime::spawn(async move {
-            loop {
-                tokio::time::sleep(PET_TICK).await;
-                this.pet_tick();
-            }
-        });
+        std::thread::Builder::new()
+            .name("pet".into())
+            .spawn(move || this.pet_loop())
+            .ok();
     }
 
     /// The color the lights should have now.
@@ -196,37 +204,72 @@ impl FunService {
         }
     }
 
-    /// Show the walking pet while you're away; hide it the moment you're back.
-    fn pet_tick(&self) {
-        let (fun, _) = self.settings();
-        #[cfg(windows)]
-        let (idle, locked) = (
-            crate::system::screentime::probe::idle_ms(),
-            crate::system::screentime::probe::locked(),
-        );
-        #[cfg(not(windows))]
-        let (idle, locked) = (0, false);
-        // Not over a fullscreen video or game on the main screen, and not behind the lock screen.
-        let want = fun.pet_walk && idle >= PET_AFTER_MS && !locked && !crate::shell::is_fullscreen("main");
-        let window = self.app.get_webview_window(PET_WINDOW);
-        match (want, window) {
-            (true, Some(w)) => {
-                if !w.is_visible().unwrap_or(false) {
-                    self.place_pet(&w);
-                    let _ = w.show();
+    /// The pet walks the taskbar while you're away. When you come back and click (or type for
+    /// a while), it jumps and runs off the screen.
+    fn pet_loop(&self) {
+        let mut out = false;
+        let mut busy_since: Option<Instant> = None;
+        loop {
+            let (fun, _) = self.settings();
+            #[cfg(windows)]
+            let (idle, locked) = (
+                crate::system::screentime::probe::idle_ms(),
+                crate::system::screentime::probe::locked(),
+            );
+            #[cfg(not(windows))]
+            let (idle, locked) = (0, false);
+            // Never over a fullscreen video or game on the main screen, or behind the lock screen.
+            let allowed = fun.pet_walk && !locked && !crate::shell::is_fullscreen("main");
+            if !out {
+                if allowed && idle >= PET_AFTER_MS {
+                    out = self.show_pet();
+                    busy_since = None;
                 }
+                std::thread::sleep(if out { PET_WATCH } else { PET_TICK });
+                continue;
             }
-            (true, None) => {
-                if let Err(e) = self.open_pet() {
+            if !allowed {
+                self.hide_pet();
+                out = false;
+                continue;
+            }
+            busy_since = if idle < 1500 {
+                busy_since.or(Some(Instant::now()))
+            } else {
+                None
+            };
+            if mouse_clicked() || busy_since.is_some_and(|t| t.elapsed() >= PET_BUSY_FOR) {
+                use tauri::Emitter;
+                let _ = self.app.emit_to(PET_WINDOW, PET_LEAVE_EVENT, ());
+                std::thread::sleep(PET_LEAVE);
+                self.hide_pet();
+                out = false;
+                continue;
+            }
+            std::thread::sleep(PET_WATCH);
+        }
+    }
+
+    /// Bring the pet out (opening its window the first time). Returns whether it's showing.
+    fn show_pet(&self) -> bool {
+        match self.app.get_webview_window(PET_WINDOW) {
+            Some(w) => {
+                self.place_pet(&w);
+                w.show().is_ok()
+            }
+            None => match self.open_pet() {
+                Ok(()) => true,
+                Err(e) => {
                     tracing::warn!(error = %e, "could not open the walking pet");
+                    false
                 }
-            }
-            (false, Some(w)) => {
-                if w.is_visible().unwrap_or(false) {
-                    let _ = w.hide();
-                }
-            }
-            (false, None) => {}
+            },
+        }
+    }
+
+    fn hide_pet(&self) {
+        if let Some(w) = self.app.get_webview_window(PET_WINDOW) {
+            let _ = w.hide();
         }
     }
 
@@ -261,4 +304,20 @@ impl FunService {
             area.position.y + area.size.height as i32 - height as i32,
         ));
     }
+}
+
+/// A mouse button is down (or was pressed since the last look).
+fn mouse_clicked() -> bool {
+    #[cfg(windows)]
+    {
+        use windows::Win32::UI::Input::KeyboardAndMouse::{
+            GetAsyncKeyState, VK_LBUTTON, VK_MBUTTON, VK_RBUTTON,
+        };
+        // SAFETY: reads the asynchronous key state; no pointers involved.
+        [VK_LBUTTON, VK_RBUTTON, VK_MBUTTON]
+            .iter()
+            .any(|k| unsafe { GetAsyncKeyState(i32::from(k.0)) } as u16 & 0x8001 != 0)
+    }
+    #[cfg(not(windows))]
+    false
 }

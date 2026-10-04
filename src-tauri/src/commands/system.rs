@@ -86,3 +86,25 @@ pub fn system_idle_ms() -> u64 {
     #[cfg(not(windows))]
     0
 }
+
+/// Screen time on a past day (YYYY-MM-DD), per hour.
+#[tauri::command]
+pub fn screen_time_day(
+    date: String,
+    state: tauri::State<'_, crate::state::AppState>,
+) -> crate::error::AppResult<crate::system::ScreenTime> {
+    let date = chrono::NaiveDate::parse_from_str(&date, "%Y-%m-%d")
+        .map_err(|_| crate::error::AppError::InvalidInput("invalid date".into()))?;
+    state.db.with(|conn| crate::system::screentime::day(conn, date))
+}
+
+/// Minutes per day over the last 30 days (all the history kept), oldest first.
+#[tauri::command]
+pub fn screen_time_days(
+    state: tauri::State<'_, crate::state::AppState>,
+) -> crate::error::AppResult<Vec<crate::system::DayMinutes>> {
+    let today = chrono::Local::now().date_naive();
+    state
+        .db
+        .with(|conn| crate::system::screentime::recent_days(conn, today, 30))
+}

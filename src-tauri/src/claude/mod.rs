@@ -8,6 +8,7 @@
 
 pub mod agents;
 pub mod approvals;
+pub mod codex_usage;
 pub mod connect;
 pub mod hooks;
 pub mod limits;

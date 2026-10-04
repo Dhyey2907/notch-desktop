@@ -58,7 +58,8 @@ function Preview({ look }: { look: AppearanceSettings }) {
 
 export function LookSection() {
   const look = useSettings((s) => s.settings?.appearance);
-  if (!look) return null;
+  const music = useSettings((s) => s.settings?.music);
+  if (!look || !music) return null;
   const set = (change: Partial<AppearanceSettings>) => patch("appearance", change);
 
   return (
@@ -152,6 +153,16 @@ export function LookSection() {
             description="While music plays, highlights take the album cover's color."
             checked={look.accentFromMusic}
             onChange={(accentFromMusic) => set({ accentFromMusic })}
+          />
+        </div>
+        <div id="setting-music-glow">
+          <Switch
+            label="Music glow"
+            description="While music plays, a colored outline around the notch (blue when there's no album art) that brightens on the beat. Also in Settings → Media."
+            checked={!music.hideBorder && !music.hideReactive}
+            onChange={(on) =>
+              patch("music", on ? { hideBorder: false, hideReactive: false } : { hideBorder: true })
+            }
           />
         </div>
       </Surface>

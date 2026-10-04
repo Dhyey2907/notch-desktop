@@ -9,6 +9,8 @@ import {
   CloudRain,
   CloudSnow,
   CloudSun,
+  ChevronLeft,
+  ChevronRight,
   MapPin,
   Moon,
   RotateCw,
@@ -32,7 +34,8 @@ import { span, weekendIn, workday } from "../../core/workday";
 import { ipc } from "../../core/ipc";
 import { useReduceMotion } from "../../design/useReduceMotion";
 import { useSettings } from "../../settings";
-import { formatMinutes, greeting, longDate } from "./dashboard";
+import type { ScreenTime } from "../../core/generated/ScreenTime";
+import { dayKeyBack, dayLabel, formatMinutes, greeting, longDate } from "./dashboard";
 import "./home.css";
 
 /** How often the open dashboard refreshes CPU, memory and battery. */
@@ -345,16 +348,56 @@ function ControlsCard({ dash }: { dash: Dashboard | null }) {
   );
 }
 
+/** Days of history kept (and browsable). */
+const SCREEN_DAYS = 30;
+
 function ScreenTimeCard({ dash, now }: { dash: Dashboard | null; now: Date }) {
-  const time = dash?.screenTime;
-  const hour = now.getHours();
+  // 0 = today (live); 1 = yesterday; … up to 29 days back.
+  const [back, setBack] = useState(0);
+  const [past, setPast] = useState<{ key: string; time: ScreenTime | null } | null>(null);
+  const key = dayKeyBack(now, back);
+  useEffect(() => {
+    if (back === 0) return;
+    let alive = true;
+    ipc.screenTimeDay(key).then(
+      (time) => alive && setPast({ key, time }),
+      () => alive && setPast({ key, time: null }),
+    );
+    return () => {
+      alive = false;
+    };
+  }, [back, key]);
+  const time = back === 0 ? dash?.screenTime : past?.key === key ? past.time : undefined;
+  const hour = back === 0 ? now.getHours() : 24;
   const peak = Math.max(30, ...(time?.hours ?? [0]));
   return (
     <div className="home-card home-card--screen">
       <div>
-        <p className="home-card__title">Screen time</p>
-        <p className="home-card__big">{time ? formatMinutes(time.minutes) : "—"}</p>
-        <p className="home-card__sub">Tracked today</p>
+        <p className="home-card__title">
+          Screen time
+          <span className="home-days">
+            <button
+              type="button"
+              className="home-days__btn"
+              aria-label="Previous day"
+              disabled={back >= SCREEN_DAYS - 1}
+              onClick={() => setBack(back + 1)}
+            >
+              <ChevronLeft size={13} aria-hidden />
+            </button>
+            <button
+              type="button"
+              className="home-days__btn"
+              aria-label="Next day"
+              disabled={back === 0}
+              onClick={() => setBack(back - 1)}
+            >
+              <ChevronRight size={13} aria-hidden />
+            </button>
+          </span>
+        </p>
+        <p className="home-card__big">{time ? formatMinutes(time.minutes) : time === null ? "—" : "…"}</p>
+        <p className="home-card__sub">{back === 0 ? "Tracked today" : dayLabel(now, back)}</p>
       </div>
       <div className="home-bars" aria-hidden>
         {(time?.hours ?? Array(24).fill(0)).map((m: number, h: number) => (

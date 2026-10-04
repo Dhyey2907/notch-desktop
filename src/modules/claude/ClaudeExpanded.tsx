@@ -1,7 +1,10 @@
-// Usage dashboard (architecture.md §7 "Usage dashboard visual direction"): Overview / Models
-// tabs, All / 30d / 7d range, six metric cards, a blue-step daily heatmap, and a muted caption.
-// Every number is a local estimate from this PC's transcripts, and is labelled as such.
-import { useEffect, useState } from "react";
+// Usage dashboard (architecture.md §7 "Usage dashboard visual direction"): Claude Code or Codex,
+// Overview / Models tabs, All / 30d / 7d range, six metric cards, a blue-step daily heatmap, and a
+// muted caption. Every number is a local estimate from this PC's own logs, and is labelled as such.
+import { useEffect, useState, type ReactNode } from "react";
+
+import type { CodexLimit } from "../../core/generated/CodexLimit";
+import type { CodexUsage } from "../../core/generated/CodexUsage";
 
 import type { LimitWindow } from "../../core/generated/LimitWindow";
 
@@ -13,26 +16,21 @@ import {
   EmptyState,
   Heatmap,
   ModuleContainer,
-  Pill,
   Progress,
   SegmentedControl,
   type HeatmapCell,
 } from "../../design/components";
 import { heatmapLevel } from "../../design/heatmap";
-import {
-  agentName,
-  comparisonText,
-  formatHour,
-  formatTokens,
-  limitLabel,
-  prettyModel,
-  primarySession,
-  useClaude,
-} from "./claudeStore";
+import { comparisonText, formatHour, formatTokens, prettyModel, useClaude } from "./claudeStore";
 import { limitTone, resetText, updatedText } from "./limits";
 import "./claude.css";
 
 type Tab = "overview" | "models";
+type UsageAgent = "claude" | "codex";
+const SOURCE: Record<UsageAgent, string> = {
+  claude: "Local estimate from Claude Code transcripts on this PC",
+  codex: "Local estimate from Codex session logs on this PC",
+};
 const RANGE_DAYS: Record<UsageRange, number | null> = { all: null, days30: 30, days7: 7 };
 
 function useUsage(range: UsageRange) {
@@ -51,26 +49,47 @@ function useUsage(range: UsageRange) {
   return summary;
 }
 
+/** Codex usage, refreshed every minute while shown (its logs grow as you work). */
+function useCodexUsage(range: UsageRange, on: boolean) {
+  const [usage, setUsage] = useState<CodexUsage | null>(null);
+  useEffect(() => {
+    if (!on) return;
+    let cancelled = false;
+    const load = () =>
+      ipc.codexUsage(range).then(
+        (u) => !cancelled && setUsage(u),
+        () => !cancelled && setUsage(null),
+      );
+    void load();
+    const id = window.setInterval(() => void load(), 60_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [range, on]);
+  return on ? usage : null;
+}
+
 export default function ClaudeExpanded() {
   const status = useClaude((s) => s.status);
   const [tab, setTab] = useState<Tab>("overview");
   const [range, setRange] = useState<UsageRange>("days30");
-  const summary = useUsage(range);
-
-  if (status && !status.index.transcriptsFound) {
-    return (
-      <ModuleContainer title="Claude Code">
-        <EmptyState
-          title="Usage unavailable"
-          body="No Claude Code transcripts were found on this PC. Use Claude Code here and your activity will appear."
-        />
-      </ModuleContainer>
-    );
-  }
+  const [agent, setAgent] = useState<UsageAgent>("claude");
+  const claudeSummary = useUsage(range);
+  const codex = useCodexUsage(range, agent === "codex");
+  const summary = agent === "codex" ? (codex?.summary ?? null) : claudeSummary;
 
   const trailing = (
     <>
-      <LiveBadge />
+      <select
+        className="usage__agent"
+        aria-label="Whose usage"
+        value={agent}
+        onChange={(e) => setAgent(e.currentTarget.value as UsageAgent)}
+      >
+        <option value="claude">Claude Code</option>
+        <option value="codex">Codex</option>
+      </select>
       <SegmentedControl<Tab>
         label="Claude view"
         value={tab}
@@ -93,39 +112,47 @@ export default function ClaudeExpanded() {
     </>
   );
 
-  return (
-    <ModuleContainer title="Claude Code" trailing={trailing}>
-      {!status?.index.ready && !summary ? (
+  let body: ReactNode;
+  if (agent === "claude" && status && !status.index.transcriptsFound) {
+    body = (
+      <EmptyState
+        title="Usage unavailable"
+        body="No Claude Code transcripts were found on this PC. Use Claude Code here and your activity will appear."
+      />
+    );
+  } else if (agent === "codex" && codex && !codex.found) {
+    body = (
+      <EmptyState
+        title="No Codex history yet"
+        body="Codex keeps its sessions in ~/.codex on this PC. Use Codex (the app or the codex command) and your activity will appear."
+      />
+    );
+  } else if (!summary) {
+    body =
+      agent === "claude" && !status?.index.ready ? (
         <EmptyState title="Reading your Claude Code history…" body="This takes a moment the first time." />
-      ) : summary ? (
-        tab === "overview" ? (
-          <Overview summary={summary} />
-        ) : (
-          <Models summary={summary} />
-        )
+      ) : agent === "codex" && !codex ? (
+        <EmptyState title="Reading your Codex history…" body="This takes a moment the first time." />
       ) : (
-        <EmptyState title="Usage unavailable" body="Couldn't read the usage index. Try again in a moment." />
-      )}
-    </ModuleContainer>
-  );
-}
-
-function LiveBadge() {
-  const status = useClaude((s) => s.status);
-  const session = status ? primarySession(status.live) : null;
-  if (status?.quota) {
-    const at = new Date(status.quota.resetsAt).toLocaleTimeString(undefined, {
-      hour: "numeric",
-      minute: "2-digit",
-    });
-    return <Pill tone="warning">{`${limitLabel(status.quota.limitType)} limit · resets ${at}`}</Pill>;
+        <EmptyState title="Usage unavailable" body="Couldn't read the usage logs. Try again in a moment." />
+      );
+  } else if (tab === "overview") {
+    body = (
+      <Overview
+        summary={summary}
+        source={SOURCE[agent]}
+        heatmapLabel={`${agent === "codex" ? "Codex" : "Claude Code"} tokens per day, last 26 weeks`}
+        limits={agent === "codex" ? <CodexLimits limits={codex?.limits ?? []} /> : <PlanLimits />}
+      />
+    );
+  } else {
+    body = <Models summary={summary} source={SOURCE[agent]} />;
   }
-  if (!session || session.state === "idle") return null;
-  const who = agentName(session.agent);
-  return session.state === "waiting" ? (
-    <Pill tone="warning">{`${who} is waiting for you`}</Pill>
-  ) : (
-    <Pill tone="info">{`${who} working${session.project ? ` · ${session.project}` : ""}`}</Pill>
+
+  return (
+    <ModuleContainer title="Usage" trailing={trailing}>
+      {body}
+    </ModuleContainer>
   );
 }
 
@@ -138,7 +165,17 @@ function Card({ label, value, title }: { label: string; value: string; title?: s
   );
 }
 
-function Overview({ summary }: { summary: UsageSummary }) {
+function Overview({
+  summary,
+  source,
+  heatmapLabel,
+  limits,
+}: {
+  summary: UsageSummary;
+  source: string;
+  heatmapLabel: string;
+  limits: ReactNode;
+}) {
   const days = RANGE_DAYS[summary.range];
   const max = Math.max(0, ...summary.daily.map((d) => d.tokens));
   const cells: HeatmapCell[] = summary.daily.map((d) => ({
@@ -169,18 +206,18 @@ function Overview({ summary }: { summary: UsageSummary }) {
         />
       </div>
       <div className="usage__row">
-        <Heatmap cells={cells} label="Claude Code tokens per day, last 26 weeks" unit="tokens" />
-        <PlanLimits />
+        <Heatmap cells={cells} label={heatmapLabel} unit="tokens" />
+        {limits}
       </div>
       <p className="usage__caption">
         {caption && <span>{caption} · </span>}
-        <span className="usage__source">Local estimate from Claude Code transcripts on this PC</span>
+        <span className="usage__source">{source}</span>
       </p>
     </div>
   );
 }
 
-function Models({ summary }: { summary: UsageSummary }) {
+function Models({ summary, source }: { summary: UsageSummary; source: string }) {
   if (summary.models.length === 0) {
     return <EmptyState title="No usage in this range" body="Pick a longer range to see your models." />;
   }
@@ -206,7 +243,7 @@ function Models({ summary }: { summary: UsageSummary }) {
           </li>
         ))}
       </ul>
-      <p className="usage__caption usage__source">Local estimate from Claude Code transcripts on this PC</p>
+      <p className="usage__caption usage__source">{source}</p>
     </div>
   );
 }
@@ -268,6 +305,32 @@ function PlanLimits() {
     <section className="limits" aria-label="Plan usage limits">
       <h3 className="limits__title">Plan usage limits</h3>
       {body}
+    </section>
+  );
+}
+
+/** "5-hour limit", "Weekly limit", "30-day limit" from a window length. */
+function windowLabel(minutes: number): string {
+  if (minutes === 300) return "5-hour limit";
+  if (minutes === 10_080) return "Weekly limit";
+  if (minutes >= 1440 && minutes % 1440 === 0) return `${minutes / 1440}-day limit`;
+  if (minutes >= 60) return `${Math.round(minutes / 60)}-hour limit`;
+  return "Limit";
+}
+
+/** Codex's plan limits, as last written to its session logs. */
+function CodexLimits({ limits }: { limits: CodexLimit[] }) {
+  const now = useMinuteClock();
+  return (
+    <section className="limits" aria-label="Codex plan limits">
+      <h3 className="limits__title">Plan usage limits</h3>
+      {limits.length > 0 ? (
+        limits.map((l) => (
+          <LimitRow key={l.windowMinutes} label={windowLabel(l.windowMinutes)} window={l} now={now} />
+        ))
+      ) : (
+        <p className="limits__hint">Limits appear after your next Codex session.</p>
+      )}
     </section>
   );
 }

@@ -197,3 +197,49 @@ html.pet-window #root {
     animation: none;
   }
 }
+
+/* Leaving: a jump where it stands, then a quick run off the nearest edge. */
+.petwalk--leaving .petwalk__track {
+  animation: petwalk-leave 1.5s forwards;
+}
+
+.petwalk--leaving .petwalk__pet {
+  animation: none;
+}
+
+.petwalk--leaving .petwalk__pet svg {
+  animation: petwalk-jump 0.55s cubic-bezier(0.3, 0.7, 0.4, 1);
+}
+
+.petwalk--leaving .petwalk__leg {
+  animation-duration: 0.18s;
+}
+
+@keyframes petwalk-leave {
+  0%,
+  35% {
+    transform: translateX(var(--pet-from));
+    animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.6);
+  }
+  100% {
+    transform: translateX(var(--pet-to));
+  }
+}
+
+@keyframes petwalk-jump {
+  0% {
+    transform: translateY(0) scaleY(1);
+  }
+  15% {
+    transform: translateY(0) scaleY(0.8);
+  }
+  50% {
+    transform: translateY(-34px) scaleY(1.08);
+  }
+  85% {
+    transform: translateY(0) scaleY(0.88);
+  }
+  100% {
+    transform: translateY(0) scaleY(1);
+  }
+}

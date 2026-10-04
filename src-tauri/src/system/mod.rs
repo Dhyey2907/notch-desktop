@@ -73,6 +73,16 @@ pub struct ScreenTime {
     pub hours: Vec<u32>,
 }
 
+/// Screen time on one day, for the history.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct DayMinutes {
+    /// YYYY-MM-DD, local.
+    pub date: String,
+    pub minutes: u32,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]

@@ -6,6 +6,8 @@ import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 
 import type { Exchange } from "../../core/generated/Exchange";
 import { ipc, isIpcError } from "../../core/ipc";
 import { EmptyState, IconButton, ModuleContainer } from "../../design/components";
+import { useSettings } from "../../settings";
+import { patch } from "../../settings/patch";
 import { useAsk } from "./askStore";
 import { Markdown } from "./Markdown";
 import "./ask.css";
@@ -56,14 +58,17 @@ export default function AskExpanded() {
     <ModuleContainer
       title={`Ask ${who}`}
       trailing={
-        exchanges.length > 0 && (
-          <IconButton
-            icon={Trash2}
-            label="Clear conversation"
-            size="sm"
-            onClick={() => void ipc.askClear()}
-          />
-        )
+        <>
+          <AiPicker disabled={busy} />
+          {exchanges.length > 0 && (
+            <IconButton
+              icon={Trash2}
+              label="Clear conversation"
+              size="sm"
+              onClick={() => void ipc.askClear()}
+            />
+          )}
+        </>
       }
     >
       <div className="ask">
@@ -163,5 +168,37 @@ function ExchangeView({ exchange }: { exchange: Exchange }) {
         )}
       </div>
     </div>
+  );
+}
+
+const AI_CHOICES = [
+  { value: "claude", label: "Claude" },
+  { value: "codex", label: "Codex" },
+  { value: "gemini", label: "Gemini" },
+  { value: "ollama", label: "Ollama" },
+  { value: "openai", label: "API" },
+];
+
+/** Which AI answers — the same choice as Settings → AI → Assistant. */
+function AiPicker({ disabled }: { disabled: boolean }) {
+  const ai = useSettings((s) => s.settings?.ai);
+  if (!ai) return null;
+  // The API choice only once an address has been set up in Settings.
+  const choices = AI_CHOICES.filter((c) => c.value !== "openai" || ai.baseUrl || ai.provider === "openai");
+  return (
+    <select
+      className="ask__provider"
+      aria-label="Which AI answers"
+      title="Which AI answers (models and keys: Settings → AI)"
+      value={ai.provider}
+      disabled={disabled}
+      onChange={(e) => patch("ai", { provider: e.currentTarget.value })}
+    >
+      {choices.map((c) => (
+        <option key={c.value} value={c.value}>
+          {c.label}
+        </option>
+      ))}
+    </select>
   );
 }

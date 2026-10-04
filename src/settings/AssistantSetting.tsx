@@ -47,11 +47,12 @@ export function AssistantSetting() {
   const ai = useSettings((s) => s.settings?.ai);
   if (!ai) return null;
   // Text fields keep a draft and save when you leave them; remount when settings change elsewhere.
-  return <Assistant key={`${ai.provider}|${ai.model}|${ai.baseUrl}`} ai={ai} />;
+  return <Assistant key={`${ai.provider}|${ai.models[ai.provider] ?? ""}|${ai.baseUrl}`} ai={ai} />;
 }
 
 function Assistant({ ai }: { ai: AiSettings }) {
-  const [model, setModel] = useState(ai.model);
+  const current = ai.models[ai.provider] ?? "";
+  const [model, setModel] = useState(current);
   const [baseUrl, setBaseUrl] = useState(ai.baseUrl);
   const [key, setKey] = useState("");
   const [keySaved, setKeySaved] = useState<boolean | null>(null);
@@ -65,6 +66,7 @@ function Assistant({ ai }: { ai: AiSettings }) {
   }, [ai.provider]);
 
   const save = (change: Partial<AiSettings>) => patch("ai", change);
+  const saveModel = (m: string) => save({ models: { ...ai.models, [ai.provider]: m.trim() } });
   const preset = PRESETS.find((p) => p.value === ai.baseUrl);
 
   const runTest = async () => {
@@ -88,7 +90,7 @@ function Assistant({ ai }: { ai: AiSettings }) {
           options={PROVIDERS}
           onChange={(provider) => {
             setTest(null);
-            save({ provider, model: "", baseUrl: "" });
+            save({ provider });
           }}
         />
       </Row>
@@ -132,12 +134,12 @@ function Assistant({ ai }: { ai: AiSettings }) {
             <Row label="Model">
               <Select<string>
                 label="Model"
-                value={ai.model}
+                value={current}
                 options={[
                   { value: "", label: "First installed" },
                   ...ollamaModels.map((m) => ({ value: m, label: m })),
                 ]}
-                onChange={(m) => save({ model: m })}
+                onChange={(m) => saveModel(m)}
               />
             </Row>
           ) : (
@@ -154,9 +156,7 @@ function Assistant({ ai }: { ai: AiSettings }) {
                 }
                 onChange={setModel}
               />
-              {model !== ai.model && (
-                <Button onClick={() => save({ model: model.trim() })}>Save model</Button>
-              )}
+              {model !== current && <Button onClick={() => saveModel(model)}>Save model</Button>}
             </>
           )}
         </div>

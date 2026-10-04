@@ -47,6 +47,8 @@ struct Inner {
     projects_dir: PathBuf,
     settings_path: PathBuf,
     home: PathBuf,
+    /// Parsed Codex session logs (usage).
+    codex: super::codex_usage::CodexIndex,
     live: Mutex<LiveSessions>,
     /// Claude Code processes whose exit is being watched.
     watched_pids: Mutex<HashSet<u32>>,
@@ -102,6 +104,7 @@ impl ClaudeService {
                 projects_dir: home.join(".claude").join("projects"),
                 settings_path: connect::settings_path(&home),
                 home: home.clone(),
+                codex: Default::default(),
                 live: Mutex::new(LiveSessions::default()),
                 watched_pids: Mutex::new(HashSet::new()),
                 approvals: Approvals::default(),
@@ -152,6 +155,14 @@ impl ClaudeService {
         self.inner
             .db
             .with(|conn| usage::summarize(conn, range, Utc::now()))
+    }
+
+    /// Codex usage from its session logs (`$CODEX_HOME`, default `~/.codex`).
+    pub fn codex_usage(&self, range: UsageRange) -> super::codex_usage::CodexUsage {
+        let home = std::env::var_os("CODEX_HOME")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| self.inner.home.join(".codex"));
+        self.inner.codex.usage(&home, range, Utc::now())
     }
 
     pub fn preview(&self) -> String {

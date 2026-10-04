@@ -5,6 +5,7 @@ import { MessageCircleQuestion } from "lucide-react";
 import { lazy } from "react";
 
 import { ipc } from "../../core/ipc";
+import { useSettings } from "../../settings";
 import type { ModuleContext, NotchModule } from "../types";
 import { AskPeek } from "./AskPeek";
 import { useAsk } from "./askStore";
@@ -21,10 +22,11 @@ function init({ events }: ModuleContext) {
     })
     .catch(() => {});
   // A different AI was picked in Settings → AI: show its name and whether it's ready.
-  let provider: string | null = null;
+  const current = useSettings.getState().settings?.ai;
+  let provider: string | null = current ? JSON.stringify(current) : null;
   const offSettings = events.on("SettingsChanged", ({ event }) => {
-    const ai = `${event.payload.ai.provider}|${event.payload.ai.model}|${event.payload.ai.baseUrl}`;
-    if (provider !== null && provider !== ai)
+    const ai = JSON.stringify(event.payload.ai);
+    if (provider !== ai)
       ipc
         .askSnapshot()
         .then((s) => useAsk.getState().set(s))

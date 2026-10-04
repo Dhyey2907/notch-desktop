@@ -67,7 +67,7 @@ pub fn available(ai: &AiSettings) -> bool {
         Provider::Codex => find_exe(Agent::Codex).is_some(),
         Provider::Gemini => find_exe(Agent::Gemini).is_some(),
         Provider::Ollama => true,
-        Provider::OpenAi => !ai.base_url.trim().is_empty() && !ai.model.trim().is_empty(),
+        Provider::OpenAi => !ai.base_url.trim().is_empty() && !ai.model().is_empty(),
     }
 }
 
@@ -106,7 +106,7 @@ fn hidden(command: &mut Command) {
 pub fn start_cli(provider: Provider, ai: &AiSettings, prompt: &Prompt, workdir: &Path) -> AppResult<CliRun> {
     let _ = std::fs::create_dir_all(workdir);
     let input = format!("{}\n\n{}", prompt.system, prompt.text);
-    let model = ai.model.trim();
+    let model = ai.model();
     let (mut command, answer_file) = match provider {
         Provider::Codex => {
             let exe = find_exe(Agent::Codex).ok_or_else(|| invalid("Codex isn't installed on this PC"))?;
@@ -326,8 +326,8 @@ async fn ollama_model(http: &reqwest::Client, ai: &AiSettings) -> AppResult<(Str
     } else {
         ai.base_url.trim().trim_end_matches('/').to_owned()
     };
-    if !ai.model.trim().is_empty() {
-        return Ok((base, ai.model.trim().to_owned()));
+    if !ai.model().is_empty() {
+        return Ok((base, ai.model().to_owned()));
     }
     let tags: Value = http
         .get(format!("{base}/api/tags"))
@@ -386,12 +386,12 @@ pub async fn stream_http(
         }
         Provider::OpenAi => {
             let base = ai.base_url.trim().trim_end_matches('/');
-            if base.is_empty() || ai.model.trim().is_empty() {
+            if base.is_empty() || ai.model().is_empty() {
                 return Err(invalid("Set the API address and model in Settings → AI"));
             }
             let mut request = http
                 .post(format!("{base}/chat/completions"))
-                .json(&openai_body(ai.model.trim(), prompt));
+                .json(&openai_body(ai.model(), prompt));
             if let Some(key) = secrets::get(Credential::AiApiKey)?.filter(|k| !k.is_empty()) {
                 request = request.bearer_auth(key);
             }

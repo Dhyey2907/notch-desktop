@@ -9,9 +9,10 @@ export type AiSettings = {
  */
 provider: string, 
 /**
- * Model name; empty = the provider's default (Ollama: the first installed model).
+ * Model per provider (e.g. `{"openai": "gpt-5-mini"}`); missing or empty = the provider's
+ * default (Ollama: the first installed model).
  */
-model: string, 
+models: { [key in string]: string }, 
 /**
  * API address for `openai` (e.g. https://api.openai.com/v1) or a non-default Ollama.
  */

@@ -494,8 +494,9 @@ impl Default for DaySettings {
 pub struct AiSettings {
     /// `claude`, `codex`, `gemini`, `ollama` or `openai` (any OpenAI-compatible API).
     pub provider: String,
-    /// Model name; empty = the provider's default (Ollama: the first installed model).
-    pub model: String,
+    /// Model per provider (e.g. `{"openai": "gpt-5-mini"}`); missing or empty = the provider's
+    /// default (Ollama: the first installed model).
+    pub models: BTreeMap<String, String>,
     /// API address for `openai` (e.g. https://api.openai.com/v1) or a non-default Ollama.
     pub base_url: String,
 }
@@ -504,9 +505,16 @@ impl Default for AiSettings {
     fn default() -> Self {
         Self {
             provider: "claude".into(),
-            model: String::new(),
+            models: BTreeMap::new(),
             base_url: String::new(),
         }
+    }
+}
+
+impl AiSettings {
+    /// The model chosen for the current provider ("" = its default).
+    pub fn model(&self) -> &str {
+        self.models.get(&self.provider).map(|m| m.trim()).unwrap_or("")
     }
 }
 
@@ -730,7 +738,8 @@ impl Settings {
         }
         let ai = &self.ai;
         if !["claude", "codex", "gemini", "ollama", "openai"].contains(&ai.provider.as_str())
-            || ai.model.len() > 200
+            || ai.models.len() > 10
+            || ai.models.values().any(|m| m.len() > 200)
             || ai.base_url.len() > 500
             || !(ai.base_url.is_empty()
                 || ai.base_url.starts_with("https://")

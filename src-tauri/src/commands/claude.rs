@@ -97,3 +97,15 @@ pub fn agent_connect(agent: String, claude: State<'_, ClaudeService>) -> AppResu
 pub fn agent_disconnect(agent: String, claude: State<'_, ClaudeService>) -> AppResult<()> {
     claude.agent_disconnect(agent_of(&agent)?)
 }
+
+/// Codex usage from the session logs Codex keeps on this PC.
+#[tauri::command]
+pub async fn codex_usage(
+    range: crate::claude::usage::UsageRange,
+    claude: State<'_, ClaudeService>,
+) -> AppResult<crate::claude::codex_usage::CodexUsage> {
+    let claude = claude.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || claude.codex_usage(range))
+        .await
+        .map_err(|e| crate::error::AppError::Platform(e.to_string()))
+}

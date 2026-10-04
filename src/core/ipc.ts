@@ -9,6 +9,8 @@ import type { AskSnapshot } from "./generated/AskSnapshot";
 import type { BridgeState } from "./generated/BridgeState";
 import type { Dashboard } from "./generated/Dashboard";
 import type { Agent } from "./generated/Agent";
+import type { ScreenTime } from "./generated/ScreenTime";
+import type { CodexUsage } from "./generated/CodexUsage";
 import type { RgbStatus } from "./generated/RgbStatus";
 import type { ControlSnapshot } from "./generated/ControlSnapshot";
 import type { DownloadProgress } from "./generated/DownloadProgress";
@@ -241,6 +243,8 @@ export const ipc = {
   focusStop: () => invoke<void>("focus_stop"),
   /** Milliseconds since the last keyboard or mouse input. */
   systemIdleMs: () => invoke<number>("system_idle_ms"),
+  /** Screen time on a past day (YYYY-MM-DD). */
+  screenTimeDay: (date: string) => invoke<ScreenTime>("screen_time_day", { date }),
   rgbMusicColor: (hex: string | null) => invoke<void>("rgb_music_color", { hex }),
   rgbStatus: () => invoke<RgbStatus>("rgb_status"),
   soundState: () => invoke<SoundState | null>("sound_state"),
@@ -289,6 +293,7 @@ export const ipc = {
   claudeStatus: () => invoke<ClaudeStatus>("claude_status"),
   /** Local usage estimate for a range, from Claude Code transcripts on this PC. */
   claudeUsage: (range: UsageRange) => invoke<UsageSummary>("claude_usage", { range }),
+  codexUsage: (range: UsageRange) => invoke<CodexUsage>("codex_usage", { range }),
   /** What connecting will add to Claude Code's settings (token masked). */
   claudeHooksPreview: () => invoke<string>("claude_hooks_preview"),
   claudeConnect: () => invoke<void>("claude_connect"),

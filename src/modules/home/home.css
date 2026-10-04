@@ -304,3 +304,31 @@
   font-size: var(--text-xs);
   cursor: pointer;
 }
+
+.home-days {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.home-days__btn {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.home-days__btn:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.home-days__btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
