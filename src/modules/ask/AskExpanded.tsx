@@ -26,6 +26,7 @@ export default function AskExpanded() {
   const exchanges = snapshot?.exchanges ?? [];
   const busy = exchanges.some((e) => e.pending);
   const lastAnswerLength = exchanges.at(-1)?.answer.length ?? 0;
+  const who = snapshot?.provider ?? "Claude";
 
   useEffect(() => input.current?.focus(), []);
   // Follow the answer as it streams in.
@@ -53,7 +54,7 @@ export default function AskExpanded() {
 
   return (
     <ModuleContainer
-      title="Ask Claude"
+      title={`Ask ${who}`}
       trailing={
         exchanges.length > 0 && (
           <IconButton
@@ -69,13 +70,13 @@ export default function AskExpanded() {
         <div className="ask__list" ref={list}>
           {snapshot && !snapshot.available ? (
             <EmptyState
-              title="Claude Code isn't installed"
-              body="Ask uses the Claude Code app on this PC (claude.ai/code) — no API key needed."
+              title={who === "Claude" ? "Claude Code isn't installed" : `${who} isn't set up yet`}
+              body="Choose which AI answers in Settings → AI: Claude Code, Codex, Gemini CLI, Ollama or any OpenAI-compatible API."
             />
           ) : exchanges.length === 0 ? (
             <EmptyState
               title="Ask anything"
-              body="Answers come from your Claude Code. Press Ctrl+Alt+A in any app to ask about the window you're in."
+              body={`Answers come from ${who === "AI" ? "your API" : who}. Press Ctrl+Alt+A in any app to ask about the window you're in. Change it in Settings → AI.`}
             />
           ) : (
             exchanges.map((e) => <ExchangeView key={e.id} exchange={e} />)
@@ -100,7 +101,7 @@ export default function AskExpanded() {
             onChange={(e) => setQuestion(e.target.value)}
             onKeyDown={onKey}
           />
-          {snapshot?.targetApp && (
+          {snapshot?.targetApp && snapshot.seesScreen && (
             <button
               type="button"
               className={`ask__screen${withScreen ? " ask__screen--on" : ""}`}

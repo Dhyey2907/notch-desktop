@@ -6,6 +6,7 @@
 #[cfg(windows)]
 pub mod capture;
 pub mod once;
+pub mod providers;
 pub mod service;
 
 use base64::Engine;
@@ -80,6 +81,23 @@ pub fn parse_line(line: &str) -> Chunk {
 /// The stream-json user message: earlier exchanges as context, the question, and optionally
 /// a PNG of the window the user was looking at.
 pub fn user_message(history: &[Exchange], question: &str, screenshot_png: Option<&[u8]>) -> String {
+    let text = context_text(history, question);
+    let mut content = vec![json!({ "type": "text", "text": text })];
+    if let Some(png) = screenshot_png {
+        content.push(json!({
+            "type": "image",
+            "source": {
+                "type": "base64",
+                "media_type": "image/png",
+                "data": base64::engine::general_purpose::STANDARD.encode(png),
+            }
+        }));
+    }
+    json!({ "type": "user", "message": { "role": "user", "content": content } }).to_string()
+}
+
+/// The question with the last few exchanges before it, as plain text.
+pub fn context_text(history: &[Exchange], question: &str) -> String {
     let mut text = String::new();
     let earlier: Vec<&Exchange> = history
         .iter()
@@ -96,18 +114,7 @@ pub fn user_message(history: &[Exchange], question: &str, screenshot_png: Option
         text.push_str("\nNow answer this:\n");
     }
     text.push_str(question);
-    let mut content = vec![json!({ "type": "text", "text": text })];
-    if let Some(png) = screenshot_png {
-        content.push(json!({
-            "type": "image",
-            "source": {
-                "type": "base64",
-                "media_type": "image/png",
-                "data": base64::engine::general_purpose::STANDARD.encode(png),
-            }
-        }));
-    }
-    json!({ "type": "user", "message": { "role": "user", "content": content } }).to_string()
+    text
 }
 
 #[cfg(test)]

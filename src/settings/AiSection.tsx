@@ -5,6 +5,8 @@ import type { AuditEntry } from "../core/generated/AuditEntry";
 import type { ClaudeStatus } from "../core/generated/ClaudeStatus";
 import { ipc, isIpcError } from "../core/ipc";
 import { Button, ConfirmButton, Pill, Surface } from "../design/components";
+import { AgentsSetting } from "./AgentsSetting";
+import { AssistantSetting } from "./AssistantSetting";
 import { pageLead } from "./searchIndex";
 import { Section } from "./Section";
 
@@ -34,8 +36,8 @@ const DECIDED_BY_LABEL: Record<string, string> = {
   session_rule: "for this session",
   timeout: "no answer in time",
   app_closed: "Notch closed",
-  agent_exited: "Claude Code closed",
-  elsewhere: "answered in Claude Code",
+  agent_exited: "the agent closed",
+  elsewhere: "answered in the agent",
 };
 
 function RecentApprovals() {
@@ -161,13 +163,20 @@ export function AiSection() {
       setError(
         isIpcError(e) && e.kind === "invalid_input"
           ? `${e.message.replace(/^invalid input: /, "").replace(/^./, (c) => c.toUpperCase())}.`
-          : "That didn't work. Check that Claude Code's settings file isn't open elsewhere, then try again.",
+          : "That didn't work. Check that the agent's settings file isn't open elsewhere, then try again.",
       );
     }
   };
 
   return (
     <Section title="AI" lead={pageLead("ai")}>
+      <div id="setting-assistant">
+        <AssistantSetting />
+      </div>
+
+      <h2 id="setting-coding-agents" className="settings__subhead">
+        Coding agents
+      </h2>
       <Surface>
         <div className="settings__row">
           <span className="settings__row-text">
@@ -192,7 +201,7 @@ export function AiSection() {
       <Surface>
         <div className="settings__row">
           <span className="settings__row-text">
-            <span className="settings__row-label">Live activity</span>
+            <span className="settings__row-label">Claude Code</span>
             <span className="settings__row-description">
               Show when Claude Code is working or waiting for you, and answer its permission requests from the
               notch. Adds hooks to Claude Code's settings that send events to Notch on this PC only. If Notch
@@ -259,10 +268,15 @@ export function AiSection() {
       </Surface>
 
       {installed && status && <PlanLimitsSetting status={status} run={run} />}
-      {installed && <RecentApprovals />}
+
+      <h2 id="setting-other-agents" className="settings__subhead">
+        Other coding agents
+      </h2>
+      {status && <AgentsSetting agents={status.agents} run={run} />}
+      {(installed || status?.agents.some((a) => a.connected)) && <RecentApprovals />}
 
       <Surface>
-        <p className="settings__lead">Want to see the numbers? Open the Claude Code module in the notch.</p>
+        <p className="settings__lead">Want to see the numbers? Open the AI agents module in the notch.</p>
         <div className="settings__buttons">
           <Button onClick={() => void ipc.openSettingsWindow("modules")}>Module settings</Button>
         </div>

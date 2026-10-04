@@ -118,6 +118,9 @@ macro_rules! app_commands {
             commands::claude::claude_hooks_preview,
             commands::claude::claude_connect,
             commands::claude::claude_disconnect,
+            commands::claude::agent_preview,
+            commands::claude::agent_connect,
+            commands::claude::agent_disconnect,
             commands::claude::claude_approvals_pending,
             commands::claude::claude_approval_decide,
             commands::claude::claude_approval_audit,
@@ -135,6 +138,11 @@ macro_rules! app_commands {
             commands::ask::ask_question,
             commands::ask::ask_stop,
             commands::ask::ask_clear,
+            commands::ask::ai_key_saved,
+            commands::ask::ai_set_key,
+            commands::ask::ai_clear_key,
+            commands::ask::ai_test,
+            commands::ask::ai_ollama_models,
             commands::music::lyrics_current,
             commands::music::artwork_palette,
             commands::system::sound_state,
@@ -268,6 +276,10 @@ fn media_port(app: &tauri::AppHandle) -> Result<Box<dyn media::MediaPort>, Box<d
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Started by Codex or Gemini CLI as a hook: relay the event and exit, no window.
+    if let Some(code) = claude::relay::from_args() {
+        std::process::exit(code);
+    }
     tauri::Builder::default()
         // Must be registered first: a second launch focuses the running instance instead.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {

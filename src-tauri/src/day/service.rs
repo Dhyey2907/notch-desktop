@@ -253,8 +253,9 @@ impl DayService {
             .app_cache_dir()
             .map_err(|e| AppError::Platform(e.to_string()))?
             .join("ask");
+        let ai = settings.ai.clone();
         let text = tauri::async_runtime::spawn_blocking(move || {
-            crate::ask::once::answer(PLAN_PROMPT, &input, &workdir)
+            crate::ask::providers::answer(&ai, PLAN_PROMPT, &input, &workdir)
         })
         .await
         .map_err(|e| AppError::Platform(e.to_string()))??;

@@ -74,7 +74,7 @@ export function ActivityView({
           <Dot tone={tone} />
         )}
         <div className="activity__text">
-          {critical && <p className="nd-eyebrow activity__eyebrow">{moduleName} needs you</p>}
+          {critical && <p className="nd-eyebrow activity__eyebrow">{moduleName} · needs you</p>}
           <p className="activity__title">
             {activity.title}
             {activity.repeats > 1 && <Pill>×{activity.repeats}</Pill>}

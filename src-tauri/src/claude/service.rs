@@ -12,13 +12,14 @@ use notify::{RecursiveMode, Watcher};
 use tauri::{AppHandle, Manager};
 
 use super::{
+    agents::{self, Agent},
     approvals::{self, ApprovalChoice, ApprovalRequest, Approvals, AuditEntry, PermissionPayload},
     connect,
     hooks::{Handlers, HookPayload, HookServer, LiveSessions},
     limits::{self, PlanLimits},
     transcripts::{self, IndexStats, QuotaLimits},
     usage::{self, UsageRange, UsageSummary},
-    ClaudeStatus, HooksStatus, IndexStatus, QuotaStatus,
+    AgentLink, ClaudeStatus, HooksStatus, IndexStatus, QuotaStatus,
 };
 use crate::{
     db::Db,
@@ -45,6 +46,7 @@ struct Inner {
     db: Db,
     projects_dir: PathBuf,
     settings_path: PathBuf,
+    home: PathBuf,
     live: Mutex<LiveSessions>,
     /// Claude Code processes whose exit is being watched.
     watched_pids: Mutex<HashSet<u32>>,
@@ -99,6 +101,7 @@ impl ClaudeService {
                 db,
                 projects_dir: home.join(".claude").join("projects"),
                 settings_path: connect::settings_path(&home),
+                home: home.clone(),
                 live: Mutex::new(LiveSessions::default()),
                 watched_pids: Mutex::new(HashSet::new()),
                 approvals: Approvals::default(),
@@ -119,7 +122,8 @@ impl ClaudeService {
         std::thread::Builder::new()
             .name("claude-index".into())
             .spawn(move || {
-                if inner.hooks_installed() {
+                inner.refresh_relays();
+                if inner.hooks_installed() || inner.any_other_agent() {
                     if let Err(error) = inner.start_server() {
                         tracing::warn!(kind = error.kind(), "claude hook server did not start");
                     }
@@ -207,6 +211,7 @@ impl ClaudeService {
         let inner = self.inner.clone();
         std::thread::spawn(move || {
             let payload = PermissionPayload {
+                agent: Default::default(),
                 session_id: "dev-test".into(),
                 cwd: Some("C:/dev/notch-desktop".into()),
                 tool_name: tool,
@@ -254,16 +259,151 @@ impl ClaudeService {
             connect::write(&self.inner.settings_path, &settings)?;
         }
         self.inner.set_limits(None);
-        *self.inner.server.lock().unwrap_or_else(|e| e.into_inner()) = None;
-        secrets::delete(Credential::ClaudeHookToken)?;
-        *self.inner.live.lock().unwrap_or_else(|e| e.into_inner()) = LiveSessions::default();
+        self.inner.forget(Agent::Claude)?;
         tracing::info!("claude code hooks removed");
+        self.inner.publish_status();
+        Ok(())
+    }
+
+    /// What connecting Codex or Gemini CLI adds to its config (shown before the user agrees).
+    pub fn agent_preview(&self, agent: Agent) -> AppResult<String> {
+        Ok(agents::preview(agent, &relay_command(agent)?))
+    }
+
+    /// Add Notch's relay to Codex's or Gemini CLI's hooks and start listening. The UI only
+    /// calls this after showing `agent_preview()` and getting the user's confirmation.
+    pub fn agent_connect(&self, agent: Agent) -> AppResult<()> {
+        if agent == Agent::Claude {
+            return self.connect();
+        }
+        if secrets::get(Credential::ClaudeHookToken)?.is_none() {
+            secrets::set(Credential::ClaudeHookToken, &crate::oauth::random_urlsafe(32))?;
+        }
+        let path = agent.config_path(&self.inner.home);
+        let mut config = read_agent_config(agent, &path)?;
+        agents::add_ours(&mut config, agent, &relay_command(agent)?)?;
+        connect::write(&path, &config)?;
+        tracing::info!(agent = agent.id(), "agent hooks installed");
+        if self
+            .inner
+            .server
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .is_none()
+        {
+            self.inner.start_server()?;
+        }
+        self.inner.publish_status();
+        Ok(())
+    }
+
+    pub fn agent_disconnect(&self, agent: Agent) -> AppResult<()> {
+        if agent == Agent::Claude {
+            return self.disconnect();
+        }
+        let path = agent.config_path(&self.inner.home);
+        let mut config = read_agent_config(agent, &path)?;
+        if agents::is_installed(&config) {
+            agents::remove_ours(&mut config);
+            connect::write(&path, &config)?;
+        }
+        self.inner.forget(agent)?;
+        tracing::info!(agent = agent.id(), "agent hooks removed");
         self.inner.publish_status();
         Ok(())
     }
 }
 
+/// The command an agent runs to reach Notch: this very program in relay mode.
+fn relay_command(agent: Agent) -> AppResult<String> {
+    let exe = std::env::current_exe()?;
+    Ok(agents::relay_command(&exe, agent))
+}
+
+fn read_agent_config(agent: Agent, path: &std::path::Path) -> AppResult<serde_json::Value> {
+    let config = connect::read(path).map_err(|_| {
+        AppError::InvalidInput(format!(
+            "{} isn't valid JSON, so Notch won't touch it. Fix it and try again",
+            path.display()
+        ))
+    })?;
+    if config.is_object() {
+        Ok(config)
+    } else {
+        Err(AppError::InvalidInput(format!(
+            "{}'s config isn't a JSON object",
+            agent.name()
+        )))
+    }
+}
+
 impl Inner {
+    /// Codex or Gemini CLI has Notch's relay in its config.
+    fn agent_installed(&self, agent: Agent) -> bool {
+        connect::read(&agent.config_path(&self.home))
+            .map(|c| agents::is_installed(&c))
+            .unwrap_or(false)
+    }
+
+    fn any_other_agent(&self) -> bool {
+        Agent::OTHERS.iter().any(|a| self.agent_installed(*a))
+    }
+
+    /// Notch moved (reinstalled elsewhere): point the agents' hooks at where it is now.
+    /// Release builds only, so a development build never rewires the user's agents.
+    fn refresh_relays(&self) {
+        if cfg!(debug_assertions) {
+            return;
+        }
+        for agent in Agent::OTHERS {
+            let path = agent.config_path(&self.home);
+            let Ok(mut config) = connect::read(&path) else {
+                continue;
+            };
+            let Some(current) = agents::installed_command(&config) else {
+                continue;
+            };
+            let Ok(wanted) = relay_command(agent) else {
+                continue;
+            };
+            if current != wanted
+                && agents::add_ours(&mut config, agent, &wanted).is_ok()
+                && connect::write(&path, &config).is_ok()
+            {
+                tracing::info!(agent = agent.id(), "agent hooks updated to this copy of notch");
+            }
+        }
+    }
+
+    /// Drop an agent's live sessions; stop listening when no agent is connected any more.
+    fn forget(&self, agent: Agent) -> AppResult<()> {
+        self.live
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove_agent(agent);
+        let claude = agent != Agent::Claude && self.hooks_installed();
+        let others = Agent::OTHERS
+            .iter()
+            .any(|a| *a != agent && self.agent_installed(*a));
+        if !claude && !others {
+            *self.server.lock().unwrap_or_else(|e| e.into_inner()) = None;
+            secrets::delete(Credential::ClaudeHookToken)?;
+        }
+        Ok(())
+    }
+
+    fn agent_links(&self) -> Vec<AgentLink> {
+        Agent::OTHERS
+            .iter()
+            .map(|&agent| AgentLink {
+                agent,
+                name: agent.name().into(),
+                detected: agent.detected(&self.home),
+                connected: self.agent_installed(agent),
+            })
+            .collect()
+    }
+
     fn hooks_installed(&self) -> bool {
         connect::read(&self.settings_path)
             .map(|s| connect::is_installed(&s))
@@ -289,6 +429,7 @@ impl Inner {
             .unwrap_or_else(|e| e.into_inner())
             .and_then(|l| l.current(now));
         ClaudeStatus {
+            agents: self.agent_links(),
             live,
             hooks: HooksStatus {
                 installed: check(connect::is_installed),
@@ -513,6 +654,16 @@ impl Inner {
         if let Err(error) = self.db.with(|conn| approvals::record(conn, &request, &outcome)) {
             tracing::warn!(kind = error.kind(), "could not record approval audit");
         }
+        // Answered here: the agent carries on, so it's no longer waiting on you.
+        if outcome.behavior.is_some()
+            && self
+                .live
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .resume(&request.session_id, Utc::now())
+        {
+            self.publish_status();
+        }
         approvals::response_body(outcome.behavior)
     }
 
@@ -555,7 +706,10 @@ impl Inner {
                     Ok(request) if approvals::is_user_dialog(&request.tool_name) => {
                         approvals::response_body(None)
                     }
-                    Ok(request) => inner.handle_permission(&request),
+                    Ok(mut request) => {
+                        request.agent = payload.agent.unwrap_or_default();
+                        inner.handle_permission(&request)
+                    }
                     Err(_) => approvals::response_body(None),
                 },
                 // The tool ran (or failed) after being answered in Claude Code itself.

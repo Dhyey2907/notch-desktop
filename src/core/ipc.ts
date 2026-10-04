@@ -8,6 +8,7 @@ import type { ShelfSnapshot } from "./generated/ShelfSnapshot";
 import type { AskSnapshot } from "./generated/AskSnapshot";
 import type { BridgeState } from "./generated/BridgeState";
 import type { Dashboard } from "./generated/Dashboard";
+import type { Agent } from "./generated/Agent";
 import type { RgbStatus } from "./generated/RgbStatus";
 import type { ControlSnapshot } from "./generated/ControlSnapshot";
 import type { DownloadProgress } from "./generated/DownloadProgress";
@@ -292,6 +293,16 @@ export const ipc = {
   claudeHooksPreview: () => invoke<string>("claude_hooks_preview"),
   claudeConnect: () => invoke<void>("claude_connect"),
   claudeDisconnect: () => invoke<void>("claude_disconnect"),
+  /** Codex or Gemini CLI: what connecting adds, connect, disconnect. */
+  agentPreview: (agent: Agent) => invoke<string>("agent_preview", { agent }),
+  /** Settings → AI → Assistant. The API key goes straight to Credential Manager. */
+  aiKeySaved: () => invoke<boolean>("ai_key_saved"),
+  aiSetKey: (key: string) => invoke<void>("ai_set_key", { key }),
+  aiClearKey: () => invoke<void>("ai_clear_key"),
+  aiTest: () => invoke<string>("ai_test"),
+  aiOllamaModels: () => invoke<string[]>("ai_ollama_models"),
+  agentConnect: (agent: Agent) => invoke<void>("agent_connect", { agent }),
+  agentDisconnect: (agent: Agent) => invoke<void>("agent_disconnect", { agent }),
   /** Exactly what enabling plan limits adds to Claude Code's settings (token masked). */
   claudeStatusLinePreview: () => invoke<string>("claude_status_line_preview"),
   claudeStatusLineEnable: () => invoke<void>("claude_status_line_enable"),

@@ -7,7 +7,6 @@ import { clipboardModule } from "./clipboard";
 import { controlModule } from "./control";
 import { devEventsModule } from "./devEvents";
 import { dayModule } from "./day";
-import { decideModule } from "./decide";
 import { deskModule } from "./desk";
 import { devToolsModule } from "./devtools";
 import { mailModule } from "./mail";
@@ -49,7 +48,6 @@ export const MODULES: readonly NotchModule[] = sortModules(
     clipboardModule,
     vaultModule,
     phoneModule,
-    decideModule,
     ...devModules,
   ],
   import.meta.env.DEV,

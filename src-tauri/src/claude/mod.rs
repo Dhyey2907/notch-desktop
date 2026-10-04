@@ -6,11 +6,13 @@
 //!
 //! Official account quotas aren't available to local apps, so none are shown or invented.
 
+pub mod agents;
 pub mod approvals;
 pub mod connect;
 pub mod hooks;
 pub mod limits;
 pub mod process;
+pub mod relay;
 pub mod service;
 pub mod transcripts;
 pub mod usage;
@@ -21,6 +23,18 @@ use ts_rs::TS;
 
 use hooks::AgentSession;
 use limits::PlanLimits;
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct AgentLink {
+    pub agent: agents::Agent,
+    pub name: String,
+    /// Installed on this PC (its program or its config folder was found).
+    pub detected: bool,
+    /// Notch's hooks are in its config.
+    pub connected: bool,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -65,6 +79,8 @@ pub struct QuotaStatus {
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
 pub struct ClaudeStatus {
+    /// Other coding agents Notch can connect to.
+    pub agents: Vec<AgentLink>,
     pub live: Vec<AgentSession>,
     pub hooks: HooksStatus,
     pub index: IndexStatus,

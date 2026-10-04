@@ -77,7 +77,12 @@ export const PAGES: PageInfo[] = [
     lead: "Focus sessions, the pet, healthy breaks, ambient sounds and RGB lights.",
   },
   { id: "games", label: "Games", group: "Features", lead: "The game mode strip while you play." },
-  { id: "ai", label: "AI", group: "Features", lead: "Ask Claude from the notch." },
+  {
+    id: "ai",
+    label: "AI",
+    group: "Features",
+    lead: "Choose your AI, and connect Claude Code, Codex and Gemini CLI.",
+  },
   {
     id: "developer",
     label: "Developer",
@@ -198,6 +203,12 @@ export const ENTRIES: Entry[] = [
   { page: "focus", label: "RGB lights", keywords: "openrgb led keyboard mouse color sync beat" },
   { page: "games", label: "Game mode", keywords: "fps gpu ping hud" },
   { page: "ai", label: "Claude", keywords: "ask ai assistant" },
+  { page: "ai", label: "Other coding agents", keywords: "codex openai gemini google cli hooks approvals" },
+  {
+    page: "ai",
+    label: "Assistant",
+    keywords: "ask provider model openai openrouter gemini ollama groq api key llm",
+  },
   { page: "privacy", label: "Export settings", keywords: "backup save move file" },
   { page: "privacy", label: "Import settings", keywords: "restore load file" },
   { page: "privacy", label: "Logs", keywords: "diagnostics troubleshooting export" },

@@ -76,3 +76,24 @@ pub fn claude_status_line_enable(claude: State<'_, ClaudeService>) -> AppResult<
 pub fn claude_status_line_disable(claude: State<'_, ClaudeService>) -> AppResult<()> {
     claude.disable_status_line()
 }
+
+fn agent_of(id: &str) -> AppResult<crate::claude::agents::Agent> {
+    crate::claude::agents::Agent::from_id(id)
+        .ok_or_else(|| crate::error::AppError::InvalidInput("unknown agent".into()))
+}
+
+/// What connecting Codex or Gemini CLI would add to its config.
+#[tauri::command]
+pub fn agent_preview(agent: String, claude: State<'_, ClaudeService>) -> AppResult<String> {
+    claude.agent_preview(agent_of(&agent)?)
+}
+
+#[tauri::command]
+pub fn agent_connect(agent: String, claude: State<'_, ClaudeService>) -> AppResult<()> {
+    claude.agent_connect(agent_of(&agent)?)
+}
+
+#[tauri::command]
+pub fn agent_disconnect(agent: String, claude: State<'_, ClaudeService>) -> AppResult<()> {
+    claude.agent_disconnect(agent_of(&agent)?)
+}

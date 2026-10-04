@@ -94,6 +94,7 @@ const defaults: Settings = {
     best: 0,
   },
   fun: { petWalk: false, rgb: false, rgbPort: 0 },
+  ai: { provider: "claude", model: "", baseUrl: "" },
   day: { startMin: 540, endMin: 1080, workDays: [1, 2, 3, 4, 5], noAutoPlan: false, noWorkdayBar: false },
   gestures: { disabled: false, sensitivity: "normal", noTrackSwipe: false },
   dock: { order: [], hidden: [] },

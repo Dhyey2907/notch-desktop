@@ -1,6 +1,6 @@
 import { Sparkles } from "lucide-react";
 
-import { primarySession, useClaude } from "./claudeStore";
+import { agentName, primarySession, useClaude } from "./claudeStore";
 import "./claude.css";
 
 /** Collapsed: a pulsing mark while an agent works, amber when it's waiting on you. */
@@ -12,7 +12,7 @@ export function ClaudeCompact() {
     <span
       className={`claude-compact${waiting ? " claude-compact--waiting" : ""}`}
       role="img"
-      aria-label={waiting ? "Claude Code is waiting for you" : "Claude Code is working"}
+      aria-label={`${agentName(session.agent)} is ${waiting ? "waiting for you" : "working"}`}
     >
       <Sparkles size={12} aria-hidden />
     </span>
@@ -25,7 +25,7 @@ export function ClaudePeek() {
   if (!session) {
     return (
       <div className="module-peek">
-        <span className="module-peek__title">Claude Code</span>
+        <span className="module-peek__title">AI agents</span>
         <span className="module-peek__meta">
           {status?.hooks.installed ? "No active sessions" : "Click to see your usage"}
         </span>
@@ -36,7 +36,7 @@ export function ClaudePeek() {
   return (
     <div className="module-peek">
       <span className="module-peek__title">
-        <Sparkles size={14} aria-hidden /> Claude Code
+        <Sparkles size={14} aria-hidden /> {agentName(session.agent)}
       </span>
       <span className="module-peek__meta">
         {session.state === "waiting"

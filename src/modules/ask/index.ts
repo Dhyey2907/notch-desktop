@@ -1,5 +1,5 @@
-// Ask: quick questions answered by the user's own Claude Code (no API key), optionally about
-// the window they were looking at. Ctrl+Alt+A opens it from anywhere. The conversation
+// Ask: quick questions answered by the AI chosen in Settings → AI (Claude Code by default),
+// optionally about the window they were looking at. Ctrl+Alt+A opens it from anywhere. The conversation
 // lives in memory only.
 import { MessageCircleQuestion } from "lucide-react";
 import { lazy } from "react";
@@ -20,9 +20,21 @@ function init({ events }: ModuleContext) {
       if (!useAsk.getState().snapshot) useAsk.getState().set(snapshot);
     })
     .catch(() => {});
+  // A different AI was picked in Settings → AI: show its name and whether it's ready.
+  let provider: string | null = null;
+  const offSettings = events.on("SettingsChanged", ({ event }) => {
+    const ai = `${event.payload.ai.provider}|${event.payload.ai.model}|${event.payload.ai.baseUrl}`;
+    if (provider !== null && provider !== ai)
+      ipc
+        .askSnapshot()
+        .then((s) => useAsk.getState().set(s))
+        .catch(() => {});
+    provider = ai;
+  });
   return () => {
     offChanged();
     offDelta();
+    offSettings();
   };
 }
 

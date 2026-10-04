@@ -1,5 +1,6 @@
 import { create } from "zustand";
 
+import type { Agent } from "../../core/generated/Agent";
 import type { AgentSession } from "../../core/generated/AgentSession";
 import type { ClaudeStatus } from "../../core/generated/ClaudeStatus";
 
@@ -19,6 +20,29 @@ export const useClaude = create<ClaudeStoreState>((set) => ({
 }));
 
 /** The session to feature: waiting beats working beats idle; most recent first within each. */
+const AGENT_NAMES: Record<Agent, string> = { claude: "Claude Code", codex: "Codex", gemini: "Gemini CLI" };
+
+/** "Claude Code", "Codex", "Gemini CLI". */
+export function agentName(agent: Agent | undefined): string {
+  return AGENT_NAMES[agent ?? "claude"];
+}
+
+/** Turns shorter than this finish without a card (you were probably watching). */
+export const FINISH_ALERT_MS = 30_000;
+
+export function shouldAnnounceFinish(ms: number): boolean {
+  return ms >= FINISH_ALERT_MS;
+}
+
+/** 45 s → "45 s"; 4 min 10 s → "4 min"; 75 min → "1 h 15 min". */
+export function formatTurn(ms: number): string {
+  const s = Math.round(ms / 1000);
+  if (s < 60) return `${s} s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m} min`;
+  return `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ""}`;
+}
+
 export function primarySession(sessions: AgentSession[]): AgentSession | null {
   const rank = { waiting: 0, working: 1, idle: 2 } as const;
   return [...sessions].sort((a, b) => rank[a.state] - rank[b.state])[0] ?? null;

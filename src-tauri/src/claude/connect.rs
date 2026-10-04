@@ -212,18 +212,19 @@ pub fn read(path: &Path) -> AppResult<Value> {
 
 /// Back up the current file, then write the new settings atomically (temp file + rename).
 pub fn write(path: &Path, settings: &Value) -> AppResult<()> {
+    let name = path
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "settings.json".into());
     if path.exists() {
         let stamp = chrono::Local::now().format("%Y%m%d-%H%M%S");
-        std::fs::copy(
-            path,
-            path.with_file_name(format!("settings.json.notch-backup-{stamp}")),
-        )?;
+        std::fs::copy(path, path.with_file_name(format!("{name}.notch-backup-{stamp}")))?;
     } else if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir)?;
     }
     let text =
         serde_json::to_string_pretty(settings).map_err(|e| AppError::InvalidInput(e.to_string()))? + "\n";
-    let temp = path.with_file_name("settings.json.notch-tmp");
+    let temp = path.with_file_name(format!("{name}.notch-tmp"));
     std::fs::write(&temp, text)?;
     std::fs::rename(&temp, path)?;
     Ok(())

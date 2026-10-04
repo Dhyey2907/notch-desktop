@@ -4,9 +4,11 @@ import {
   comparisonText,
   formatHour,
   formatTokens,
+  formatTurn,
   limitLabel,
   prettyModel,
   primarySession,
+  shouldAnnounceFinish,
 } from "./claudeStore";
 
 describe("formatting", () => {
@@ -46,6 +48,7 @@ describe("comparisonText", () => {
 it("features the session that most needs attention", () => {
   const s = (id: string, state: "working" | "waiting" | "idle") => ({
     sessionId: id,
+    agent: "claude" as const,
     project: id,
     state,
     updatedAt: "2026-09-29T00:00:00Z",
@@ -53,4 +56,15 @@ it("features the session that most needs attention", () => {
   expect(primarySession([s("a", "idle"), s("b", "working"), s("c", "waiting")])?.sessionId).toBe("c");
   expect(primarySession([s("a", "idle"), s("b", "working")])?.sessionId).toBe("b");
   expect(primarySession([])).toBeNull();
+});
+
+describe("finished alerts", () => {
+  it("announces only longer turns, with a readable length", () => {
+    expect(shouldAnnounceFinish(10_000)).toBe(false);
+    expect(shouldAnnounceFinish(30_000)).toBe(true);
+    expect(formatTurn(45_000)).toBe("45 s");
+    expect(formatTurn(250_000)).toBe("4 min");
+    expect(formatTurn(75 * 60_000)).toBe("1 h 15 min");
+    expect(formatTurn(120 * 60_000)).toBe("2 h");
+  });
 });

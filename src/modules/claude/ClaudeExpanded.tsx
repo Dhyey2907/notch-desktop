@@ -20,6 +20,7 @@ import {
 } from "../../design/components";
 import { heatmapLevel } from "../../design/heatmap";
 import {
+  agentName,
   comparisonText,
   formatHour,
   formatTokens,
@@ -120,10 +121,11 @@ function LiveBadge() {
     return <Pill tone="warning">{`${limitLabel(status.quota.limitType)} limit · resets ${at}`}</Pill>;
   }
   if (!session || session.state === "idle") return null;
+  const who = agentName(session.agent);
   return session.state === "waiting" ? (
-    <Pill tone="warning">Waiting for you</Pill>
+    <Pill tone="warning">{`${who} is waiting for you`}</Pill>
   ) : (
-    <Pill tone="info">{`Working${session.project ? ` · ${session.project}` : ""}`}</Pill>
+    <Pill tone="info">{`${who} working${session.project ? ` · ${session.project}` : ""}`}</Pill>
   );
 }
 

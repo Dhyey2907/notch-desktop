@@ -1,28 +1,31 @@
-// Agent approvals (plan.md Phase 10): each Claude Code permission request waiting on you
+// Agent approvals (plan.md Phase 10): each permission request (Claude Code or Codex) waiting on you
 // becomes a critical, persistent activity showing the exact command. Answers go back through
 // the hook; anything you don't answer here falls back to Claude Code's own terminal prompt.
 import type { ActivityAction, ActivityInput } from "../../activity/activityStore";
 import type { ApprovalChoice } from "../../core/generated/ApprovalChoice";
 import type { ApprovalRequest } from "../../core/generated/ApprovalRequest";
 import { ipc } from "../../core/ipc";
+import { agentName } from "./claudeStore";
 
 const decide = (id: string, choice: ApprovalChoice) => () => ipc.claudeApprovalDecide(id, choice);
 
 /** What the tool wants to do, in plain words. */
 export function approvalTitle(request: ApprovalRequest): string {
+  const who = agentName(request.agent);
   switch (request.tool) {
     case "Bash":
     case "PowerShell":
-      return "Claude Code wants to run a command";
+      return `${who} wants to run a command`;
     case "Write":
     case "Edit":
     case "MultiEdit":
     case "NotebookEdit":
-      return "Claude Code wants to edit a file";
+    case "apply_patch":
+      return `${who} wants to edit files`;
     case "WebFetch":
-      return "Claude Code wants to open a web page";
+      return `${who} wants to open a web page`;
     default:
-      return `Claude Code wants to use ${request.tool}`;
+      return `${who} wants to use ${request.tool}`;
   }
 }
 

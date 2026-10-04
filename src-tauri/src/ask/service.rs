@@ -4,7 +4,10 @@ use std::{
     io::{BufRead, BufReader, Write},
     path::PathBuf,
     process::{Child, Command, Stdio},
-    sync::{Arc, Mutex},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex,
+    },
     time::Duration,
 };
 
@@ -12,7 +15,11 @@ use serde::Serialize;
 use tauri::{AppHandle, Manager};
 use ts_rs::TS;
 
-use super::{parse_line, user_message, Chunk, Exchange, MAX_HISTORY, MAX_QUESTION, SYSTEM_PROMPT};
+use super::{
+    context_text, parse_line,
+    providers::{self, Prompt, Provider},
+    user_message, Chunk, Exchange, MAX_HISTORY, MAX_QUESTION, SYSTEM_PROMPT,
+};
 use crate::{
     error::{AppError, AppResult},
     events::AppEvent,
@@ -31,14 +38,20 @@ pub struct AskSnapshot {
     #[ts(optional)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub target_app: Option<String>,
-    /// Claude Code was found on this PC.
+    /// The chosen AI can be used (installed / set up).
     pub available: bool,
+    /// Its name for the UI: "Claude", "Codex", "Gemini", "Ollama" or "AI".
+    pub provider: String,
+    /// It can look at a screenshot of your window.
+    pub sees_screen: bool,
 }
 
 #[derive(Default)]
 struct Inner {
     exchanges: Vec<Exchange>,
     child: Option<Child>,
+    /// Set by Stop for answers that aren't a Claude process (Codex, Gemini, APIs).
+    cancel: Option<Arc<AtomicBool>>,
     /// Window in front when Ask was opened, and its app's name.
     target: Option<(isize, String)>,
 }
@@ -74,12 +87,26 @@ impl AskService {
         self.inner.lock().unwrap_or_else(|e| e.into_inner())
     }
 
+    fn ai(&self) -> crate::settings::AiSettings {
+        self.app
+            .state::<AppState>()
+            .settings
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .ai
+            .clone()
+    }
+
     pub fn snapshot(&self) -> AskSnapshot {
+        let ai = self.ai();
+        let provider = Provider::from_settings(&ai);
         let inner = self.inner();
         AskSnapshot {
             exchanges: inner.exchanges.clone(),
             target_app: inner.target.as_ref().map(|(_, app)| app.clone()),
-            available: claude_exe().is_some(),
+            available: providers::available(&ai),
+            provider: provider.name().into(),
+            sees_screen: provider.sees_images(),
         }
     }
 
@@ -104,9 +131,14 @@ impl AskService {
         if question.chars().count() > MAX_QUESTION {
             return Err(AppError::InvalidInput("That question is too long".into()));
         }
-        let exe = claude_exe().ok_or_else(|| {
-            AppError::InvalidInput("Claude Code isn't installed on this PC (claude.ai/code)".into())
-        })?;
+        let ai = self.ai();
+        let provider = Provider::from_settings(&ai);
+        let exe = match provider {
+            Provider::Claude => Some(claude_exe().ok_or_else(|| {
+                AppError::InvalidInput("Claude Code isn't installed on this PC (claude.ai/code)".into())
+            })?),
+            _ => None,
+        };
         let (history, target) = {
             let inner = self.inner();
             if inner.exchanges.iter().any(|e| e.pending) {
@@ -117,7 +149,7 @@ impl AskService {
             (inner.exchanges.clone(), inner.target.clone())
         };
         let id = uuid::Uuid::new_v4().to_string();
-        let screenshot = if include_screen {
+        let screenshot = if include_screen && provider.sees_images() {
             #[cfg(windows)]
             {
                 target
@@ -132,7 +164,10 @@ impl AskService {
         } else {
             None
         };
-        let message = user_message(&history, question, screenshot.as_deref());
+        let message = match provider {
+            Provider::Claude => user_message(&history, question, screenshot.as_deref()),
+            _ => context_text(&history, question),
+        };
         {
             let mut inner = self.inner();
             inner.exchanges.push(Exchange {
@@ -152,7 +187,10 @@ impl AskService {
         let run_id = id.clone();
         std::thread::Builder::new()
             .name("ask".into())
-            .spawn(move || this.run(&exe, &run_id, &message))
+            .spawn(move || match exe {
+                Some(exe) => this.run(&exe, &run_id, &message),
+                None => this.run_other(&ai, &run_id, &message, screenshot.as_deref()),
+            })
             .map_err(|e| AppError::Platform(e.to_string()))?;
         Ok(id)
     }
@@ -235,6 +273,39 @@ impl AskService {
         self.finish(id, error);
     }
 
+    /// Answer with Codex, Gemini CLI, Ollama or an API.
+    fn run_other(&self, ai: &crate::settings::AiSettings, id: &str, text: &str, image: Option<&[u8]>) {
+        let provider = Provider::from_settings(ai);
+        let cancel = Arc::new(AtomicBool::new(false));
+        self.inner().cancel = Some(cancel.clone());
+        let prompt = Prompt {
+            system: SYSTEM_PROMPT,
+            text,
+            image,
+        };
+        let result = match provider {
+            Provider::Codex | Provider::Gemini => providers::start_cli(provider, ai, &prompt, &self.workdir)
+                .and_then(|run| providers::finish_cli(provider, run, &cancel))
+                .map(|answer| self.append(id, &answer)),
+            _ => {
+                let this = self.clone();
+                let id = id.to_owned();
+                tauri::async_runtime::block_on(providers::stream_http(
+                    ai,
+                    &prompt,
+                    &mut |piece| this.append(&id, piece),
+                    &cancel,
+                ))
+            }
+        };
+        self.inner().cancel = None;
+        let error = result.err().map(|e| match e {
+            AppError::InvalidInput(message) => message,
+            other => other.to_string(),
+        });
+        self.finish(id, error);
+    }
+
     fn is_pending(&self, id: &str) -> bool {
         self.inner().exchanges.iter().any(|e| e.id == id && e.pending)
     }
@@ -276,8 +347,12 @@ impl AskService {
     }
 
     fn kill(&self) {
-        if let Some(child) = self.inner().child.as_mut() {
+        let mut inner = self.inner();
+        if let Some(child) = inner.child.as_mut() {
             let _ = child.kill();
+        }
+        if let Some(cancel) = inner.cancel.as_ref() {
+            cancel.store(true, Ordering::Relaxed);
         }
     }
 

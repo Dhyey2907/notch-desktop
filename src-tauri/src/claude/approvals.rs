@@ -43,6 +43,8 @@ pub fn is_user_dialog(tool: &str) -> bool {
 #[ts(export)]
 pub struct ApprovalRequest {
     pub id: String,
+    /// Which coding agent is asking.
+    pub agent: super::agents::Agent,
     pub session_id: String,
     pub project: String,
     /// e.g. "Bash", "Write", "WebFetch".
@@ -89,6 +91,9 @@ pub struct AuditEntry {
 /// Fields of a `PermissionRequest` payload that Notch needs.
 #[derive(Debug, Deserialize)]
 pub struct PermissionPayload {
+    /// Which agent sent it (from the hook path, not the body).
+    #[serde(skip)]
+    pub agent: super::agents::Agent,
     #[serde(default)]
     pub session_id: String,
     #[serde(default)]
@@ -97,6 +102,23 @@ pub struct PermissionPayload {
     pub tool_name: String,
     #[serde(default)]
     pub tool_input: Value,
+}
+
+/// "Update a.rs, Add b.rs" from an `apply_patch` patch (the patch itself when it has no headers).
+fn patch_files(patch: &str) -> String {
+    let files: Vec<String> = patch
+        .lines()
+        .filter_map(|l| {
+            let l = l.trim().strip_prefix("*** ")?;
+            let (verb, file) = l.split_once(" File: ")?;
+            Some(format!("{verb} {}", file.trim()))
+        })
+        .collect();
+    if files.is_empty() {
+        patch.to_owned()
+    } else {
+        files.join(", ")
+    }
 }
 
 fn truncate(text: &str, max: usize) -> String {
@@ -112,6 +134,8 @@ pub fn summarize(tool: &str, input: &Value) -> String {
     let field = |name: &str| input.get(name).and_then(Value::as_str).map(str::to_owned);
     let text = match tool {
         "Bash" | "PowerShell" => field("command"),
+        // Codex: a patch; show which files it touches.
+        "apply_patch" => field("command").map(|patch| patch_files(&patch)),
         "Write" | "Edit" | "MultiEdit" | "Read" => field("file_path"),
         "NotebookEdit" => field("notebook_path"),
         "WebFetch" => field("url"),
@@ -274,6 +298,7 @@ impl Approvals {
         let reasons = classify(&payload.tool_name, &summary);
         ApprovalRequest {
             id: uuid::Uuid::new_v4().to_string(),
+            agent: payload.agent,
             session_id: payload.session_id.clone(),
             project: payload
                 .cwd
@@ -466,6 +491,7 @@ mod tests {
 
     fn payload(tool: &str, input: Value) -> PermissionPayload {
         PermissionPayload {
+            agent: Default::default(),
             session_id: "s1".into(),
             cwd: Some(r"C:\dev\notch-desktop".into()),
             tool_name: tool.into(),

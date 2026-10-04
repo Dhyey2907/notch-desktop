@@ -18,6 +18,8 @@ pub enum Credential {
     GithubToken,
     /// Key that encrypts passwords in the Obsidian vault (base64, 32 bytes).
     VaultKey,
+    /// API key for the OpenAI-compatible AI provider (Settings → AI).
+    AiApiKey,
     #[cfg(test)]
     Test,
 }
@@ -31,6 +33,7 @@ impl Credential {
             Credential::ClaudeHookToken => "claude-code/hook-token",
             Credential::GithubToken => "github/token",
             Credential::VaultKey => "vault/key",
+            Credential::AiApiKey => "ai/api-key",
             #[cfg(test)]
             Credential::Test => "test/round-trip",
         }

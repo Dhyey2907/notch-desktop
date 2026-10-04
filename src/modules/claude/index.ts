@@ -1,4 +1,5 @@
-// Claude Code module (plan.md Phases 9–10): live agent activity, approvals, and local usage.
+// AI agents module (plan.md Phases 9–10): live activity and approvals for Claude Code, Codex and
+// Gemini CLI, plus local Claude Code usage.
 import { Sparkles } from "lucide-react";
 import { lazy } from "react";
 
@@ -8,7 +9,7 @@ import { ipc } from "../../core/ipc";
 import type { ModuleContext, NotchModule } from "../types";
 import { approvalActivity } from "./approvals";
 import { ClaudeCompact, ClaudePeek } from "./ClaudeIndicators";
-import { useClaude } from "./claudeStore";
+import { agentName, formatTurn, shouldAnnounceFinish, useClaude } from "./claudeStore";
 
 function init({ events, activities }: ModuleContext) {
   // Sessions we've already alerted for while they wait, so one wait = one alert.
@@ -29,7 +30,7 @@ function init({ events, activities }: ModuleContext) {
         priority: "high",
         tone: "warning",
         dedupKey: `claude-waiting-${session.sessionId}`,
-        title: "Claude Code needs you",
+        title: `${agentName(session.agent)} needs you`,
         body: session.project ? `Waiting for your input in ${session.project}` : "Waiting for your input",
         persistent: true,
         actions: [{ id: "dismiss", label: "Dismiss", run: () => {} }],
@@ -45,8 +46,37 @@ function init({ events, activities }: ModuleContext) {
     }
   };
 
+  // When each session started its current turn, to announce long turns when they finish.
+  const turnStarted = new Map<string, number>();
+  const syncFinished = (status: ClaudeStatus) => {
+    const now = Date.now();
+    const seen = new Set<string>();
+    for (const session of status.live) {
+      seen.add(session.sessionId);
+      if (session.state !== "idle") {
+        if (!turnStarted.has(session.sessionId)) turnStarted.set(session.sessionId, now);
+        continue;
+      }
+      const started = turnStarted.get(session.sessionId);
+      turnStarted.delete(session.sessionId);
+      if (started === undefined) continue;
+      const ms = now - started;
+      if (!shouldAnnounceFinish(ms)) continue;
+      activities.push({
+        moduleId: "claude",
+        priority: "normal",
+        tone: "success",
+        dedupKey: `agent-finished-${session.sessionId}`,
+        title: `${agentName(session.agent)} finished`,
+        body: [session.project, formatTurn(ms)].filter(Boolean).join(" · "),
+      });
+    }
+    for (const id of turnStarted.keys()) if (!seen.has(id)) turnStarted.delete(id);
+  };
+
   const apply = (status: ClaudeStatus) => {
     useClaude.getState().setStatus(status);
+    syncFinished(status);
     syncWaiting(status);
   };
 
@@ -90,7 +120,7 @@ function init({ events, activities }: ModuleContext) {
 
 export const claudeModule: NotchModule = {
   id: "claude",
-  name: "Claude Code",
+  name: "AI agents",
   icon: Sparkles,
   order: 40,
   init,

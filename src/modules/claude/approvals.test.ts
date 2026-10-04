@@ -9,6 +9,7 @@ import { approvalActivity } from "./approvals";
 
 const request = (overrides: Partial<ApprovalRequest> = {}): ApprovalRequest => ({
   id: "r1",
+  agent: "claude",
   sessionId: "s1",
   project: "notch-desktop",
   tool: "Bash",
@@ -45,5 +46,14 @@ describe("approvalActivity", () => {
       .actions?.find((a) => a.id === "deny")
       ?.run();
     expect(ipc.claudeApprovalDecide).toHaveBeenCalledWith("r1", "deny");
+  });
+});
+
+describe("other agents", () => {
+  it("names the agent that's asking", () => {
+    expect(approvalActivity(request({ agent: "codex" })).title).toBe("Codex wants to run a command");
+    expect(approvalActivity(request({ agent: "codex", tool: "apply_patch" })).title).toBe(
+      "Codex wants to edit files",
+    );
   });
 });

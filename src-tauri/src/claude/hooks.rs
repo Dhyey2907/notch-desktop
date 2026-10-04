@@ -15,6 +15,8 @@ use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
+use super::agents::{claude_event, Agent};
+
 /// Fixed so the URL written into Claude Code's settings stays valid across restarts.
 pub const HOOK_PORT: u16 = 43822;
 pub const HOOK_PATH: &str = "/hook";
@@ -46,6 +48,8 @@ pub enum AgentState {
 #[ts(export)]
 pub struct AgentSession {
     pub session_id: String,
+    /// Which coding agent runs this session.
+    pub agent: Agent,
     /// Folder name of the session's working directory.
     pub project: String,
     pub state: AgentState,
@@ -72,6 +76,9 @@ pub struct HookPayload {
     /// Process that sent the hook (looked up from the loopback connection, not the body).
     #[serde(skip)]
     pub client_pid: Option<u32>,
+    /// Which agent sent it (from the hook path; Claude Code when unset).
+    #[serde(skip)]
+    pub agent: Option<Agent>,
 }
 
 fn folder_name(cwd: &str) -> String {
@@ -124,6 +131,7 @@ impl LiveSessions {
             .entry(payload.session_id.clone())
             .or_insert_with(|| AgentSession {
                 session_id: payload.session_id.clone(),
+                agent: payload.agent.unwrap_or(Agent::Claude),
                 project: String::new(),
                 state,
                 tool: None,
@@ -137,6 +145,33 @@ impl LiveSessions {
         entry.tool = tool;
         entry.updated_at = now;
         changed
+    }
+
+    /// You answered the session's permission request in the notch: it's working again.
+    pub fn resume(&mut self, session_id: &str, now: DateTime<Utc>) -> bool {
+        match self.sessions.get_mut(session_id) {
+            Some(s) if s.state == AgentState::Waiting => {
+                s.state = AgentState::Working;
+                s.tool = None;
+                s.updated_at = now;
+                true
+            }
+            _ => false,
+        }
+    }
+
+    /// Drop every session of one agent (it was disconnected).
+    pub fn remove_agent(&mut self, agent: Agent) {
+        let gone: Vec<String> = self
+            .sessions
+            .values()
+            .filter(|s| s.agent == agent)
+            .map(|s| s.session_id.clone())
+            .collect();
+        for id in gone {
+            self.sessions.remove(&id);
+            self.pids.remove(&id);
+        }
     }
 
     /// Drop every session run by a process that has exited. Returns their ids.
@@ -189,7 +224,7 @@ pub fn check_request(
             .find(|(k, _)| k.eq_ignore_ascii_case(name))
             .map(|(_, v)| v.as_str())
     };
-    if method != "POST" || (path != HOOK_PATH && path != STATUS_LINE_PATH) {
+    if method != "POST" || (Agent::from_path(path).is_none() && path != STATUS_LINE_PATH) {
         return Err(Rejection::NotFound);
     }
     // DNS-rebinding guard: only accept requests addressed to the loopback host itself.
@@ -325,7 +360,31 @@ fn handle(mut request: tiny_http::Request, token: &str, handlers: &Handlers, por
     }
     match serde_json::from_slice::<HookPayload>(&body) {
         Ok(mut payload) => {
+            let agent = Agent::from_path(&path).unwrap_or(Agent::Claude);
             payload.client_pid = client_pid;
+            if agent != Agent::Claude {
+                // Sent by Notch's relay: the agent's own process is in a header (the relay
+                // itself exits right away), and its events are mapped onto Claude Code's.
+                payload.client_pid = headers
+                    .iter()
+                    .find(|(k, _)| k.eq_ignore_ascii_case("x-notch-agent-pid"))
+                    .and_then(|(_, v)| v.trim().parse().ok());
+                match claude_event(
+                    agent,
+                    &payload.hook_event_name,
+                    payload.notification_type.as_deref(),
+                ) {
+                    Some((event, notification)) => {
+                        payload.hook_event_name = event;
+                        payload.notification_type = notification;
+                    }
+                    None => {
+                        respond(request, 200, "{}".into());
+                        return;
+                    }
+                }
+            }
+            payload.agent = Some(agent);
             let response = (handlers.hook)(payload, &body);
             respond(request, 200, response);
         }
@@ -345,7 +404,19 @@ mod tests {
             tool_name: None,
             notification_type: None,
             client_pid: None,
+            agent: None,
         }
+    }
+
+    #[test]
+    fn answering_in_the_notch_resumes_a_waiting_session() {
+        let now = Utc::now();
+        let mut live = LiveSessions::default();
+        live.apply(&payload("PermissionRequest", "a"), now);
+        assert!(live.resume("a", now));
+        assert_eq!(live.snapshot(now)[0].state, AgentState::Working);
+        assert!(!live.resume("a", now), "already working");
+        assert!(!live.resume("missing", now));
     }
 
     #[test]

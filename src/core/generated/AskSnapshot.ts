@@ -7,6 +7,14 @@ export type AskSnapshot = { exchanges: Array<Exchange>,
  */
 targetApp?: string, 
 /**
- * Claude Code was found on this PC.
+ * The chosen AI can be used (installed / set up).
  */
-available: boolean, };
+available: boolean, 
+/**
+ * Its name for the UI: "Claude", "Codex", "Gemini", "Ollama" or "AI".
+ */
+provider: string, 
+/**
+ * It can look at a screenshot of your window.
+ */
+seesScreen: boolean, };

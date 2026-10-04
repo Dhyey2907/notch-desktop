@@ -287,7 +287,7 @@ impl GitService {
         result
     }
 
-    /// Ask Claude Code for a commit message describing the current changes.
+    /// Ask the chosen AI (Settings → AI) for a commit message describing the current changes.
     pub async fn suggest_message(
         &self,
         include_untracked: bool,
@@ -299,9 +299,10 @@ impl GitService {
             .repo
             .clone()
             .ok_or_else(|| AppError::InvalidInput("choose a repository first".into()))?;
+        let ai = settings_of(&self.inner.app).ai;
         tauri::async_runtime::spawn_blocking(move || {
             let diff = cli::commit_diff(&repo, include_untracked)?;
-            let message = crate::ask::once::answer(COMMIT_PROMPT, &diff, &workdir)?;
+            let message = crate::ask::providers::answer(&ai, COMMIT_PROMPT, &diff, &workdir)?;
             // Just the message, even if it came wrapped in a code block.
             Ok(message
                 .trim()

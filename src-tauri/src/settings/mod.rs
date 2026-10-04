@@ -487,6 +487,29 @@ impl Default for DaySettings {
     }
 }
 
+/// Which AI answers Ask, plans the day and writes commit messages.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export)]
+pub struct AiSettings {
+    /// `claude`, `codex`, `gemini`, `ollama` or `openai` (any OpenAI-compatible API).
+    pub provider: String,
+    /// Model name; empty = the provider's default (Ollama: the first installed model).
+    pub model: String,
+    /// API address for `openai` (e.g. https://api.openai.com/v1) or a non-default Ollama.
+    pub base_url: String,
+}
+
+impl Default for AiSettings {
+    fn default() -> Self {
+        Self {
+            provider: "claude".into(),
+            model: String::new(),
+            base_url: String::new(),
+        }
+    }
+}
+
 /// Healthy breaks and the streak the pet keeps.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", default)]
@@ -622,6 +645,7 @@ pub struct Settings {
     pub day: DaySettings,
     pub desk: DeskSettings,
     pub breaks: BreakSettings,
+    pub ai: AiSettings,
     pub fun: FunSettings,
 }
 
@@ -703,6 +727,16 @@ impl Settings {
                 .any(|r| !valid_id(&r.id) || crate::desk::validate(r).is_err())
         {
             return Err(AppError::InvalidInput("invalid routine".into()));
+        }
+        let ai = &self.ai;
+        if !["claude", "codex", "gemini", "ollama", "openai"].contains(&ai.provider.as_str())
+            || ai.model.len() > 200
+            || ai.base_url.len() > 500
+            || !(ai.base_url.is_empty()
+                || ai.base_url.starts_with("https://")
+                || ai.base_url.starts_with("http://"))
+        {
+            return Err(AppError::InvalidInput("invalid AI settings".into()));
         }
         let br = &self.breaks;
         if [br.eye_min, br.stretch_min, br.water_min]
