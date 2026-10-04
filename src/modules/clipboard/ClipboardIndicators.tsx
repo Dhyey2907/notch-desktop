@@ -1,3 +1,4 @@
+import { ArrowDown } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { useSettings } from "../../settings";
@@ -51,7 +52,11 @@ export function FilesCompact() {
     );
   }
   if (downloading) {
-    return <span className="files-compact files-compact--down" role="img" aria-label="Downloading" />;
+    return (
+      <span className="files-compact files-compact--down" role="img" aria-label="Downloading">
+        <ArrowDown strokeWidth={3} aria-hidden />
+      </span>
+    );
   }
   return null;
 }

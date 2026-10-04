@@ -25,12 +25,14 @@
 }
 
 .files-compact--down {
-  width: 2px;
-  height: 8px;
-  border-radius: 1px;
-  background: var(--info);
-  position: relative;
+  color: var(--info);
   animation: files-down 1s ease-in-out infinite;
+}
+
+.island-content--collapsed .files-compact--down svg {
+  width: 10px;
+  height: 10px;
+  color: var(--info);
 }
 
 @keyframes files-down {

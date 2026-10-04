@@ -16,7 +16,7 @@ export function Pet() {
   const label = breakStreak > 0 ? `${LABELS[mood]}, ${breakStreak}-day break streak` : LABELS[mood];
   return (
     <span className={`pet pet--${mood}`} role="img" aria-label={label} title={label}>
-      <svg viewBox="0 0 18 14" width="18" height="14" aria-hidden>
+      <svg viewBox="0 0 18 14" width="13" height="10" aria-hidden>
         <path className="pet__body" d="M2 13 C2 5 5 1.5 9 1.5 C13 1.5 16 5 16 13 Z" />
         {mood === "sleepy" ? (
           <>

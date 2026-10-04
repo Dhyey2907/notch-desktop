@@ -154,7 +154,6 @@
   flex: none;
   width: 6px;
   height: 6px;
-  margin-right: 6px;
   border-radius: 999px;
   background: var(--warning);
   animation: island-attention-pulse 1.4s ease-in-out infinite;
@@ -164,6 +163,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
 }
 
 @keyframes island-attention-pulse {

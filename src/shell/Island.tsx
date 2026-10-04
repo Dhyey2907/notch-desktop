@@ -37,6 +37,7 @@ import {
   type IslandMode,
 } from "./geometry";
 import { CompactHost, ModuleHost, PeekHost } from "./ModuleHost";
+import { useBubbleFit } from "./useBubbleFit";
 import { useFirstRunPrompt } from "./useFirstRunPrompt";
 import { useBreaks } from "../focus/useBreaks";
 import { usePetCheers } from "../focus/usePetCheers";
@@ -95,6 +96,7 @@ export function Island() {
   const fullscreenBehavior = useSettings((s) => s.settings?.behavior.fullscreen ?? "alerts");
   const islandRef = useRef<HTMLElement>(null);
   useMusicPulse(islandRef);
+  useBubbleFit(islandRef, mode === "collapsed", look?.bubble === "dot");
   useSystemHud();
   useFirstRunPrompt();
   useBreaks();

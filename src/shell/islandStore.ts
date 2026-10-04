@@ -20,6 +20,9 @@ export interface IslandState {
   settle: () => Promise<void>;
   /** Resize the window again even if the state didn't change (the notch size setting did). */
   refit: () => Promise<void>;
+  /** Width of the resting bubble: wider when it has more to show (music, downloads, pet…). */
+  bubbleWidth: number;
+  setBubbleWidth: (width: number) => Promise<void>;
 }
 
 export function createIslandStore(resizeWindow: ResizeWindow, initialMode: IslandMode = "collapsed") {
@@ -41,7 +44,18 @@ export function createIslandStore(resizeWindow: ResizeWindow, initialMode: Islan
     mode: initialMode,
     size: ISLAND_SIZE[initialMode],
 
-    request: async (mode, size = ISLAND_SIZE[mode]) => {
+    bubbleWidth: ISLAND_SIZE.collapsed.width,
+
+    setBubbleWidth: async (width) => {
+      if (width === get().bubbleWidth) return;
+      set({ bubbleWidth: width });
+      if (get().mode === "collapsed") await get().request("collapsed");
+    },
+
+    request: async (mode, requested) => {
+      const size =
+        requested ??
+        (mode === "collapsed" ? { ...ISLAND_SIZE.collapsed, width: get().bubbleWidth } : ISLAND_SIZE[mode]);
       const current = get();
       if (mode === current.mode && sameSize(current.size, size)) return;
       const requestId = ++latestRequest;
