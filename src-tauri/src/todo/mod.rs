@@ -232,6 +232,24 @@ pub fn start_timer(
     )?)
 }
 
+/// Remind about an existing task at a set time (it rings then, like a timer).
+pub fn remind_at(
+    conn: &Connection,
+    id: &str,
+    at: DateTime<Utc>,
+    ring: bool,
+    now: DateTime<Utc>,
+) -> AppResult<()> {
+    if at <= now || at > now + chrono::Duration::days(366) {
+        return Err(AppError::InvalidInput("Pick a time in the next year".into()));
+    }
+    changed(conn.execute(
+        "UPDATE todo_tasks SET timer_ends_at = ?2, timer_secs = NULL, ring = ?3, done = 0, done_at = NULL
+         WHERE id = ?1",
+        params![id, at.timestamp(), ring],
+    )?)
+}
+
 pub fn cancel_timer(conn: &Connection, id: &str) -> AppResult<()> {
     changed(conn.execute("UPDATE todo_tasks SET timer_ends_at = NULL WHERE id = ?1", [id])?)
 }
@@ -330,6 +348,22 @@ pub fn delete_note(conn: &Connection, id: &str) -> AppResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reminds_about_an_existing_task_at_a_time() {
+        let mut conn = rusqlite::Connection::open_in_memory().unwrap();
+        crate::db::migrate_for_tests(&mut conn);
+        let now = Utc::now();
+        let task = add_task(&conn, "Call mom", None, true, now).unwrap();
+        let at = now + chrono::Duration::hours(3);
+        remind_at(&conn, &task.id, at, true, now).unwrap();
+        assert_eq!(
+            next_timer_at(&conn).unwrap().map(|t| t.timestamp()),
+            Some(at.timestamp())
+        );
+        assert!(remind_at(&conn, &task.id, now - chrono::Duration::minutes(1), true, now).is_err());
+        assert!(remind_at(&conn, "missing", at, true, now).is_err());
+    }
     use chrono::Duration;
 
     fn db() -> Connection {

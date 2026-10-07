@@ -1,7 +1,7 @@
 use tauri::State;
 
 use crate::{
-    calendar::{service::CalendarService, CalendarSnapshot},
+    calendar::{service::CalendarService, CalendarSnapshot, InviteResponse, NewEvent, QuickAdded},
     error::AppResult,
 };
 
@@ -34,4 +34,23 @@ pub fn calendar_sync_now(calendar: State<'_, CalendarService>) {
 #[tauri::command]
 pub fn calendar_open_link(url: String, calendar: State<'_, CalendarService>) -> AppResult<()> {
     calendar.open_link(&url)
+}
+
+#[tauri::command]
+pub async fn calendar_create_event(event: NewEvent, calendar: State<'_, CalendarService>) -> AppResult<()> {
+    calendar.create_event(event).await
+}
+
+#[tauri::command]
+pub async fn calendar_quick_add(text: String, calendar: State<'_, CalendarService>) -> AppResult<QuickAdded> {
+    calendar.quick_add(&text).await
+}
+
+#[tauri::command]
+pub async fn calendar_respond(
+    event_id: String,
+    answer: InviteResponse,
+    calendar: State<'_, CalendarService>,
+) -> AppResult<()> {
+    calendar.respond(&event_id, answer).await
 }

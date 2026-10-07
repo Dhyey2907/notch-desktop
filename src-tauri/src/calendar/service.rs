@@ -207,8 +207,13 @@ impl CalendarService {
             oauth::revoke(&self.inner.http, &token).await;
         }
         secrets::delete(Credential::GoogleRefreshToken)?;
+        // Everything kept from Google goes: cached events, and the day plan (it can mention
+        // meeting titles).
         self.inner.app.state::<AppState>().db.with(|conn| {
-            conn.execute("DELETE FROM kv_cache WHERE key = ?1", [CACHE_KEY])?;
+            conn.execute(
+                "DELETE FROM kv_cache WHERE key IN (?1, ?2)",
+                [CACHE_KEY, crate::day::service::PLAN_KEY],
+            )?;
             Ok(())
         })?;
         update_settings(&self.inner.app, |s| s.calendar.account_email = None)?;
@@ -221,6 +226,15 @@ impl CalendarService {
             state.fired.clear();
         }
         self.inner.set_status(CalendarStatus::Disconnected);
+        // Mail and Classroom drop what they hold in memory now, not at their next check.
+        self.inner
+            .app
+            .state::<crate::mail::service::MailService>()
+            .refresh();
+        self.inner
+            .app
+            .state::<crate::day::service::DayService>()
+            .refresh();
         tracing::info!("calendar disconnected");
         Ok(())
     }
@@ -243,6 +257,95 @@ impl CalendarService {
             && scope
                 .split_whitespace()
                 .all(|s| calendar.granted_scopes.iter().any(|g| g == s))
+    }
+
+    /// Calendar actions need the user's OK (Settings → Calendar) and Google's.
+    fn can_edit(&self) -> AppResult<()> {
+        if self.inner.mock {
+            return Err(AppError::InvalidInput("Not with sample events".into()));
+        }
+        if !settings_of(&self.inner.app).calendar.edit {
+            return Err(AppError::InvalidInput(
+                "Turn on \"Add events and answer invites\" in Settings → Calendar".into(),
+            ));
+        }
+        if !self.granted(oauth::CALENDAR_EDIT_SCOPE) {
+            return Err(AppError::InvalidInput(
+                "Sign in with Google again in Settings → Calendar to allow adding events".into(),
+            ));
+        }
+        Ok(())
+    }
+
+    /// Runs a write with a fresh token, retrying once if the token went stale, then syncs.
+    async fn write<T, F, Fut>(&self, call: F) -> AppResult<T>
+    where
+        F: Fn(reqwest::Client, String) -> Fut,
+        Fut: std::future::Future<Output = Result<T, FetchError>>,
+    {
+        self.can_edit()?;
+        for attempt in 0..2 {
+            let token = self.google_token().await?;
+            match call(self.inner.http.clone(), token).await {
+                Ok(value) => {
+                    self.sync_now();
+                    return Ok(value);
+                }
+                Err(FetchError::Unauthorized) if attempt == 0 => self.inner.lock().access_token = None,
+                Err(FetchError::Unauthorized) => break,
+                Err(FetchError::Network(_)) => return Err(AppError::InvalidInput("You're offline".into())),
+                Err(FetchError::Other(detail)) => {
+                    tracing::info!(%detail, "calendar write failed");
+                    return Err(AppError::InvalidInput(
+                        "Google Calendar didn't accept that".into(),
+                    ));
+                }
+            }
+        }
+        Err(AppError::InvalidInput(
+            "Sign in with Google again in Settings → Calendar".into(),
+        ))
+    }
+
+    pub async fn create_event(&self, event: super::NewEvent) -> AppResult<()> {
+        event.validate()?;
+        self.write(|http, token| {
+            let event = event.clone();
+            async move { google::create_event(&http, &token, &event).await }
+        })
+        .await
+    }
+
+    /// "Lunch with Ann tomorrow 1pm" → an event, read by Google. Returns what it made.
+    pub async fn quick_add(&self, text: &str) -> AppResult<super::QuickAdded> {
+        let text = text.trim();
+        if text.is_empty() || text.chars().count() > 300 {
+            return Err(AppError::InvalidInput("Describe the event in a sentence".into()));
+        }
+        let (title, start) = self
+            .write(|http, token| {
+                let text = text.to_owned();
+                async move { google::quick_add(&http, &token, &text).await }
+            })
+            .await?;
+        Ok(super::QuickAdded { title, start })
+    }
+
+    pub async fn respond(&self, event_id: &str, answer: super::InviteResponse) -> AppResult<()> {
+        if event_id.is_empty()
+            || event_id.len() > 1024
+            || !event_id.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+        {
+            return Err(AppError::InvalidInput("invalid event".into()));
+        }
+        if answer == super::InviteResponse::NeedsAction {
+            return Err(AppError::InvalidInput("Pick yes, maybe or no".into()));
+        }
+        self.write(|http, token| {
+            let id = event_id.to_owned();
+            async move { google::respond(&http, &token, &id, answer).await }
+        })
+        .await
     }
 
     /// Today's events (already synced).
@@ -303,7 +406,7 @@ impl Inner {
         let (verifier, challenge) = crate::oauth::pkce_pair();
         let state_token = uuid::Uuid::new_v4().to_string();
         let calendar = settings_of(&self.app).calendar;
-        let scopes = oauth::scopes_for(calendar.gmail, calendar.classroom);
+        let scopes = oauth::scopes_for(calendar.gmail, calendar.classroom, calendar.edit);
         let url = oauth::authorization_url(client_id, &redirect_uri, &challenge, &state_token, &scopes);
         self.app
             .opener()
@@ -554,6 +657,7 @@ fn mock_events(now: DateTime<Utc>) -> Vec<CalendarEvent> {
         join_url: join.then(|| "https://example.com/mock-meeting".into()),
         location: None,
         html_link: None,
+        my_response: None,
     };
     let mut events = vec![
         CalendarEvent {

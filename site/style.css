@@ -1,0 +1,183 @@
+:root {
+  --bg: #fbfbfa;
+  --surface: #ffffff;
+  --text: #16171a;
+  --muted: #5d6068;
+  --border: #e4e4e1;
+  --accent: #3b6fe0;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0c0c0d;
+    --surface: #151517;
+    --text: #ececee;
+    --muted: #9b9ca3;
+    --border: #2a2a2e;
+    --accent: #8ab4ff;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font:
+    16px/1.65 "Segoe UI",
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+
+a {
+  color: var(--accent);
+}
+
+header,
+main,
+footer {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 28px;
+  padding-bottom: 8px;
+}
+
+header img {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+}
+
+header .name {
+  font-weight: 650;
+  font-size: 18px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+nav {
+  margin-left: auto;
+  display: flex;
+  gap: 16px;
+  font-size: 14px;
+}
+
+nav a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+nav a:hover,
+nav a[aria-current="page"] {
+  color: var(--text);
+}
+
+h1 {
+  font-size: 34px;
+  line-height: 1.2;
+  margin: 36px 0 8px;
+}
+
+h2 {
+  font-size: 20px;
+  margin: 36px 0 8px;
+}
+
+h3 {
+  font-size: 16px;
+  margin: 22px 0 4px;
+}
+
+.lead {
+  font-size: 18px;
+  color: var(--muted);
+  margin-top: 0;
+}
+
+.updated {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin: 24px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.features li {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.features strong {
+  display: block;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  font-size: 15px;
+}
+
+th,
+td {
+  text-align: left;
+  vertical-align: top;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+th {
+  font-weight: 600;
+}
+
+code {
+  font-size: 0.9em;
+  word-break: break-all;
+}
+
+.note {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+
+footer {
+  margin-top: 48px;
+  padding-top: 16px;
+  padding-bottom: 40px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 14px;
+}
+
+@media (max-width: 560px) {
+  h1 {
+    font-size: 28px;
+  }
+
+  nav {
+    gap: 12px;
+  }
+}

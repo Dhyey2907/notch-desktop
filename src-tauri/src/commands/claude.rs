@@ -109,3 +109,9 @@ pub async fn codex_usage(
         .await
         .map_err(|e| crate::error::AppError::Platform(e.to_string()))
 }
+
+/// Send an example approval card (nothing runs, whatever you answer).
+#[tauri::command]
+pub fn claude_test_approval(claude: State<'_, ClaudeService>) {
+    claude.test_approval();
+}

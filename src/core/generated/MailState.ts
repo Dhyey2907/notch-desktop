@@ -2,4 +2,8 @@
 import type { MailMessage } from "./MailMessage";
 import type { MailStatus } from "./MailStatus";
 
-export type MailState = { status: MailStatus, unread: number, messages: Array<MailMessage>, };
+export type MailState = { status: MailStatus, unread: number, messages: Array<MailMessage>, 
+/**
+ * Unread messages hidden until their snooze ends.
+ */
+snoozed: number, };

@@ -47,6 +47,14 @@ pub fn todo_start_timer(id: String, minutes: u32, ring: bool, todo: State<'_, To
     todo.start_timer(&id, minutes, ring)
 }
 
+/// Remind about a task at `at_ms` (epoch milliseconds).
+#[tauri::command]
+pub fn todo_remind_at(id: String, at_ms: i64, ring: bool, todo: State<'_, TodoService>) -> AppResult<()> {
+    let at = chrono::DateTime::from_timestamp_millis(at_ms)
+        .ok_or_else(|| crate::error::AppError::InvalidInput("invalid time".into()))?;
+    todo.remind_at(&id, at, ring)
+}
+
 #[tauri::command]
 pub fn todo_cancel_timer(id: String, todo: State<'_, TodoService>) -> AppResult<()> {
     todo.cancel_timer(&id)

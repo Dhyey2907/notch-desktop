@@ -22,7 +22,7 @@ use crate::{
     calendar::{CalendarEvent, CalendarSnapshot},
     claude::{approvals::ApprovalRequest, ClaudeStatus},
     clipboard::{ClipboardSnapshot, CopySuggestion},
-    control::{ControlSnapshot, SystemAlert},
+    control::{speedtest::SpeedTest, ControlSnapshot, SystemAlert},
     day::{Assignment, DayState},
     developer::DevServer,
     expander::Snippet,
@@ -35,6 +35,7 @@ use crate::{
     media::MediaState,
     music::Lyrics,
     phone::{PhoneNotification, PhoneSnapshot},
+    readlater::ReadLaterSnapshot,
     settings::Settings,
     shelf::ShelfSnapshot,
     spotify::SpotifySnapshot,
@@ -209,6 +210,10 @@ pub enum AppEvent {
     BluetoothChanged(BluetoothDevice),
     /// Files on the drop shelf changed.
     ShelfChanged(ShelfSnapshot),
+    /// A speed test moved on (ping → download → upload → done).
+    SpeedTestChanged(SpeedTest),
+    /// The read-later list changed.
+    ReadLaterChanged(ReadLaterSnapshot),
     /// Tasks, notes, or finished-timer alerts changed.
     TodoChanged(TodoSnapshot),
     /// A task's timer ran out (`late`: it ran out while Notch wasn't running).
@@ -231,6 +236,8 @@ impl AppEvent {
             AppEvent::ClipboardChanged(_) => "ClipboardChanged",
             AppEvent::CopySuggestion(_) => "CopySuggestion",
             AppEvent::ShelfChanged(_) => "ShelfChanged",
+            AppEvent::ReadLaterChanged(_) => "ReadLaterChanged",
+            AppEvent::SpeedTestChanged(_) => "SpeedTestChanged",
             AppEvent::SoundChanged { .. } => "SoundChanged",
             AppEvent::BrightnessChanged { .. } => "BrightnessChanged",
             AppEvent::BluetoothChanged(_) => "BluetoothChanged",

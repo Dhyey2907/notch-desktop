@@ -2,6 +2,7 @@
 // registered module is enabled.
 import { askModule } from "./ask";
 import { calendarModule } from "./calendar";
+import { captureModule } from "./capture";
 import { claudeModule } from "./claude";
 import { clipboardModule } from "./clipboard";
 import { controlModule } from "./control";
@@ -14,6 +15,7 @@ import { galleryModule } from "./gallery";
 import { gitModule } from "./git";
 import { homeModule } from "./home";
 import { mediaModule } from "./media";
+import { petModule } from "./pet";
 import { phoneModule } from "./phone";
 import { todoModule } from "./todo";
 import { vaultModule } from "./vault";
@@ -44,10 +46,12 @@ export const MODULES: readonly NotchModule[] = sortModules(
     devToolsModule,
     deskModule,
     claudeModule,
+    captureModule,
     todoModule,
     clipboardModule,
     vaultModule,
     phoneModule,
+    petModule,
     ...devModules,
   ],
   import.meta.env.DEV,

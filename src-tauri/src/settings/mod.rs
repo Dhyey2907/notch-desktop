@@ -70,6 +70,8 @@ pub struct CalendarSettings {
     pub gmail: bool,
     /// Also ask Google for Classroom (assignment deadlines).
     pub classroom: bool,
+    /// Also ask Google to add events and answer invites (Calendar actions).
+    pub edit: bool,
     /// Scopes Google granted at the last sign-in.
     pub granted_scopes: Vec<String>,
 }
@@ -82,6 +84,7 @@ impl Default for CalendarSettings {
             reminder_minutes: 5,
             gmail: false,
             classroom: false,
+            edit: false,
             granted_scopes: Vec::new(),
         }
     }
@@ -308,6 +311,8 @@ pub struct ShortcutSettings {
     pub grab: String,
     /// Pin the window in front on top (or unpin it).
     pub pin: String,
+    /// Quick capture: type a task, reminder, note, event or link from anywhere.
+    pub capture: String,
 }
 
 impl Default for ShortcutSettings {
@@ -318,6 +323,7 @@ impl Default for ShortcutSettings {
             clipboard: "Ctrl+Alt+V".into(),
             grab: "Ctrl+Alt+G".into(),
             pin: "Ctrl+Alt+P".into(),
+            capture: "Ctrl+Alt+Space".into(),
         }
     }
 }
@@ -473,6 +479,9 @@ pub struct DaySettings {
     pub no_auto_plan: bool,
     /// Hide the workday progress line under the bubble.
     pub no_workday_bar: bool,
+    /// The AI day planner may see today's Google Calendar meetings and Classroom deadlines
+    /// (titles and times). Off until the user turns it on (Google's Limited Use policy).
+    pub share_google: bool,
 }
 
 impl Default for DaySettings {
@@ -483,6 +492,7 @@ impl Default for DaySettings {
             work_days: vec![1, 2, 3, 4, 5],
             no_auto_plan: false,
             no_workday_bar: false,
+            share_google: false,
         }
     }
 }
@@ -517,6 +527,86 @@ impl AiSettings {
         self.models.get(&self.provider).map(|m| m.trim()).unwrap_or("")
     }
 }
+
+/// The pet: who it is, how it talks, what it reacts to, and what it's done with you.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export)]
+pub struct PetSettings {
+    /// "" = "Pet".
+    pub name: String,
+    /// Body color as #rrggbb; "" = the theme's text color.
+    pub color: String,
+    /// How it talks: cheerful, sarcastic, professional, calm, coach, nerdy or dramatic.
+    pub tone: String,
+    /// Speech bubbles on at all.
+    pub talk: bool,
+    /// How often it may speak: quiet, normal or chatty.
+    pub chattiness: String,
+    /// What it talks about.
+    pub say_meetings: bool,
+    pub say_breaks: bool,
+    pub say_focus: bool,
+    pub say_agents: bool,
+    pub say_battery: bool,
+    pub say_weather: bool,
+    pub say_late: bool,
+    pub say_greeting: bool,
+    /// What it reacts to.
+    pub react_music: bool,
+    pub react_video: bool,
+    pub react_coding: bool,
+    pub react_weather: bool,
+    pub react_battery: bool,
+    pub react_day: bool,
+    /// Clicking it pats it.
+    pub petting: bool,
+    /// The day it was "born" (YYYY-MM-DD), set on first launch.
+    pub born: String,
+    pub pats: u32,
+    /// Grows with focus sessions, breaks and finished tasks.
+    pub xp: u32,
+}
+
+impl Default for PetSettings {
+    fn default() -> Self {
+        Self {
+            name: String::new(),
+            color: String::new(),
+            tone: "cheerful".into(),
+            talk: true,
+            chattiness: "normal".into(),
+            say_meetings: true,
+            say_breaks: true,
+            say_focus: true,
+            say_agents: true,
+            say_battery: true,
+            say_weather: true,
+            say_late: true,
+            say_greeting: true,
+            react_music: true,
+            react_video: true,
+            react_coding: true,
+            react_weather: true,
+            react_battery: true,
+            react_day: true,
+            petting: true,
+            born: String::new(),
+            pats: 0,
+            xp: 0,
+        }
+    }
+}
+
+pub const PET_TONES: [&str; 7] = [
+    "cheerful",
+    "sarcastic",
+    "professional",
+    "calm",
+    "coach",
+    "nerdy",
+    "dramatic",
+];
 
 /// Healthy breaks and the streak the pet keeps.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -653,6 +743,7 @@ pub struct Settings {
     pub day: DaySettings,
     pub desk: DeskSettings,
     pub breaks: BreakSettings,
+    pub pet: PetSettings,
     pub ai: AiSettings,
     pub fun: FunSettings,
 }
@@ -747,6 +838,15 @@ impl Settings {
         {
             return Err(AppError::InvalidInput("invalid AI settings".into()));
         }
+        let pet = &self.pet;
+        if pet.name.chars().count() > 24
+            || !(pet.color.is_empty() || valid_hex_color(&pet.color))
+            || !PET_TONES.contains(&pet.tone.as_str())
+            || !["quiet", "normal", "chatty"].contains(&pet.chattiness.as_str())
+            || pet.born.len() > 10
+        {
+            return Err(AppError::InvalidInput("invalid pet settings".into()));
+        }
         let br = &self.breaks;
         if [br.eye_min, br.stretch_min, br.water_min]
             .iter()
@@ -803,7 +903,7 @@ impl Settings {
             return Err(AppError::InvalidInput("invalid behavior settings".into()));
         }
         let k = &self.shortcuts;
-        if [&k.open, &k.ask, &k.clipboard, &k.grab, &k.pin]
+        if [&k.open, &k.ask, &k.clipboard, &k.grab, &k.pin, &k.capture]
             .iter()
             .any(|s| s.len() > 40)
         {
@@ -875,11 +975,49 @@ pub fn load(conn: &Connection) -> AppResult<Settings> {
     match serde_json::from_str(&raw) {
         Ok(settings) => Ok(settings),
         Err(error) => {
-            // Don't crash the app over a corrupt row; start from defaults and say so.
-            tracing::warn!(%error, "stored settings are unreadable; using defaults");
-            Ok(Settings::default())
+            // One unreadable value must not wipe everything: keep every group that still reads,
+            // reset only the rest, and keep the original row so nothing is lost for good.
+            tracing::warn!(%error, "some stored settings are unreadable; keeping the rest");
+            let _ = conn.execute(
+                "INSERT INTO settings (key, value, updated_at) VALUES (?1, ?2, ?3)
+                 ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
+                params![UNREADABLE_KEY, raw, chrono::Utc::now().to_rfc3339()],
+            );
+            Ok(salvage(&raw))
         }
     }
+}
+
+/// Where an unreadable settings row is kept (for recovery) before it's repaired.
+const UNREADABLE_KEY: &str = "app.unreadable";
+
+/// Settings from JSON that doesn't fully parse: every top-level group that still reads is
+/// kept, the others take their defaults. Returns the names of the groups that were reset.
+pub fn salvage_groups(raw: &str) -> (Settings, Vec<String>) {
+    let Ok(serde_json::Value::Object(stored)) = serde_json::from_str::<serde_json::Value>(raw) else {
+        return (Settings::default(), vec!["all".into()]);
+    };
+    let Ok(serde_json::Value::Object(mut merged)) = serde_json::to_value(Settings::default()) else {
+        return (Settings::default(), vec!["all".into()]);
+    };
+    let mut reset = Vec::new();
+    for (key, value) in stored {
+        let mut candidate = merged.clone();
+        candidate.insert(key.clone(), value.clone());
+        if serde_json::from_value::<Settings>(serde_json::Value::Object(candidate)).is_ok() {
+            merged.insert(key, value);
+        } else {
+            reset.push(key);
+        }
+    }
+    let settings = serde_json::from_value(serde_json::Value::Object(merged)).unwrap_or_default();
+    (settings, reset)
+}
+
+fn salvage(raw: &str) -> Settings {
+    let (settings, reset) = salvage_groups(raw);
+    tracing::warn!(groups = ?reset, "settings groups reset to defaults");
+    settings
 }
 
 pub fn save(conn: &Connection, settings: &Settings) -> AppResult<()> {
@@ -895,6 +1033,50 @@ pub fn save(conn: &Connection, settings: &Settings) -> AppResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn one_bad_value_doesnt_reset_everything() {
+        let mut good = Settings::default();
+        good.appearance.bubble = BubbleStyle::Dot;
+        good.music.hide_border = true;
+        let mut json: serde_json::Value = serde_json::to_value(&good).unwrap();
+        // A value an older or newer Notch wrote that this one can't read.
+        json["behavior"]["fullscreen"] = serde_json::json!("somethingNew");
+        let (settings, reset) = salvage_groups(&json.to_string());
+        assert_eq!(reset, ["behavior"]);
+        assert_eq!(
+            settings.appearance.bubble,
+            BubbleStyle::Dot,
+            "other groups are kept"
+        );
+        assert!(settings.music.hide_border);
+        assert_eq!(settings.behavior, BehaviorSettings::default());
+        assert_eq!(salvage_groups("not json").1, ["all"]);
+    }
+
+    #[test]
+    fn unreadable_settings_are_salvaged_and_backed_up() {
+        let mut conn = rusqlite::Connection::open_in_memory().unwrap();
+        crate::db::migrate_for_tests(&mut conn);
+        let mut stored: serde_json::Value = serde_json::to_value(Settings::default()).unwrap();
+        stored["music"]["hideBorder"] = serde_json::json!(true);
+        stored["behavior"]["fullscreen"] = serde_json::json!(42);
+        conn.execute(
+            "INSERT INTO settings (key, value, updated_at) VALUES (?1, ?2, 'x')",
+            params![SETTINGS_KEY, stored.to_string()],
+        )
+        .unwrap();
+        let loaded = load(&conn).unwrap();
+        assert!(loaded.music.hide_border);
+        let backup: String = conn
+            .query_row(
+                "SELECT value FROM settings WHERE key = ?1",
+                [UNREADABLE_KEY],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert!(backup.contains("42"));
+    }
     use crate::db::Db;
 
     fn db() -> Db {

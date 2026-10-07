@@ -17,8 +17,8 @@ export function MusicSetting() {
         onChange={(on) => set({ hideReactive: !on })}
       />
       <Switch
-        label="Colored border"
-        description="An outline around the notch in the album's colors that brightens on the beat."
+        label="Music glow"
+        description="A glow and edge around the notch in the player's colors that brightens on the beat."
         checked={!music.hideBorder}
         disabled={music.hideReactive}
         onChange={(on) => set({ hideBorder: !on })}

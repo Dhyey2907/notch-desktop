@@ -39,7 +39,7 @@ export function useBubbleFit(island: RefObject<HTMLElement | null>, active: bool
     const widthOf = (content: HTMLElement) => {
       const marks: number[] = [];
       for (const child of Array.from(content.children)) {
-        // Overlays (workday line, clock) don't take room in the row.
+        // Overlays (the workday line) don't take room in the row.
         if (getComputedStyle(child).position === "absolute") continue;
         if (child.classList.contains("compact-host")) {
           for (const mark of Array.from(child.children)) marks.push(size(mark));

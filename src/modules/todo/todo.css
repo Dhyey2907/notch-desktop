@@ -348,3 +348,96 @@
   margin-left: auto;
   gap: var(--space-2);
 }
+
+/* Done: a quiet circle that fills with the accent when ticked. */
+.todo-check {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 0 4px;
+  padding: 0;
+  border: 1.5px solid var(--text-muted);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--on-active, #0a0a0a);
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease;
+}
+
+.todo-check:hover {
+  border-color: var(--text-secondary);
+}
+
+.todo-check--done {
+  border-color: var(--active);
+  background: var(--active);
+}
+
+/* The bell / alarm toggles: just the icon, highlighted when on. */
+.todo-bell {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.todo-bell:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.todo-bell--on {
+  color: var(--active);
+}
+
+.todo-remind {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 6px 0 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.todo-remind__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.todo-remind__label {
+  min-width: 70px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.todo-remind__date {
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg, transparent);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12px;
+  color-scheme: dark;
+}
+
+.todo-chip--primary {
+  background: var(--active);
+  color: var(--on-active, #0a0a0a);
+}

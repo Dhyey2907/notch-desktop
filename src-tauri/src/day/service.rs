@@ -22,7 +22,7 @@ use crate::{
 const TICK: Duration = Duration::from_secs(300);
 /// Classroom every this many ticks (30 min).
 const CLASSROOM_EVERY: u64 = 6;
-const PLAN_KEY: &str = "day_plan";
+pub const PLAN_KEY: &str = "day_plan";
 const API: &str = "https://classroom.googleapis.com/v1";
 /// Only show work due within this many days.
 const AHEAD_DAYS: i64 = 21;
@@ -219,28 +219,37 @@ impl DayService {
             .snapshot()
             .map(|s| s.tasks.into_iter().filter(|t| !t.done).map(|t| t.title).collect())
             .unwrap_or_default();
-        let meetings: Vec<(DateTime<Local>, DateTime<Local>, String)> = self
-            .app
-            .state::<CalendarService>()
-            .events()
-            .into_iter()
-            .filter(|e| !e.all_day && e.start.with_timezone(&Local).date_naive() == today)
-            .map(|e| {
-                (
-                    e.start.with_timezone(&Local),
-                    e.end.with_timezone(&Local),
-                    e.title,
-                )
-            })
-            .collect();
-        let due: Vec<(DateTime<Local>, String)> = self
-            .state()
-            .assignments
-            .into_iter()
-            .filter(|a| a.due - Utc::now() <= chrono::Duration::days(3))
-            .map(|a| (a.due.with_timezone(&Local), format!("{} ({})", a.title, a.course)))
-            .collect();
+        // Google data goes to the AI only if the user said so (Settings → Home → Your day).
+        let share_google = settings.day.share_google;
+        let meetings: Vec<(DateTime<Local>, DateTime<Local>, String)> = if !share_google {
+            Vec::new()
+        } else {
+            self.app
+                .state::<CalendarService>()
+                .events()
+                .into_iter()
+                .filter(|e| !e.all_day && e.start.with_timezone(&Local).date_naive() == today)
+                .map(|e| {
+                    (
+                        e.start.with_timezone(&Local),
+                        e.end.with_timezone(&Local),
+                        e.title,
+                    )
+                })
+                .collect()
+        };
+        let due: Vec<(DateTime<Local>, String)> = if !share_google {
+            Vec::new()
+        } else {
+            self.state()
+                .assignments
+                .into_iter()
+                .filter(|a| a.due - Utc::now() <= chrono::Duration::days(3))
+                .map(|a| (a.due.with_timezone(&Local), format!("{} ({})", a.title, a.course)))
+                .collect()
+        };
         let input = plan_input(
+            share_google,
             now,
             &tasks,
             &meetings,
@@ -294,7 +303,10 @@ impl DayService {
             });
         }
         if !calendar.granted(CLASSROOM_SCOPES) {
-            return self.update(|s| s.classroom = ClassroomStatus::NeedsSignIn);
+            return self.update(|s| {
+                s.classroom = ClassroomStatus::NeedsSignIn;
+                s.assignments.clear();
+            });
         }
         match self.fetch_assignments(&calendar).await {
             Ok(assignments) => {

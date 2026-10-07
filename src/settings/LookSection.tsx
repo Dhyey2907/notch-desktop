@@ -158,7 +158,7 @@ export function LookSection() {
         <div id="setting-music-glow">
           <Switch
             label="Music glow"
-            description="While music plays, a colored outline around the notch (blue when there's no album art) that brightens on the beat. Also in Settings → Media."
+            description="While something plays, the notch glows in the player's colors (the album art's, or Netflix red, Prime blue…) and brightens on the beat. Also in Settings → Media."
             checked={!music.hideBorder && !music.hideReactive}
             onChange={(on) =>
               patch("music", on ? { hideBorder: false, hideReactive: false } : { hideBorder: true })

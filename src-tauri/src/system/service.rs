@@ -63,6 +63,12 @@ pub struct SystemService {
 }
 
 impl SystemService {
+    /// Something is playing (music or video) — you may be watching even without touching
+    /// the keyboard.
+    pub fn media_playing(&self) -> bool {
+        self.media_playing.load(Ordering::Relaxed)
+    }
+
     pub fn new(app: AppHandle) -> Self {
         Self {
             app,

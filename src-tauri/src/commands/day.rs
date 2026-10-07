@@ -22,6 +22,16 @@ pub async fn mail_archive(id: String, mail: State<'_, MailService>) -> AppResult
     mail.inner().clone().archive(&id).await
 }
 
+/// Hide a message until later; it comes back with a card.
+#[tauri::command]
+pub fn mail_snooze(
+    id: String,
+    until: chrono::DateTime<chrono::Utc>,
+    mail: State<'_, MailService>,
+) -> AppResult<()> {
+    mail.snooze(&id, until)
+}
+
 #[tauri::command]
 pub async fn mail_mark_read(id: String, mail: State<'_, MailService>) -> AppResult<()> {
     mail.inner().clone().mark_read(&id).await

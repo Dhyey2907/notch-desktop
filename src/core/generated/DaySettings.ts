@@ -19,4 +19,9 @@ noAutoPlan: boolean,
 /**
  * Hide the workday progress line under the bubble.
  */
-noWorkdayBar: boolean, };
+noWorkdayBar: boolean, 
+/**
+ * The AI day planner may see today's Google Calendar meetings and Classroom deadlines
+ * (titles and times). Off until the user turns it on (Google's Limited Use policy).
+ */
+shareGoogle: boolean, };

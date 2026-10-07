@@ -27,14 +27,6 @@ export function FocusSection() {
         summary at the end. For a daily quiet time, use Quiet hours in Behavior.
       </p>
       <Surface>
-        <div id="setting-pet">
-          <Switch
-            label="Pet"
-            description="A small character in the bubble that reacts to focus, music and the time of day."
-            checked={!focus.hidePet}
-            onChange={(on) => patch("focus", { hidePet: !on })}
-          />
-        </div>
         <Row label="Ambient volume" description="Overall volume of rain, ocean and the other focus sounds.">
           <Slider
             label="Ambient volume"
@@ -122,14 +114,6 @@ export function FocusSection() {
         Fun
       </h2>
       <Surface>
-        <div id="setting-pet-walk">
-          <Switch
-            label="Pet walks the taskbar"
-            description="After two minutes away, the pet strolls along the top of the taskbar. It goes the moment you're back."
-            checked={fun.petWalk}
-            onChange={(on) => patch("fun", { petWalk: on })}
-          />
-        </div>
         <div id="setting-rgb-lights">
           <Switch
             label="RGB lights"

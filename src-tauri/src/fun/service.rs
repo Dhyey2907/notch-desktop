@@ -218,8 +218,13 @@ impl FunService {
             );
             #[cfg(not(windows))]
             let (idle, locked) = (0, false);
-            // Never over a fullscreen video or game on the main screen, or behind the lock screen.
-            let allowed = fun.pet_walk && !locked && !crate::shell::is_fullscreen("main");
+            // Never over a fullscreen app on any screen, never while something plays (you're
+            // watching or listening, not away), and never behind the lock screen.
+            let playing = self
+                .app
+                .state::<crate::system::service::SystemService>()
+                .media_playing();
+            let allowed = fun.pet_walk && !locked && !playing && !crate::shell::any_fullscreen();
             if !out {
                 if allowed && idle >= PET_AFTER_MS {
                     out = self.show_pet();
@@ -291,19 +296,29 @@ impl FunService {
         w.show()
     }
 
-    /// A strip just above the taskbar, across the main screen.
+    /// Standing on the taskbar of the screen the notch is on.
     fn place_pet(&self, w: &tauri::WebviewWindow) {
-        let Ok(Some(monitor)) = w.primary_monitor() else {
+        let notch_screen = self
+            .app
+            .get_webview_window(crate::shell::MAIN_WINDOW)
+            .and_then(|main| main.current_monitor().ok().flatten());
+        let Some(monitor) = notch_screen.or_else(|| w.primary_monitor().ok().flatten()) else {
             return;
         };
         let area = monitor.work_area();
-        let height = (PET_HEIGHT * monitor.scale_factor()).round() as u32;
+        let (y, height) = pet_strip(
+            (area.position.y, area.size.height),
+            (PET_HEIGHT * monitor.scale_factor()).round() as u32,
+        );
         let _ = w.set_size(PhysicalSize::new(area.size.width, height));
-        let _ = w.set_position(PhysicalPosition::new(
-            area.position.x,
-            area.position.y + area.size.height as i32 - height as i32,
-        ));
+        let _ = w.set_position(PhysicalPosition::new(area.position.x, y));
     }
+}
+
+/// Where the pet walks: a strip whose bottom is the taskbar's top edge (the bottom of the work
+/// area), so the pet stands on the taskbar. `(top, height)` in physical pixels.
+fn pet_strip(work: (i32, u32), height: u32) -> (i32, u32) {
+    (work.0 + work.1 as i32 - height as i32, height)
 }
 
 /// A mouse button is down (or was pressed since the last look).
@@ -320,4 +335,17 @@ fn mouse_clicked() -> bool {
     }
     #[cfg(not(windows))]
     false
+}
+
+#[cfg(test)]
+mod pet_tests {
+    use super::pet_strip;
+
+    #[test]
+    fn stands_on_the_taskbar_edge() {
+        // 1080p screen with a 48 px taskbar: the strip ends exactly where the taskbar starts.
+        assert_eq!(pet_strip((0, 1032), 80), (952, 80));
+        // A second screen below the first.
+        assert_eq!(pet_strip((1080, 1368), 120), (2328, 120));
+    }
 }

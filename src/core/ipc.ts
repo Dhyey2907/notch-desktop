@@ -3,6 +3,14 @@
 import { invoke } from "@tauri-apps/api/core";
 
 import type { AppInfo } from "./generated/AppInfo";
+import type { AppTraffic } from "./generated/AppTraffic";
+import type { CaptureGuess } from "./generated/CaptureGuess";
+import type { InviteResponse } from "./generated/InviteResponse";
+import type { NewEvent } from "./generated/NewEvent";
+import type { QuickAdded } from "./generated/QuickAdded";
+import type { ReadItem } from "./generated/ReadItem";
+import type { ReadLaterSnapshot } from "./generated/ReadLaterSnapshot";
+import type { SpeedTest } from "./generated/SpeedTest";
 import type { ClipboardSnapshot } from "./generated/ClipboardSnapshot";
 import type { ShelfSnapshot } from "./generated/ShelfSnapshot";
 import type { AskSnapshot } from "./generated/AskSnapshot";
@@ -122,6 +130,12 @@ export const ipc = {
   calendarSyncNow: () => invoke<void>("calendar_sync_now"),
   /** Open an https meeting or event link in the default browser. */
   calendarOpenLink: (url: string) => invoke<void>("calendar_open_link", { url }),
+  /** Needs "Add events and answer invites" on and Google's OK. */
+  calendarCreateEvent: (event: NewEvent) => invoke<void>("calendar_create_event", { event }),
+  /** Google reads a sentence ("Lunch with Ann tomorrow 1pm") into an event. */
+  calendarQuickAdd: (text: string) => invoke<QuickAdded>("calendar_quick_add", { text }),
+  calendarRespond: (eventId: string, answer: InviteResponse) =>
+    invoke<void>("calendar_respond", { eventId, answer }),
   spotifyGetSnapshot: () => invoke<SpotifySnapshot>("spotify_get_snapshot"),
   /** Opens Spotify sign-in in the browser; resolves when sign-in finishes. */
   spotifyConnect: (clientId: string) => invoke<void>("spotify_connect", { clientId }),
@@ -152,6 +166,10 @@ export const ipc = {
   controlRefresh: () => invoke<ControlSnapshot>("control_refresh"),
   /** Bytes per second since the last call (call about once a second while shown). */
   controlSpeed: () => invoke<NetSpeed>("control_speed"),
+  controlNetApps: () => invoke<AppTraffic[]>("control_net_apps"),
+  controlSpeedTestLast: () => invoke<SpeedTest | null>("control_speed_test_last"),
+  /** About 20 seconds against speed.cloudflare.com; progress arrives as SpeedTestChanged. */
+  controlSpeedTest: () => invoke<SpeedTest>("control_speed_test"),
   controlSetRadio: (kind: RadioKind, on: boolean) => invoke<void>("control_set_radio", { kind, on }),
   /** Open a Windows Settings page: nightlight, airplane, wifi, bluetooth, hotspot, battery, radios. */
   controlOpenSettings: (page: string) => invoke<void>("control_open_settings", { page }),
@@ -216,6 +234,8 @@ export const ipc = {
   /** Take a message out of the inbox (it stays in All Mail). */
   mailArchive: (id: string) => invoke<void>("mail_archive", { id }),
   mailMarkRead: (id: string) => invoke<void>("mail_mark_read", { id }),
+  /** Hide a message until `until` (ISO time); it comes back with a card. */
+  mailSnooze: (id: string, until: string) => invoke<void>("mail_snooze", { id, until }),
   dayState: () => invoke<DayState>("day_state"),
   /** Plan the rest of today now (Claude Code). */
   dayPlan: () => invoke<DayPlan>("day_plan"),
@@ -272,6 +292,15 @@ export const ipc = {
   shelfSnapshot: () => invoke<ShelfSnapshot>("shelf_snapshot"),
   /** Park files on the drop shelf; resolves to how many were new. */
   shelfAdd: (paths: string[]) => invoke<number>("shelf_add", { paths }),
+  readLaterSnapshot: () => invoke<ReadLaterSnapshot>("read_later_snapshot"),
+  readLaterAdd: (url: string) => invoke<ReadItem>("read_later_add", { url }),
+  readLaterSetRead: (id: string, read: boolean) => invoke<void>("read_later_set_read", { id, read }),
+  readLaterRemove: (id: string) => invoke<void>("read_later_remove", { id }),
+  readLaterClearRead: () => invoke<void>("read_later_clear_read"),
+  /** Sends the article's text to the AI chosen in Settings → AI. */
+  readLaterSummarize: (id: string) => invoke<string>("read_later_summarize", { id }),
+  /** Quick capture: the AI chosen in Settings → AI says what a line is. */
+  captureSort: (text: string) => invoke<CaptureGuess>("capture_sort", { text }),
   shelfRemove: (ids: string[]) => invoke<void>("shelf_remove", { ids }),
   shelfClear: () => invoke<void>("shelf_clear"),
   /** Copy shelf files to the clipboard (no ids: all). */
@@ -352,6 +381,11 @@ export const ipc = {
   todoStartTimer: (id: string, minutes: number, ring: boolean) =>
     invoke<void>("todo_start_timer", { id, minutes, ring }),
   todoCancelTimer: (id: string) => invoke<void>("todo_cancel_timer", { id }),
+  /** Remind about a task at a set time (epoch ms). */
+  todoRemindAt: (id: string, atMs: number, ring: boolean) =>
+    invoke<void>("todo_remind_at", { id, atMs, ring }),
+  /** An example approval card in the notch (nothing runs). */
+  claudeTestApproval: () => invoke<void>("claude_test_approval"),
   /** Dismiss a finished timer: stops the ring and clears the alert on every screen. */
   todoAcknowledge: (id: string) => invoke<void>("todo_acknowledge", { id }),
   noteAdd: (body: string) => invoke<Note>("note_add", { body }),

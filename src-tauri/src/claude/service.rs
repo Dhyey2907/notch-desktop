@@ -216,6 +216,22 @@ impl ClaudeService {
         self.inner.db.with(|conn| approvals::recent(conn, limit))
     }
 
+    /// A harmless example approval through the real flow, so you can see the card
+    /// (Settings → AI → Send a test approval). Nothing runs whatever you answer.
+    pub fn test_approval(&self) {
+        let inner = self.inner.clone();
+        std::thread::spawn(move || {
+            let payload = PermissionPayload {
+                agent: Default::default(),
+                session_id: "notch-test".into(),
+                cwd: Some("Notch test".into()),
+                tool_name: "Bash".into(),
+                tool_input: serde_json::json!({ "command": "echo \"This is a test from Notch — nothing will run\"" }),
+            };
+            inner.handle_permission(&payload);
+        });
+    }
+
     /// Run a fake permission request through the real approval flow (dev builds only).
     #[cfg(debug_assertions)]
     pub fn dev_test_approval(&self, tool: String, input: serde_json::Value) {

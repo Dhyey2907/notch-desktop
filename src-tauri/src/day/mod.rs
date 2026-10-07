@@ -83,6 +83,7 @@ pub fn due_soon(due: DateTime<Utc>, now: DateTime<Utc>) -> bool {
 
 /// What Claude gets to plan the day: only titles and times, nothing else.
 pub fn plan_input(
+    google_shared: bool,
     now: DateTime<Local>,
     tasks: &[String],
     meetings: &[(DateTime<Local>, DateTime<Local>, String)],
@@ -96,8 +97,12 @@ pub fn plan_input(
         workday.0.format("%H:%M"),
         workday.1.format("%H:%M")
     );
-    out.push_str("\nMeetings today:\n");
-    if meetings.is_empty() {
+    if !google_shared {
+        out.push_str("\nMeetings today: not shared (plan around the open tasks only).\n");
+    } else {
+        out.push_str("\nMeetings today:\n");
+    }
+    if google_shared && meetings.is_empty() {
         out.push_str("- none\n");
     }
     for (start, end, title) in meetings {
@@ -174,6 +179,7 @@ mod tests {
             "Standup".to_owned(),
         );
         let input = plan_input(
+            true,
             now,
             &["Write report".into()],
             &[meeting],

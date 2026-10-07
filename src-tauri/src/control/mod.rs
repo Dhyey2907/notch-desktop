@@ -8,11 +8,13 @@ mod battery;
 mod gamepad;
 #[cfg(windows)]
 mod keys;
+pub mod netapps;
 #[cfg(windows)]
 mod network;
 #[cfg(windows)]
 mod radios;
 pub mod service;
+pub mod speedtest;
 
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;

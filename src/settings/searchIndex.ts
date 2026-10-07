@@ -13,6 +13,7 @@ export type PageId =
   | "git"
   | "clipboard"
   | "focus"
+  | "pet"
   | "games"
   | "ai"
   | "vault"
@@ -75,6 +76,12 @@ export const PAGES: PageInfo[] = [
     label: "Focus",
     group: "Features",
     lead: "Focus sessions, the pet, healthy breaks, ambient sounds and RGB lights.",
+  },
+  {
+    id: "pet",
+    label: "Pet",
+    group: "Features",
+    lead: "Your companion: its name, color, personality, what it reacts to, and where it shows.",
   },
   { id: "games", label: "Games", group: "Features", lead: "The game mode strip while you play." },
   {
@@ -170,11 +177,16 @@ export const ENTRIES: Entry[] = [
   { page: "home", label: "Workday", keywords: "work hours days weekend progress" },
   { page: "home", label: "Plan my day each morning", keywords: "ai planner schedule claude" },
   { page: "calendar", label: "Gmail glance", keywords: "email inbox unread mail google" },
+  {
+    page: "calendar",
+    label: "Add events and answer invites",
+    keywords: "create new event rsvp accept decline invite meeting write edit",
+  },
   { page: "calendar", label: "Assignment deadlines", keywords: "classroom homework school due google" },
   { page: "dock", label: "Open the notch to", keywords: "first module default start" },
   { page: "dock", label: "Modules", keywords: "reorder order dock hide enable disable interrupt" },
   { page: "media", label: "React to music", keywords: "glow beat pulse" },
-  { page: "media", label: "Colored border", keywords: "blue outline glow light ring" },
+  { page: "media", label: "Music glow", keywords: "blue outline border glow light ring color" },
   { page: "media", label: "Show lyrics", keywords: "lrclib words" },
   { page: "media", label: "Spotify", keywords: "playlists account connect" },
   { page: "calendar", label: "Google Calendar", keywords: "meetings events reminders connect" },
@@ -187,6 +199,11 @@ export const ENTRIES: Entry[] = [
   { page: "vault", label: "Obsidian vault", keywords: "passwords logins folder sync" },
   { page: "desk", label: "Routines", keywords: "start work gaming open apps automation schedule morning" },
   { page: "shortcuts", label: "Keep the window in front on top", keywords: "pin always on top topmost" },
+  {
+    page: "shortcuts",
+    label: "Quick capture",
+    keywords: "capture quick add task reminder note event link hotkey inbox",
+  },
   { page: "developer", label: "Tell me when a dev server stops", keywords: "localhost port crash node vite" },
   { page: "developer", label: "Count coding time", keywords: "wakatime editor project streak vscode" },
   { page: "developer", label: "Widgets", keywords: "custom script url json command dashboard" },
@@ -194,17 +211,32 @@ export const ENTRIES: Entry[] = [
   { page: "vault", label: "Clear copied passwords after", keywords: "clipboard seconds" },
   { page: "vault", label: "Vault key", keywords: "another pc export import encryption" },
   { page: "vault", label: "2FA codes", keywords: "authenticator totp two factor otp" },
-  { page: "focus", label: "Pet", keywords: "character bubble mood" },
+  { page: "pet", label: "Name", keywords: "pet rename call" },
+  { page: "pet", label: "Color", keywords: "pet colour body" },
+  {
+    page: "pet",
+    label: "Personality",
+    keywords: "pet tone voice cheerful sarcastic professional calm coach nerdy dramatic",
+  },
+  { page: "pet", label: "Talks to you", keywords: "pet speech bubble lines messages chatty quiet" },
+  { page: "pet", label: "Reactions", keywords: "pet dance music popcorn video coding weather battery mood" },
+  { page: "pet", label: "Petting", keywords: "pet pat click" },
+  { page: "pet", label: "In the resting bubble", keywords: "pet character bubble show hide" },
+  { page: "pet", label: "Walks the taskbar", keywords: "pet idle away walk" },
   { page: "focus", label: "Ambient volume", keywords: "rain ocean sounds noise" },
   {
     page: "focus",
     label: "Healthy breaks",
     keywords: "eye 20-20-20 stretch water reminder streak wellbeing",
   },
-  { page: "focus", label: "Pet walks the taskbar", keywords: "idle away walk character" },
   { page: "focus", label: "RGB lights", keywords: "openrgb led keyboard mouse color sync beat" },
   { page: "games", label: "Game mode", keywords: "fps gpu ping hud" },
   { page: "ai", label: "Claude", keywords: "ask ai assistant" },
+  {
+    page: "home",
+    label: "Share Google data with the planner",
+    keywords: "privacy calendar classroom ai consent",
+  },
   { page: "ai", label: "Other coding agents", keywords: "codex openai gemini google cli hooks approvals" },
   {
     page: "ai",

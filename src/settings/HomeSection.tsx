@@ -117,6 +117,14 @@ export function HomeSection() {
           checked={!day.noWorkdayBar}
           onChange={(on) => patch("day", { noWorkdayBar: !on })}
         />
+        <div id="setting-share-google-with-the-planner">
+          <Switch
+            label="Share Google data with the planner"
+            description="Lets the AI day planner see today's Google Calendar meetings and Classroom deadlines (titles and times). They're sent to the AI you chose in Settings → AI (e.g. Claude or Codex) only when a plan is made — never stored or used for anything else."
+            checked={day.shareGoogle}
+            onChange={(on) => patch("day", { shareGoogle: on })}
+          />
+        </div>
         <div id="setting-plan-my-day-each-morning">
           <Switch
             label="Plan my day each morning"

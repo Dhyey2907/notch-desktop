@@ -3,23 +3,44 @@
   height: 100%;
 }
 
-/* Artwork backdrop: blurred, dimmed, and under a dark gradient so controls stay readable. */
-.media__backdrop {
+/* The panel's background, edge to edge: the blurred album art (or the service's brand
+   gradient), the album's own colors on top, then a soft shade so text stays readable. */
+.media__backdrop,
+.media__tint,
+.media__shade {
   position: absolute;
   inset: calc(-1 * var(--space-4)) calc(-1 * var(--space-5));
-  background-size: cover;
-  background-position: center;
-  filter: blur(40px) saturate(1.2);
-  opacity: 0.35;
-  transform: scale(1.2);
   pointer-events: none;
+  transition:
+    background 600ms ease,
+    opacity 600ms ease;
 }
 
-.media__backdrop::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(9, 9, 9, 0.35), rgba(9, 9, 9, 0.85));
+.media__backdrop {
+  background-size: cover;
+  background-position: center;
+  filter: blur(34px) saturate(1.4);
+  opacity: 0.85;
+  transform: scale(1.25);
+}
+
+.media__tint {
+  opacity: 0.55;
+  mix-blend-mode: soft-light;
+}
+
+.media__tint--brand {
+  opacity: 0.9;
+  mix-blend-mode: normal;
+}
+
+.media__shade {
+  background: linear-gradient(
+    180deg,
+    rgba(8, 8, 10, 0.2) 0%,
+    rgba(8, 8, 10, 0.45) 55%,
+    rgba(8, 8, 10, 0.7) 100%
+  );
 }
 
 .media .nd-module {

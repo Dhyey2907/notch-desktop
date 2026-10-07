@@ -5,7 +5,7 @@ import type { DownloadProgress } from "../../core/generated/DownloadProgress";
 import type { RecorderState } from "../../core/generated/RecorderState";
 import type { ShelfSnapshot } from "../../core/generated/ShelfSnapshot";
 
-export type ClipboardTab = "copied" | "files" | "recent";
+export type ClipboardTab = "copied" | "files" | "recent" | "read";
 
 interface ShelfState {
   snapshot: ShelfSnapshot | null;

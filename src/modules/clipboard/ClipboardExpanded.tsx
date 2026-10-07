@@ -3,6 +3,7 @@
 // become a task. Files is the drop shelf (ShelfView).
 import { convertFileSrc } from "@tauri-apps/api/core";
 import {
+  BookmarkPlus,
   Braces,
   Check,
   ExternalLink,
@@ -16,9 +17,9 @@ import {
   Pause,
   Pin,
   PinOff,
+  Play,
   QrCode,
   ScanText,
-  Play,
   StickyNote,
   Trash2,
   Type,
@@ -41,6 +42,8 @@ import { useClipboard } from "./clipboardStore";
 import { useShelf, type ClipboardTab } from "./shelfStore";
 import { RecentView } from "./RecentView";
 import { ShelfView } from "./ShelfView";
+import { ReadLaterView } from "./ReadLaterView";
+import { useReadLater } from "./readLaterStore";
 import { useMinuteClock } from "./useMinuteClock";
 import "./clipboard.css";
 
@@ -76,6 +79,7 @@ function ClipIcon({ clip }: { clip: Clip }) {
 export default function ClipboardExpanded() {
   const tab = useShelf((s) => s.tab);
   const shelfCount = useShelf((s) => s.snapshot?.items.length ?? 0);
+  const unread = useReadLater((s) => s.snapshot?.items.filter((i) => !i.readAt).length ?? 0);
   return (
     <ModuleContainer
       title="Clipboard"
@@ -87,12 +91,21 @@ export default function ClipboardExpanded() {
             { value: "copied", label: "Copied" },
             { value: "files", label: shelfCount ? `Files · ${shelfCount}` : "Files" },
             { value: "recent", label: "Recent" },
+            { value: "read", label: unread ? `Read later · ${unread}` : "Read later" },
           ]}
           onChange={(t) => useShelf.getState().setTab(t)}
         />
       }
     >
-      {tab === "copied" ? <CopiedView /> : tab === "files" ? <ShelfView /> : <RecentView />}
+      {tab === "copied" ? (
+        <CopiedView />
+      ) : tab === "files" ? (
+        <ShelfView />
+      ) : tab === "read" ? (
+        <ReadLaterView />
+      ) : (
+        <RecentView />
+      )}
     </ModuleContainer>
   );
 }
@@ -147,6 +160,7 @@ function CopiedView() {
       onPin={() => run(clip.pinned ? ipc.clipboardUnpin(clip.id) : ipc.clipboardPin(clip.id))}
       onDelete={() => run(ipc.clipboardDelete(clip.id))}
       onOpen={() => run(ipc.openExternal(clip.preview.trim()))}
+      onReadLater={() => run(ipc.readLaterAdd(clip.preview.trim()), "Saved to Read later")}
       onTask={(title) => run(ipc.todoAddTask(title, null, false), "Added to To-do")}
       onShelf={() => run(ipc.shelfAdd(clip.files), "Added to Files")}
       onQr={() =>
@@ -241,6 +255,7 @@ function ClipRow({
   onPin,
   onDelete,
   onOpen,
+  onReadLater,
   onTask,
   onNote,
   onShelf,
@@ -253,6 +268,7 @@ function ClipRow({
   onPin: () => void;
   onDelete: () => void;
   onOpen: () => void;
+  onReadLater: () => void;
   onTask: (title: string) => void;
   onNote: () => void;
   onShelf: () => void;
@@ -299,7 +315,10 @@ function ClipRow({
       </button>
       <div className="clip__actions">
         {clip.textKind === "url" && (
-          <IconButton icon={ExternalLink} label="Open link" size="sm" onClick={onOpen} />
+          <>
+            <IconButton icon={ExternalLink} label="Open link" size="sm" onClick={onOpen} />
+            <IconButton icon={BookmarkPlus} label="Read later" size="sm" onClick={onReadLater} />
+          </>
         )}
         {clip.textKind === "json" && (
           <IconButton icon={Braces} label="Copy formatted JSON" size="sm" onClick={() => onCopy(true)} />

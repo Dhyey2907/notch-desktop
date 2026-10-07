@@ -11,4 +11,8 @@ grab: string,
 /**
  * Pin the window in front on top (or unpin it).
  */
-pin: string, };
+pin: string, 
+/**
+ * Quick capture: type a task, reminder, note, event or link from anywhere.
+ */
+capture: string, };

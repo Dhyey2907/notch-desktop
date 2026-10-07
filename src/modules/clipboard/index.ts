@@ -12,6 +12,7 @@ import { useClipboard } from "./clipboardStore";
 import { useFileDrag } from "../../shell/fileDrag";
 import { formatSize, useShelf } from "./shelfStore";
 import { suggestionCard } from "./suggestions";
+import { useReadLater } from "./readLaterStore";
 
 /** Files dropped on this island go on the shelf. */
 function watchDrops(): () => void {
@@ -43,6 +44,15 @@ function watchDrops(): () => void {
 function init({ events, activities }: ModuleContext) {
   const offClips = events.on("ClipboardChanged", ({ event }) => useClipboard.getState().set(event.payload));
   const offShelf = events.on("ShelfChanged", ({ event }) => useShelf.getState().set(event.payload));
+  const offReadLater = events.on("ReadLaterChanged", ({ event }) =>
+    useReadLater.getState().set(event.payload),
+  );
+  ipc.readLaterSnapshot().then(
+    (snapshot) => {
+      if (!useReadLater.getState().snapshot) useReadLater.getState().set(snapshot);
+    },
+    () => {},
+  );
   ipc
     .clipboardSnapshot()
     .then((snapshot) => {
@@ -152,6 +162,7 @@ function init({ events, activities }: ModuleContext) {
   return () => {
     offClips();
     offShelf();
+    offReadLater();
     offDrops();
     offBridge();
     offReceived();

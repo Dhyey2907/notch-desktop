@@ -2,9 +2,10 @@ import { Archive, ExternalLink, MailOpen, RotateCw } from "lucide-react";
 import { useState } from "react";
 
 import { ipc, isIpcError } from "../../core/ipc";
-import { Button, EmptyState, IconButton, ModuleContainer } from "../../design/components";
+import { Button, EmptyState, IconButton, ModuleContainer, SegmentedControl } from "../../design/components";
 import { age } from "../clipboard/clips";
 import { useMinuteClock } from "../clipboard/useMinuteClock";
+import { MailTriage } from "./MailTriage";
 import { threadUrl, useMail } from "./mailStore";
 // The list rows share the Clipboard module's look (styles only).
 import "../clipboard/clipboard.css";
@@ -16,6 +17,7 @@ function message(error: unknown) {
 export default function MailExpanded() {
   const state = useMail((s) => s.state);
   const [status, setStatus] = useState<string | null>(null);
+  const [view, setView] = useState<"one" | "list">("one");
   const now = useMinuteClock();
   const run = (action: Promise<unknown>, done?: string) =>
     void action.then(
@@ -42,6 +44,8 @@ export default function MailExpanded() {
         action={<Button onClick={() => void ipc.openSettingsWindow("calendar")}>Sign in again</Button>}
       />
     );
+  } else if (view === "one") {
+    body = <MailTriage messages={state.messages} unread={state.unread} snoozed={state.snoozed} now={now} />;
   } else if (state.messages.length === 0) {
     body = <EmptyState title="Inbox zero" body="No unread mail. Nice." />;
   } else {
@@ -98,7 +102,18 @@ export default function MailExpanded() {
       title={state?.status === "ready" ? `Mail · ${state.unread} unread` : "Mail"}
       trailing={
         state?.status === "ready" || state?.status === "error" ? (
-          <IconButton icon={RotateCw} label="Check now" size="sm" onClick={() => void ipc.mailRefresh()} />
+          <>
+            <SegmentedControl<"one" | "list">
+              label="Mail view"
+              value={view}
+              options={[
+                { value: "one", label: "One by one" },
+                { value: "list", label: "List" },
+              ]}
+              onChange={setView}
+            />
+            <IconButton icon={RotateCw} label="Check now" size="sm" onClick={() => void ipc.mailRefresh()} />
+          </>
         ) : undefined
       }
     >

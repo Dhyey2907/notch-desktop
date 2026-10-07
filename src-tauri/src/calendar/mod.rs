@@ -34,6 +34,91 @@ pub struct CalendarEvent {
     #[ts(optional)]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub html_link: Option<String>,
+    /// Your answer when someone else invited you; none for your own events.
+    #[ts(optional)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub my_response: Option<InviteResponse>,
+}
+
+/// What Google made from a quick-add sentence.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct QuickAdded {
+    pub title: String,
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub start: Option<DateTime<Utc>>,
+}
+
+/// An answer to a meeting invite (Google's attendee `responseStatus`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum InviteResponse {
+    NeedsAction,
+    Accepted,
+    Tentative,
+    Declined,
+}
+
+impl InviteResponse {
+    pub fn api(self) -> &'static str {
+        match self {
+            InviteResponse::NeedsAction => "needsAction",
+            InviteResponse::Accepted => "accepted",
+            InviteResponse::Tentative => "tentative",
+            InviteResponse::Declined => "declined",
+        }
+    }
+
+    pub fn from_api(s: &str) -> Option<Self> {
+        Some(match s {
+            "needsAction" => InviteResponse::NeedsAction,
+            "accepted" => InviteResponse::Accepted,
+            "tentative" => InviteResponse::Tentative,
+            "declined" => InviteResponse::Declined,
+            _ => return None,
+        })
+    }
+}
+
+/// A new event from the notch. Validated before it goes to Google.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct NewEvent {
+    pub title: String,
+    pub start: DateTime<Utc>,
+    pub end: DateTime<Utc>,
+    pub all_day: bool,
+    #[ts(optional)]
+    #[serde(default)]
+    pub location: Option<String>,
+}
+
+impl NewEvent {
+    pub fn validate(&self) -> crate::error::AppResult<()> {
+        use crate::error::AppError;
+        let title = self.title.trim();
+        if title.is_empty() {
+            return Err(AppError::InvalidInput("Give the event a name".into()));
+        }
+        if title.chars().count() > 200 || self.location.as_deref().is_some_and(|l| l.chars().count() > 200) {
+            return Err(AppError::InvalidInput("That's too long".into()));
+        }
+        if self.end <= self.start {
+            return Err(AppError::InvalidInput(
+                "The event has to end after it starts".into(),
+            ));
+        }
+        if self.end - self.start > Duration::days(31) {
+            return Err(AppError::InvalidInput(
+                "Events can be at most a month long".into(),
+            ));
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -141,6 +226,7 @@ mod tests {
             join_url: None,
             location: None,
             html_link: None,
+            my_response: None,
         }
     }
 

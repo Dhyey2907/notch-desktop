@@ -265,6 +265,14 @@ export function AiSection() {
         )}
         {error && <p className="settings__note settings__note--warning">{error}</p>}
         <p className="settings__note">New Claude Code sessions pick up the change; restart open ones.</p>
+        {installed && (
+          <div className="settings__buttons">
+            <Button onClick={() => void ipc.claudeTestApproval()}>Send a test approval</Button>
+            <span className="settings__note">
+              Shows an example card in the notch. Nothing runs, whatever you click.
+            </span>
+          </div>
+        )}
       </Surface>
 
       {installed && status && <PlanLimitsSetting status={status} run={run} />}

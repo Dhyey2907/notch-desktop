@@ -20,6 +20,7 @@ import {
   type Timers,
 } from "./breaks";
 import { focusActive, useFocus } from "./focusStore";
+import { tellPet } from "../pet/petStore";
 import { cheerPet } from "./petCheer";
 
 const STEP_MS = 30_000;
@@ -82,9 +83,16 @@ export function useBreaks() {
             run: async () => {
               finish();
               cheerPet();
+              const before = useSettings.getState().settings?.breaks.streak ?? 0;
               await useSettings
                 .getState()
                 .update((s) => ({ ...s, breaks: { ...s.breaks, ...recordBreak(s.breaks, new Date()) } }));
+              const after = useSettings.getState().settings?.breaks.streak ?? 0;
+              tellPet(
+                after > before
+                  ? { event: "streak", vars: { days: after }, xp: 2 }
+                  : { event: "breakDone", xp: 2 },
+              );
             },
           },
         ],

@@ -4,7 +4,7 @@
 use chrono::{DateTime, NaiveDate, Utc};
 use serde::Deserialize;
 
-use super::{local_midnight, CalendarEvent};
+use super::{local_midnight, CalendarEvent, InviteResponse, NewEvent};
 use crate::error::{AppError, AppResult};
 
 const EVENTS_URL: &str = "https://www.googleapis.com/calendar/v3/calendars/primary/events";
@@ -35,6 +35,19 @@ struct RawEvent {
     location: Option<String>,
     #[serde(default)]
     html_link: Option<String>,
+    #[serde(default)]
+    attendees: Vec<RawAttendee>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RawAttendee {
+    #[serde(default, rename = "self")]
+    is_self: bool,
+    #[serde(default)]
+    organizer: bool,
+    #[serde(default)]
+    response_status: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -93,6 +106,13 @@ fn map_events(list: EventList) -> Vec<CalendarEvent> {
                     .find(|p| p.entry_point_type.as_deref() == Some("video"))
                     .and_then(|p| https(p.uri.as_deref()))
             });
+            // Only invites from someone else carry an answer of yours.
+            let my_response = e
+                .attendees
+                .iter()
+                .find(|a| a.is_self && !a.organizer)
+                .and_then(|a| a.response_status.as_deref())
+                .and_then(InviteResponse::from_api);
             let join_url = https(e.hangout_link.as_deref())
                 .or(video)
                 .or_else(|| https(e.location.as_deref()));
@@ -108,6 +128,7 @@ fn map_events(list: EventList) -> Vec<CalendarEvent> {
                 join_url,
                 location: e.location.filter(|l| !l.starts_with("https://")),
                 html_link: https(e.html_link.as_deref()),
+                my_response,
             })
         })
         .collect();
@@ -159,6 +180,130 @@ pub async fn fetch_events(
             parse_events(&body).map_err(|e| FetchError::Other(e.to_string()))
         }
     }
+}
+
+fn status_error(status: reqwest::StatusCode) -> FetchError {
+    if status == reqwest::StatusCode::UNAUTHORIZED {
+        FetchError::Unauthorized
+    } else {
+        FetchError::Other(format!("calendar API returned {status}"))
+    }
+}
+
+/// Google's event JSON for a new event: timed events in UTC, all-day ones by local date
+/// (Google's all-day end date is exclusive).
+pub fn new_event_body(event: &NewEvent) -> serde_json::Value {
+    let (start, end) = if event.all_day {
+        let first = event.start.with_timezone(&chrono::Local).date_naive();
+        let last = (event.end - chrono::Duration::seconds(1))
+            .with_timezone(&chrono::Local)
+            .date_naive()
+            .max(first);
+        (
+            serde_json::json!({ "date": first.to_string() }),
+            serde_json::json!({ "date": last.succ_opt().unwrap_or(last).to_string() }),
+        )
+    } else {
+        (
+            serde_json::json!({ "dateTime": event.start.to_rfc3339() }),
+            serde_json::json!({ "dateTime": event.end.to_rfc3339() }),
+        )
+    };
+    let mut body = serde_json::json!({ "summary": event.title.trim(), "start": start, "end": end });
+    if let Some(location) = event.location.as_deref().map(str::trim).filter(|l| !l.is_empty()) {
+        body["location"] = location.into();
+    }
+    body
+}
+
+pub async fn create_event(http: &reqwest::Client, token: &str, event: &NewEvent) -> Result<(), FetchError> {
+    let response = http
+        .post(EVENTS_URL)
+        .bearer_auth(token)
+        .json(&new_event_body(event))
+        .send()
+        .await
+        .map_err(|e| FetchError::Network(e.without_url().to_string()))?;
+    if response.status().is_success() {
+        Ok(())
+    } else {
+        Err(status_error(response.status()))
+    }
+}
+
+/// Google turns a sentence ("Lunch with Ann tomorrow 1pm") into an event. Returns its title
+/// and start so the notch can say what it made.
+pub async fn quick_add(
+    http: &reqwest::Client,
+    token: &str,
+    text: &str,
+) -> Result<(String, Option<DateTime<Utc>>), FetchError> {
+    let response = http
+        .post(format!("{EVENTS_URL}/quickAdd"))
+        .bearer_auth(token)
+        .query(&[("text", text)])
+        .send()
+        .await
+        .map_err(|e| FetchError::Network(e.without_url().to_string()))?;
+    if !response.status().is_success() {
+        return Err(status_error(response.status()));
+    }
+    let made: RawEvent = response
+        .json()
+        .await
+        .map_err(|e| FetchError::Other(e.without_url().to_string()))?;
+    Ok((
+        made.summary.unwrap_or_else(|| "(No title)".into()),
+        made.start.resolve().map(|(t, _)| t),
+    ))
+}
+
+/// Answer an invite: the event's attendee list with your own answer changed. The organizer is
+/// told, as when you answer in Google Calendar.
+pub async fn respond(
+    http: &reqwest::Client,
+    token: &str,
+    event_id: &str,
+    answer: InviteResponse,
+) -> Result<(), FetchError> {
+    let url = format!("{EVENTS_URL}/{event_id}");
+    let response = http
+        .get(&url)
+        .bearer_auth(token)
+        .query(&[("fields", "attendees")])
+        .send()
+        .await
+        .map_err(|e| FetchError::Network(e.without_url().to_string()))?;
+    if !response.status().is_success() {
+        return Err(status_error(response.status()));
+    }
+    let mut event: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|e| FetchError::Other(e.without_url().to_string()))?;
+    let attendees =
+        set_my_answer(&mut event, answer).ok_or_else(|| FetchError::Other("not an invite".into()))?;
+    let response = http
+        .patch(&url)
+        .bearer_auth(token)
+        .query(&[("sendUpdates", "all")])
+        .json(&serde_json::json!({ "attendees": attendees }))
+        .send()
+        .await
+        .map_err(|e| FetchError::Network(e.without_url().to_string()))?;
+    if response.status().is_success() {
+        Ok(())
+    } else {
+        Err(status_error(response.status()))
+    }
+}
+
+/// The attendee list with your answer set, or none if you aren't on it.
+pub fn set_my_answer(event: &mut serde_json::Value, answer: InviteResponse) -> Option<serde_json::Value> {
+    let attendees = event["attendees"].as_array_mut()?;
+    let me = attendees.iter_mut().find(|a| a["self"].as_bool() == Some(true))?;
+    me["responseStatus"] = answer.api().into();
+    Some(serde_json::Value::Array(attendees.clone()))
 }
 
 #[cfg(test)]
@@ -217,6 +362,74 @@ mod tests {
         assert_eq!(by_id("teams").location, None);
         assert_eq!(by_id("sketchy").join_url, None);
         assert_eq!(by_id("sketchy").location.as_deref(), Some("Room 4"));
+    }
+
+    #[test]
+    fn reads_my_invite_answer_and_changes_it() {
+        let json = r#"{"items":[
+            {"id":"a","summary":"Sync","start":{"dateTime":"2026-10-07T10:00:00Z"},"end":{"dateTime":"2026-10-07T10:30:00Z"},
+             "attendees":[{"email":"boss@x.com","organizer":true,"responseStatus":"accepted"},{"email":"me@x.com","self":true,"responseStatus":"needsAction"}]},
+            {"id":"b","summary":"Mine","start":{"dateTime":"2026-10-07T11:00:00Z"},"end":{"dateTime":"2026-10-07T12:00:00Z"},
+             "attendees":[{"email":"me@x.com","self":true,"organizer":true,"responseStatus":"accepted"}]}
+        ]}"#;
+        let events = parse_events(json).unwrap();
+        assert_eq!(events[0].my_response, Some(InviteResponse::NeedsAction));
+        assert_eq!(events[1].my_response, None);
+
+        let mut event = serde_json::json!({"attendees":[{"email":"boss@x.com"},{"email":"me@x.com","self":true,"responseStatus":"needsAction"}]});
+        let list = set_my_answer(&mut event, InviteResponse::Declined).unwrap();
+        assert_eq!(list[1]["responseStatus"], "declined");
+        assert_eq!(list[0].get("responseStatus"), None);
+        assert!(set_my_answer(&mut serde_json::json!({}), InviteResponse::Accepted).is_none());
+    }
+
+    #[test]
+    fn builds_new_events() {
+        let start: DateTime<Utc> = "2026-10-07T10:00:00Z".parse().unwrap();
+        let event = NewEvent {
+            title: "  Dentist ".into(),
+            start,
+            end: start + chrono::Duration::minutes(30),
+            all_day: false,
+            location: Some(" ".into()),
+        };
+        assert!(event.validate().is_ok());
+        let body = new_event_body(&event);
+        assert_eq!(body["summary"], "Dentist");
+        assert!(body["start"]["dateTime"]
+            .as_str()
+            .unwrap()
+            .starts_with("2026-10-07T10:00:00"));
+        assert!(body.get("location").is_none());
+
+        let all_day = NewEvent {
+            all_day: true,
+            end: start + chrono::Duration::hours(1),
+            ..event.clone()
+        };
+        let body = new_event_body(&all_day);
+        let first = body["start"]["date"].as_str().unwrap().to_owned();
+        let after: NaiveDate = body["end"]["date"].as_str().unwrap().parse().unwrap();
+        assert_eq!(after, first.parse::<NaiveDate>().unwrap().succ_opt().unwrap());
+
+        assert!(NewEvent {
+            title: " ".into(),
+            ..event.clone()
+        }
+        .validate()
+        .is_err());
+        assert!(NewEvent {
+            end: start,
+            ..event.clone()
+        }
+        .validate()
+        .is_err());
+        assert!(NewEvent {
+            end: start + chrono::Duration::days(40),
+            ..event
+        }
+        .validate()
+        .is_err());
     }
 
     #[test]

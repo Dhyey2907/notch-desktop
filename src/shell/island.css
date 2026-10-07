@@ -178,27 +178,51 @@
   }
 }
 
-/* Music: glow in the album art's colors, swelling with loudness and flashing on beats. */
+/* Music: glow in the player's own colors — the album art's, or the service's brand gradient
+   (Netflix red, Prime blue…) — swelling with loudness and flashing on beats. Like the player,
+   the first color sits top-left and the second bottom-right. */
 .island[data-music="on"] {
   --music-level: 0;
+  --music-a: var(--music-accent, #8ab4ff);
+  --music-b: var(--music-primary, var(--music-a));
   box-shadow:
     var(--shadow-island),
-    0 0 calc(5px + var(--music-level) * 20px) calc(var(--music-level) * 3px)
-      color-mix(in srgb, var(--music-accent, #8ab4ff) calc(35% + var(--music-level) * 55%), transparent);
-  outline: 1.5px solid color-mix(in srgb, var(--music-accent, #8ab4ff) 45%, transparent);
-  /* Inside the edge, so it never pokes past the island. */
-  outline-offset: -1.5px;
-  transition:
-    box-shadow 90ms linear,
-    outline-color 160ms ease-out;
+    calc(-4px - var(--music-level) * 6px) calc(-3px - var(--music-level) * 4px)
+      calc(8px + var(--music-level) * 20px) calc(var(--music-level) * 3px)
+      color-mix(in srgb, var(--music-a) calc(35% + var(--music-level) * 55%), transparent),
+    calc(4px + var(--music-level) * 6px) calc(3px + var(--music-level) * 4px)
+      calc(8px + var(--music-level) * 20px) calc(var(--music-level) * 3px)
+      color-mix(in srgb, var(--music-b) calc(35% + var(--music-level) * 55%), transparent);
+  outline-color: transparent;
+  transition: box-shadow 90ms linear;
 }
 
-.island[data-music="on"].island--beat {
-  outline-color: color-mix(in srgb, var(--music-accent, #8ab4ff) 90%, transparent);
+/* The colored edge: a gradient ring just inside the island, so it never pokes past it. */
+.island[data-music="on"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  padding: 1.5px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, var(--music-a), var(--music-b));
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.5;
+  pointer-events: none;
+  transition: opacity 160ms ease-out;
+}
+
+.island[data-music="on"].island--beat::before {
+  opacity: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .island[data-music="on"] {
+  .island[data-music="on"],
+  .island[data-music="on"]::before {
     transition: none;
   }
 }
@@ -218,12 +242,11 @@
   display: none;
 }
 
+/* In the row with the other marks (not overlaid), so the bubble widens to fit it. */
 .island-clock {
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
+  flex: none;
   font-size: 10px;
+  line-height: 1;
   font-weight: var(--weight-emphasis);
   font-variant-numeric: tabular-nums;
   color: var(--text-secondary);
@@ -256,8 +279,13 @@
   box-shadow: none;
 }
 
-/* Settings → Media: no colored outline (the glow stays when the notch is open). */
+/* Music glow off: no colored edge and no glow around the notch (album colors can still tint
+   highlights and the PC lights). */
 .island[data-music="on"][data-music-noborder] {
-  outline: 1px solid var(--border);
-  outline-offset: -1px;
+  box-shadow: var(--shadow-island);
+  outline-color: var(--border);
+}
+
+.island[data-music="on"][data-music-noborder]::before {
+  content: none;
 }

@@ -15,6 +15,7 @@ import {
   MousePointerClick,
   Music,
   Palette,
+  PawPrint,
   Search,
   Settings2,
   Shield,
@@ -23,7 +24,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useState, type ReactNode } from "react";
 
 import type { AnimationPreference } from "../core/generated/AnimationPreference";
 import type { ScreenInfo } from "../core/generated/ScreenInfo";
@@ -39,6 +40,7 @@ import { DeskSection } from "./DeskSection";
 import { DeveloperSection } from "./DeveloperSection";
 import { DockSection } from "./DockSection";
 import { FocusSection } from "./FocusSection";
+import { PetSection } from "./PetSection";
 import { GamesSection } from "./GamesSection";
 import { GitSection } from "./GitSection";
 import { HomeSection } from "./HomeSection";
@@ -63,6 +65,7 @@ const ICONS: Record<PageId, LucideIcon> = {
   git: GitBranch,
   clipboard: Clipboard,
   focus: Timer,
+  pet: PawPrint,
   games: Gamepad2,
   ai: Bot,
   vault: KeyRound,
@@ -84,6 +87,7 @@ const CONTENT: Record<PageId, () => ReactNode> = {
   git: () => <GitSection />,
   clipboard: () => <ClipboardSection />,
   focus: () => <FocusSection />,
+  pet: () => <PetSection />,
   games: () => <GamesSection />,
   ai: () => <AiSection />,
   vault: () => <VaultSection />,
@@ -100,6 +104,12 @@ function pageFromHash(): PageId {
   return pageFromId(window.location.hash.split("/")[1]);
 }
 
+/** Back to the top of the page, whichever element is doing the scrolling. */
+function scrollToTop() {
+  for (let el = document.querySelector(".settings__content"); el; el = el.parentElement) el.scrollTop = 0;
+  document.scrollingElement?.scrollTo({ top: 0 });
+}
+
 export function SettingsApp() {
   const [page, setPage] = useState<PageId>(pageFromHash);
   const [query, setQuery] = useState("");
@@ -112,6 +122,15 @@ export function SettingsApp() {
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
+
+  // Every page opens at the top — whichever part of the window scrolls — unless a search result
+  // is about to scroll to its row.
+  useLayoutEffect(() => {
+    if (target) return;
+    scrollToTop();
+    // Only the page change should reset; a search result handles its own scrolling.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
 
   // After picking a search result, scroll its row into view and flash it.
   useEffect(() => {
@@ -132,8 +151,8 @@ export function SettingsApp() {
     setQuery("");
     // Keep the address in step so a reload stays on this page (no hashchange is fired).
     history.replaceState(null, "", `#settings/${id}`);
-    if (label) setTarget({ label, at: performance.now() });
-    document.querySelector(".settings__content")?.scrollTo({ top: 0 });
+    setTarget(label ? { label, at: performance.now() } : null);
+    if (!label) scrollToTop();
   };
 
   return (

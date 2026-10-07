@@ -1,4 +1,5 @@
 // Words and numbers for the Control center and its alerts.
+import type { SpeedTest } from "../../core/generated/SpeedTest";
 import type { SystemAlert } from "../../core/generated/SystemAlert";
 import type { Tone } from "../../design/components";
 
@@ -7,6 +8,34 @@ export function formatSpeed(bytesPerSecond: number): string {
   if (bytesPerSecond >= 1_000_000) return `${(bytesPerSecond / 1_000_000).toFixed(1)} MB/s`;
   if (bytesPerSecond >= 1_000) return `${Math.round(bytesPerSecond / 1_000)} KB/s`;
   return `${bytesPerSecond} B/s`;
+}
+
+/** The line under the speed test: what it's doing, or when it last ran. */
+export function speedTestLine(test: SpeedTest, now: number): string {
+  switch (test.phase) {
+    case "ping":
+      return "Checking the delay…";
+    case "download":
+      return "Measuring download…";
+    case "upload":
+      return "Measuring upload…";
+    case "failed":
+      return "The test didn't finish — check your connection and try again.";
+    case "done": {
+      const minutes = Math.round((now - Date.parse(test.at)) / 60_000);
+      const when =
+        minutes < 1
+          ? "just now"
+          : minutes < 60
+            ? `${minutes} min ago`
+            : new Date(test.at).toLocaleString(undefined, {
+                weekday: "short",
+                hour: "numeric",
+                minute: "2-digit",
+              });
+      return `Tested ${when} · speed.cloudflare.com`;
+    }
+  }
 }
 
 /** 70 → "1 h 10 min". */

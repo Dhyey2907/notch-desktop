@@ -26,6 +26,8 @@ mod music;
 mod oauth;
 mod oauth_clients;
 mod phone;
+mod quick;
+mod readlater;
 mod secrets;
 mod settings;
 mod shelf;
@@ -87,6 +89,16 @@ macro_rules! app_commands {
             commands::calendar::calendar_disconnect,
             commands::calendar::calendar_sync_now,
             commands::calendar::calendar_open_link,
+            commands::calendar::calendar_create_event,
+            commands::calendar::calendar_quick_add,
+            commands::calendar::calendar_respond,
+            commands::readlater::read_later_snapshot,
+            commands::readlater::read_later_add,
+            commands::readlater::read_later_set_read,
+            commands::readlater::read_later_remove,
+            commands::readlater::read_later_clear_read,
+            commands::readlater::read_later_summarize,
+            commands::quick::capture_sort,
             commands::spotify::spotify_get_snapshot,
             commands::spotify::spotify_connect,
             commands::signin::sign_in_options,
@@ -119,6 +131,8 @@ macro_rules! app_commands {
             commands::claude::claude_connect,
             commands::claude::claude_disconnect,
             commands::claude::agent_preview,
+            commands::claude::claude_test_approval,
+            commands::todo::todo_remind_at,
             commands::claude::codex_usage,
             commands::claude::agent_connect,
             commands::claude::agent_disconnect,
@@ -171,6 +185,9 @@ macro_rules! app_commands {
             commands::game::game_setup_fps,
             commands::control::control_snapshot,
             commands::control::control_speed,
+            commands::control::control_net_apps,
+            commands::control::control_speed_test_last,
+            commands::control::control_speed_test,
             commands::control::control_refresh,
             commands::control::control_set_radio,
             commands::control::control_open_settings,
@@ -229,6 +246,7 @@ macro_rules! app_commands {
             commands::day::mail_refresh,
             commands::day::mail_archive,
             commands::day::mail_mark_read,
+            commands::day::mail_snooze,
             commands::day::day_state,
             commands::day::day_plan,
             commands::day::day_refresh,
@@ -348,6 +366,7 @@ pub fn run() {
             app.manage(clipboard);
 
             app.manage(shelf::service::ShelfService::new(handle.clone()));
+            app.manage(readlater::service::ReadLaterService::new(handle.clone()));
             let vault = vault::service::VaultService::new(handle.clone());
             vault.start();
             app.manage(vault);

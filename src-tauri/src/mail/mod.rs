@@ -41,6 +41,54 @@ pub struct MailState {
     pub status: MailStatus,
     pub unread: u32,
     pub messages: Vec<MailMessage>,
+    /// Unread messages hidden until their snooze ends.
+    pub snoozed: u32,
+}
+
+/// Snoozed message ids: (still hidden, due now). Ids due back come out of the table.
+pub fn snoozes(
+    conn: &rusqlite::Connection,
+    now: DateTime<Utc>,
+) -> crate::error::AppResult<(std::collections::HashSet<String>, Vec<String>)> {
+    let mut hidden = std::collections::HashSet::new();
+    let mut due = Vec::new();
+    let mut stmt = conn.prepare("SELECT id, until FROM mail_snoozed")?;
+    let rows = stmt.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))?;
+    for row in rows {
+        let (id, until) = row?;
+        match DateTime::parse_from_rfc3339(&until) {
+            Ok(until) if until > now => {
+                hidden.insert(id);
+            }
+            _ => due.push(id),
+        }
+    }
+    for id in &due {
+        conn.execute("DELETE FROM mail_snoozed WHERE id = ?1", [id])?;
+    }
+    Ok((hidden, due))
+}
+
+/// Hide a message until `until` (in the future, within 90 days).
+pub fn snooze(
+    conn: &rusqlite::Connection,
+    id: &str,
+    until: DateTime<Utc>,
+    now: DateTime<Utc>,
+) -> crate::error::AppResult<()> {
+    use crate::error::AppError;
+    if id.is_empty() || id.len() > 64 || !id.chars().all(|c| c.is_ascii_alphanumeric()) {
+        return Err(AppError::InvalidInput("invalid message".into()));
+    }
+    if until <= now || until - now > chrono::Duration::days(90) {
+        return Err(AppError::InvalidInput("Pick a time in the next 90 days".into()));
+    }
+    conn.execute(
+        "INSERT INTO mail_snoozed (id, until) VALUES (?1, ?2)
+         ON CONFLICT(id) DO UPDATE SET until = excluded.until",
+        rusqlite::params![id, until.to_rfc3339()],
+    )?;
+    Ok(())
 }
 
 /// The display name from a From header.
@@ -113,5 +161,27 @@ mod tests {
         assert_eq!(m.subject, "Lunch?");
         assert_eq!(m.snippet, "Tom & Jerry's plan");
         assert!(parse_message(&serde_json::json!({"id": "x"})).is_none());
+    }
+
+    #[test]
+    fn snoozes_hide_mail_until_due() {
+        let mut conn = rusqlite::Connection::open_in_memory().unwrap();
+        crate::db::migrate_for_tests(&mut conn);
+        let now = Utc.timestamp_opt(1_790_000_000, 0).unwrap();
+        snooze(&conn, "m1", now + chrono::Duration::hours(1), now).unwrap();
+        snooze(&conn, "m2", now + chrono::Duration::hours(3), now).unwrap();
+        assert!(snooze(&conn, "m3", now, now).is_err());
+        assert!(snooze(&conn, "bad id!", now + chrono::Duration::hours(1), now).is_err());
+        assert!(snooze(&conn, "m3", now + chrono::Duration::days(100), now).is_err());
+
+        let (hidden, due) = snoozes(&conn, now).unwrap();
+        assert_eq!(hidden.len(), 2);
+        assert!(due.is_empty());
+        let later = now + chrono::Duration::hours(2);
+        let (hidden, due) = snoozes(&conn, later).unwrap();
+        assert!(hidden.contains("m2") && !hidden.contains("m1"));
+        assert_eq!(due, vec!["m1".to_owned()]);
+        // Due once only.
+        assert!(snoozes(&conn, later).unwrap().1.is_empty());
     }
 }

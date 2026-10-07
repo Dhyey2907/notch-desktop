@@ -22,6 +22,10 @@ gmail: boolean,
  */
 classroom: boolean, 
 /**
+ * Also ask Google to add events and answer invites (Calendar actions).
+ */
+edit: boolean, 
+/**
  * Scopes Google granted at the last sign-in.
  */
 grantedScopes: Array<string>, };

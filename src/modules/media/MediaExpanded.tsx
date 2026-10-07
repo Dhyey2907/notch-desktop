@@ -8,6 +8,8 @@ import { EmptyState, MediaControl, MockBadge, ModuleContainer, Pill } from "../.
 import { currentPositionMs, formatTime, useMedia } from "./mediaStore";
 import { PlaylistTiles } from "./PlaylistTiles";
 import { LyricsView } from "./LyricsView";
+import { brandBackground, brandOf, paletteBackground } from "./mediaTheme";
+import { useArtworkPalette } from "./useArtworkPalette";
 import "./media.css";
 
 /** Re-render twice a second while playing, to move the progress bar. Local only — no IPC. */
@@ -65,6 +67,8 @@ function NowPlaying({
   const position = currentPositionMs(media, now);
   const duration = media.durationMs ?? null;
   const artwork = media.artworkPath ? convertFileSrc(media.artworkPath) : null;
+  const palette = useArtworkPalette(media.artworkPath);
+  const brand = brandOf(media);
   const canSeek = media.capabilities.seek && duration !== null && duration > 0;
 
   const seekTo = (fraction: number) => {
@@ -83,10 +87,27 @@ function NowPlaying({
 
   return (
     <div className="media">
-      {/* Artwork as a heavily blurred, dimmed backdrop (design.md §12). */}
-      {artwork && (
-        <div className="media__backdrop" style={{ backgroundImage: `url("${artwork}")` }} aria-hidden />
+      {/* The whole panel takes the playing thing's colors: the blurred album art and its own
+          colors, or — without artwork — the service's brand gradient (Netflix red, Prime blue…). */}
+      {artwork ? (
+        <>
+          <div className="media__backdrop" style={{ backgroundImage: `url("${artwork}")` }} aria-hidden />
+          {palette && (
+            <div
+              className="media__tint"
+              style={{ background: paletteBackground(palette.primary, palette.accent) }}
+              aria-hidden
+            />
+          )}
+        </>
+      ) : (
+        <div
+          className="media__tint media__tint--brand"
+          style={{ background: brandBackground(brand) }}
+          aria-hidden
+        />
       )}
+      <div className="media__shade" aria-hidden />
       <ModuleContainer
         title={media.sourceApp}
         trailing={

@@ -149,3 +149,65 @@
   color: var(--active);
   font-variant-numeric: tabular-nums;
 }
+
+/* New event form */
+.calendar-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-width: 520px;
+}
+
+.calendar-form__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.calendar-form__title,
+.calendar-form__where {
+  flex: 1;
+}
+
+.calendar-form__error {
+  font-size: var(--text-xs);
+  color: var(--warning);
+}
+
+/* Invites waiting for an answer */
+.calendar__invites {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-2);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.calendar__invite {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.calendar__invite-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.calendar-invite {
+  display: inline-flex;
+  gap: 4px;
+  flex: none;
+}
+
+.calendar-invite .nd-chip {
+  height: 22px;
+  padding: 0 var(--space-2);
+}

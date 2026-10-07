@@ -32,7 +32,13 @@ struct Inner {
     offline_since: Option<Instant>,
     /// Last byte counters, for speed.
     counters: Option<(Instant, (u64, u64))>,
+    /// Last per-process I/O bytes, for which apps use the network.
+    app_io: Option<(Instant, std::collections::HashMap<u32, u64>)>,
+    /// The speed test running now, or the last one.
+    speed_test: Option<super::speedtest::SpeedTest>,
 }
+
+const SPEED_TEST_KEY: &str = "control.speedtest";
 
 #[derive(Clone)]
 pub struct ControlService {
@@ -75,6 +81,117 @@ impl ControlService {
         }
         #[cfg(not(windows))]
         NetSpeed::default()
+    }
+
+    /// Apps with internet connections and roughly how fast each is moving data.
+    pub async fn net_apps(&self) -> Vec<super::netapps::AppTraffic> {
+        let samples = tauri::async_runtime::spawn_blocking(super::netapps::sample)
+            .await
+            .unwrap_or_default();
+        let now = Instant::now();
+        let mut inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+        let (before, millis) = inner.app_io.take().map_or_else(
+            || (Default::default(), 0),
+            |(at, io)| (io, now.duration_since(at).as_millis() as u64),
+        );
+        let apps = super::netapps::aggregate(&before, &samples, millis, 8);
+        inner.app_io = Some((now, samples.iter().map(|s| (s.pid, s.io_bytes)).collect()));
+        apps
+    }
+
+    /// The last speed test (also after a restart).
+    pub fn speed_test(&self) -> Option<super::speedtest::SpeedTest> {
+        if let Some(test) = self
+            .inner
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .speed_test
+            .clone()
+        {
+            return Some(test);
+        }
+        self.app
+            .state::<AppState>()
+            .db
+            .with(|conn| {
+                Ok(conn
+                    .query_row(
+                        "SELECT value FROM kv_cache WHERE key = ?1",
+                        [SPEED_TEST_KEY],
+                        |r| r.get::<_, String>(0),
+                    )
+                    .ok())
+            })
+            .ok()
+            .flatten()
+            .and_then(|json| serde_json::from_str(&json).ok())
+    }
+
+    fn set_speed_test(&self, test: super::speedtest::SpeedTest) {
+        self.inner.lock().unwrap_or_else(|e| e.into_inner()).speed_test = Some(test.clone());
+        self.app
+            .state::<AppState>()
+            .bus
+            .emit("control", AppEvent::SpeedTestChanged(test));
+    }
+
+    /// Ping, download, upload — about 20 seconds. Progress arrives as `SpeedTestChanged`.
+    pub async fn run_speed_test(&self) -> AppResult<super::speedtest::SpeedTest> {
+        use super::speedtest::{self as st, SpeedPhase, SpeedTest};
+        let running = self.speed_test().is_some_and(|t| {
+            matches!(
+                t.phase,
+                SpeedPhase::Ping | SpeedPhase::Download | SpeedPhase::Upload
+            )
+        });
+        if running {
+            return Err(crate::error::AppError::InvalidInput(
+                "A speed test is already running".into(),
+            ));
+        }
+        let mut test = SpeedTest {
+            phase: SpeedPhase::Ping,
+            ping_ms: None,
+            down_mbps: None,
+            up_mbps: None,
+            at: chrono::Utc::now(),
+        };
+        self.set_speed_test(test.clone());
+        let http = st::client();
+        test.ping_ms = st::ping(&http).await;
+        if test.ping_ms.is_none() {
+            test.phase = SpeedPhase::Failed;
+            self.set_speed_test(test.clone());
+            return Err(crate::error::AppError::InvalidInput(
+                "Couldn't reach the speed test server — are you online?".into(),
+            ));
+        }
+        test.phase = SpeedPhase::Download;
+        self.set_speed_test(test.clone());
+        test.down_mbps = st::download(&http).await;
+        test.phase = SpeedPhase::Upload;
+        self.set_speed_test(test.clone());
+        test.up_mbps = st::upload(&http).await;
+        test.phase = if test.down_mbps.is_some() || test.up_mbps.is_some() {
+            SpeedPhase::Done
+        } else {
+            SpeedPhase::Failed
+        };
+        test.at = chrono::Utc::now();
+        self.set_speed_test(test.clone());
+        if test.phase == SpeedPhase::Done {
+            if let Ok(json) = serde_json::to_string(&test) {
+                let _ = self.app.state::<AppState>().db.with(|conn| {
+                    conn.execute(
+                        "INSERT INTO kv_cache (key, value, fetched_at) VALUES (?1, ?2, ?3)
+                         ON CONFLICT(key) DO UPDATE SET value = excluded.value, fetched_at = excluded.fetched_at",
+                        rusqlite::params![SPEED_TEST_KEY, json, test.at.to_rfc3339()],
+                    )?;
+                    Ok(())
+                });
+            }
+        }
+        Ok(test)
     }
 
     /// Read everything again now (the panel was opened).

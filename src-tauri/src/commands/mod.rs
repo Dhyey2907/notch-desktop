@@ -22,6 +22,8 @@ pub mod git;
 pub mod media;
 pub mod music;
 pub mod phone;
+pub mod quick;
+pub mod readlater;
 pub mod settings;
 pub mod shelf;
 pub mod shell;

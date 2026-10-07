@@ -488,3 +488,64 @@
   font-size: var(--text-xs);
   color: var(--text-muted);
 }
+
+/* Small rounded choice buttons ("Tomorrow 9 am", "30 min") and compact inputs, shared by the
+   quick forms in Calendar, Mail, Read later and Quick capture. */
+.nd-chip {
+  height: 26px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--text-xs);
+  white-space: nowrap;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.nd-chip:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.nd-chip:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.nd-chip:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.nd-chip--on {
+  background: var(--active);
+  border-color: var(--active);
+  color: var(--on-active, #0a0a0a);
+}
+
+.nd-chip--on:hover:not(:disabled) {
+  background: var(--active);
+  filter: brightness(1.08);
+}
+
+.nd-input {
+  height: 30px;
+  min-width: 0;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control, 8px);
+  background: var(--surface);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--text-sm);
+  color-scheme: dark;
+}
+
+.nd-input:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}

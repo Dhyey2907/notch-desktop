@@ -1,4 +1,4 @@
-import { RefreshCw, Video } from "lucide-react";
+import { Plus, RefreshCw, Video, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import type { CalendarEvent } from "../../core/generated/CalendarEvent";
@@ -24,6 +24,9 @@ import {
   sameLocalDay,
   useCalendar,
 } from "./calendarStore";
+import { useSettings } from "../../settings";
+import { InviteAnswer, NewEventForm } from "./CalendarActions";
+import { waitingInvites } from "./eventForm";
 import "./calendar.css";
 
 function useClock(intervalMs: number) {
@@ -82,6 +85,10 @@ export default function CalendarExpanded() {
 }
 
 function Agenda({ snapshot, now }: { snapshot: CalendarSnapshot; now: number }) {
+  const canEdit = useSettings((s) => s.settings?.calendar.edit ?? false);
+  const [adding, setAdding] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
+  const invites = waitingInvites(snapshot.events, now);
   const today = new Date(now);
   const todays = eventsOn(snapshot.events, today);
   const upcoming = todays.filter((e) => e.allDay || Date.parse(e.end) > now);
@@ -97,9 +104,42 @@ function Agenda({ snapshot, now }: { snapshot: CalendarSnapshot; now: number }) 
       ) : (
         isStale(snapshot, now) && <Pill tone="warning">May be out of date</Pill>
       )}
+      {!snapshot.mock && (
+        <IconButton
+          icon={adding ? X : Plus}
+          label={adding ? "Close the new event form" : "New event"}
+          size="sm"
+          active={adding}
+          onClick={() => {
+            setAdding(!adding);
+            setStatus(null);
+          }}
+        />
+      )}
       <IconButton icon={RefreshCw} label="Sync now" size="sm" onClick={() => void ipc.calendarSyncNow()} />
     </>
   );
+
+  if (adding) {
+    return (
+      <ModuleContainer title="New event" trailing={trailing}>
+        {canEdit ? (
+          <NewEventForm
+            onDone={(done) => {
+              setAdding(false);
+              setStatus(done);
+            }}
+          />
+        ) : (
+          <EmptyState
+            title="Let Notch add events"
+            body="Turn on “Add events and answer invites” in Settings → Calendar, then sign in with Google again to allow it."
+            action={<Button onClick={openSettings}>Open Calendar settings</Button>}
+          />
+        )}
+      </ModuleContainer>
+    );
+  }
 
   return (
     <ModuleContainer title="Calendar" trailing={trailing}>
@@ -110,10 +150,38 @@ function Agenda({ snapshot, now }: { snapshot: CalendarSnapshot; now: number }) 
             {today.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}
           </p>
           <p className="calendar__summary">
-            {todays.length === 0
-              ? "Nothing scheduled today"
-              : `${todays.length} ${todays.length === 1 ? "event" : "events"} today`}
+            {status ??
+              (todays.length === 0
+                ? "Nothing scheduled today"
+                : `${todays.length} ${todays.length === 1 ? "event" : "events"} today`)}
           </p>
+          {invites.length > 0 && (
+            <div className="calendar__invites" aria-label="Invites waiting for your answer">
+              {invites.slice(0, 3).map((event) => (
+                <div key={`${event.id}${event.start}`} className="calendar__invite">
+                  <span className="calendar__invite-text">
+                    <span className="calendar__title" title={event.title}>
+                      {event.title}
+                    </span>
+                    <span className="calendar__soon">
+                      {new Date(event.start).toLocaleString(undefined, {
+                        weekday: "short",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  </span>
+                  {canEdit ? (
+                    <InviteAnswer event={event} onStatus={setStatus} />
+                  ) : (
+                    <button type="button" className="nd-chip" onClick={openSettings}>
+                      Answer…
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
           {upcoming.length > 0 ? (
             <ol className="calendar__list">
               {upcoming.slice(0, 5).map((event) => (

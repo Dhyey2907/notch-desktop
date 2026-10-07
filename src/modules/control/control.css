@@ -263,3 +263,120 @@
   color: var(--text-muted);
   text-align: center;
 }
+
+.control-card__more {
+  align-self: flex-start;
+  margin-top: 2px;
+  height: 22px;
+}
+
+/* Network details */
+.network__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.network__heading {
+  font-size: var(--text-md);
+  font-weight: var(--weight-emphasis);
+}
+
+.network__test .control-card__head .nd-button {
+  margin-left: auto;
+}
+
+.network__results {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+  margin: var(--space-2) 0 2px;
+}
+
+.network__result {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.network__result-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.network__result-value {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-headline);
+  font-variant-numeric: tabular-nums;
+}
+
+.network__result--busy .network__result-value {
+  color: var(--active);
+  animation: network-pulse 1s ease-in-out infinite;
+}
+
+@keyframes network-pulse {
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .network__result--busy .network__result-value {
+    animation: none;
+  }
+}
+
+.network__list {
+  list-style: none;
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.network__app {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(40px, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.network__app-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.network__meter {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.network__meter span {
+  display: block;
+  height: 100%;
+  background: var(--active);
+  transition: width 400ms ease-out;
+}
+
+.network__app-rate,
+.network__app-conns {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.network__note {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}

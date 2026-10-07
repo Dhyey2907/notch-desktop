@@ -59,3 +59,26 @@ pub fn control_open_settings(page: String, app: AppHandle) -> AppResult<()> {
         .open_url(uri, None::<&str>)
         .map_err(|e| AppError::Platform(e.to_string()))
 }
+
+/// Apps using the internet now, with an estimated rate each (poll while the panel is open).
+#[tauri::command]
+pub async fn control_net_apps(
+    control: State<'_, ControlService>,
+) -> AppResult<Vec<crate::control::netapps::AppTraffic>> {
+    Ok(control.inner().clone().net_apps().await)
+}
+
+#[tauri::command]
+pub fn control_speed_test_last(
+    control: State<'_, ControlService>,
+) -> Option<crate::control::speedtest::SpeedTest> {
+    control.speed_test()
+}
+
+/// Runs a speed test against speed.cloudflare.com (about 20 seconds).
+#[tauri::command]
+pub async fn control_speed_test(
+    control: State<'_, ControlService>,
+) -> AppResult<crate::control::speedtest::SpeedTest> {
+    control.inner().clone().run_speed_test().await
+}

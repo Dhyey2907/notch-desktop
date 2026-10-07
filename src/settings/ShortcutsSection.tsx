@@ -38,6 +38,13 @@ const SHORTCUTS: { key: keyof ShortcutSettings; label: string; description: stri
     description: "Press again to let it go. Handy for a video, a calculator or notes.",
     fallback: "Ctrl+Alt+P",
   },
+  {
+    key: "capture",
+    label: "Quick capture",
+    description:
+      "Type a task, reminder, note, event or link from anywhere — Notch files it in the right place.",
+    fallback: "Ctrl+Alt+Space",
+  },
 ];
 
 export function ShortcutsSection() {

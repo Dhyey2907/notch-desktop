@@ -100,6 +100,12 @@ impl TodoService {
         self.change(|conn, now| super::start_timer(conn, id, minutes, ring, now))
     }
 
+    /// Remind about a task at a set time.
+    pub fn remind_at(&self, id: &str, at: DateTime<Utc>, ring: bool) -> AppResult<()> {
+        self.inner.acknowledge(id);
+        self.change(|conn, now| super::remind_at(conn, id, at, ring, now))
+    }
+
     pub fn cancel_timer(&self, id: &str) -> AppResult<()> {
         self.inner.acknowledge(id);
         self.change(|conn, _| super::cancel_timer(conn, id))

@@ -17,9 +17,15 @@ pub const GMAIL_SCOPE: &str = "https://www.googleapis.com/auth/gmail.modify";
 /// Assignment deadlines: your classes and your own course work, read-only.
 pub const CLASSROOM_SCOPES: &str = "https://www.googleapis.com/auth/classroom.courses.readonly https://www.googleapis.com/auth/classroom.coursework.me.readonly";
 
+/// Calendar actions: add events and answer invites (only when the user turns it on).
+pub const CALENDAR_EDIT_SCOPE: &str = "https://www.googleapis.com/auth/calendar.events";
+
 /// Calendar's scopes plus the extras the user turned on.
-pub fn scopes_for(gmail: bool, classroom: bool) -> String {
+pub fn scopes_for(gmail: bool, classroom: bool, edit: bool) -> String {
     let mut scopes = SCOPES.to_owned();
+    if edit {
+        scopes = format!("{scopes} {CALENDAR_EDIT_SCOPE}");
+    }
     if gmail {
         scopes = format!("{scopes} {GMAIL_SCOPE}");
     }

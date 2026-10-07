@@ -19,7 +19,8 @@ use crate::{
 
 const API: &str = "https://gmail.googleapis.com/gmail/v1/users/me";
 const EVERY: Duration = Duration::from_secs(120);
-const SHOWN: usize = 8;
+/// Unread messages fetched each check (enough to swipe through a few in a row).
+const SHOWN: usize = 15;
 /// At most this many cards for one check (a busy inbox shouldn't flood the notch).
 const MAX_CARDS: usize = 3;
 
@@ -52,6 +53,7 @@ impl MailService {
                     status: MailStatus::Off,
                     unread: 0,
                     messages: Vec::new(),
+                    snoozed: 0,
                 },
                 seen: HashSet::new(),
                 first: true,
@@ -142,6 +144,7 @@ impl MailService {
                 status: MailStatus::Off,
                 unread: 0,
                 messages: Vec::new(),
+                snoozed: 0,
             });
         }
         if !self.calendar().granted(GMAIL_SCOPE) {
@@ -149,10 +152,23 @@ impl MailService {
                 status: MailStatus::NeedsSignIn,
                 unread: 0,
                 messages: Vec::new(),
+                snoozed: 0,
             });
         }
         match self.fetch().await {
             Ok((unread, messages)) => {
+                // Snoozed mail stays out of sight until it's due; then it comes back with a card.
+                let (hidden, due) = self
+                    .app
+                    .state::<AppState>()
+                    .db
+                    .with(|conn| super::snoozes(conn, chrono::Utc::now()))
+                    .unwrap_or_default();
+                let back: Vec<MailMessage> =
+                    messages.iter().filter(|m| due.contains(&m.id)).cloned().collect();
+                let snoozed = messages.iter().filter(|m| hidden.contains(&m.id)).count() as u32;
+                let messages: Vec<MailMessage> =
+                    messages.into_iter().filter(|m| !hidden.contains(&m.id)).collect();
                 let fresh: Vec<MailMessage> = {
                     let mut inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
                     let fresh = if inner.first {
@@ -170,10 +186,13 @@ impl MailService {
                 };
                 self.set(MailState {
                     status: MailStatus::Ready,
-                    unread,
+                    unread: unread.saturating_sub(snoozed),
                     messages,
+                    snoozed,
                 });
-                for m in fresh.into_iter().take(MAX_CARDS) {
+                let mut cards = back;
+                cards.extend(fresh.into_iter().filter(|m| !due.contains(&m.id)));
+                for m in cards.into_iter().take(MAX_CARDS) {
                     self.app
                         .state::<AppState>()
                         .bus
@@ -238,6 +257,24 @@ impl MailService {
 
     pub async fn mark_read(&self, id: &str) -> AppResult<()> {
         self.modify(id, "UNREAD").await
+    }
+
+    /// Hide a message until later (Gmail's API has no snooze, so Notch keeps it).
+    pub fn snooze(&self, id: &str, until: chrono::DateTime<chrono::Utc>) -> AppResult<()> {
+        self.app
+            .state::<AppState>()
+            .db
+            .with(|conn| super::snooze(conn, id, until, chrono::Utc::now()))?;
+        // Out of the list straight away.
+        let mut state = self.state();
+        if let Some(pos) = state.messages.iter().position(|m| m.id == id) {
+            state.messages.remove(pos);
+            state.unread = state.unread.saturating_sub(1);
+            state.snoozed += 1;
+            self.set(state);
+        }
+        self.wake.notify_one();
+        Ok(())
     }
 
     pub fn refresh(&self) {

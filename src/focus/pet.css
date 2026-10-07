@@ -3,7 +3,7 @@
   flex: none;
   display: inline-flex;
   align-items: center;
-  height: 10px;
+  height: 14px;
 }
 
 .pet__body {
@@ -122,7 +122,8 @@ html.pet-window #root {
 
 .petwalk__track {
   position: absolute;
-  bottom: 2px;
+  /* Feet on the taskbar's top edge. */
+  bottom: 0;
   left: 0;
   width: var(--pet-w);
   animation: petwalk-move 70s linear infinite;
@@ -135,7 +136,15 @@ html.pet-window #root {
 
 .petwalk__pet svg {
   display: block;
-  animation: pet-bounce 0.5s ease-in-out infinite;
+  overflow: visible;
+  /* A small step, so the feet stay on the taskbar. */
+  animation: petwalk-step 0.5s ease-in-out infinite;
+}
+
+@keyframes petwalk-step {
+  50% {
+    transform: translateY(-1px);
+  }
 }
 
 .petwalk .pet__body {

@@ -186,11 +186,19 @@ export function CalendarSection() {
         )}
         <p className="settings__note">
           Notch Desktop asks for read-only access to your calendar and your email address (to label the
-          account). It never edits events.
+          account). It only adds events or answers invites when you turn that on below and click it yourself.
         </p>
       </Surface>
 
       <Surface>
+        <div id="setting-add-events-and-answer-invites">
+          <Switch
+            label="Add events and answer invites"
+            description="A + button in Calendar to add an event, and Yes / Maybe / No on invites (the organizer is told, as in Google Calendar). Quick capture can add events too. Sign in with Google again after turning this on."
+            checked={settings?.calendar.edit ?? false}
+            onChange={(edit) => void update((s) => ({ ...s, calendar: { ...s.calendar, edit } }))}
+          />
+        </div>
         <div id="setting-gmail-glance">
           <Switch
             label="Gmail glance"

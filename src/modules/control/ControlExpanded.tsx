@@ -26,6 +26,7 @@ import type { RadioKind } from "../../core/generated/RadioKind";
 import { ipc, isIpcError } from "../../core/ipc";
 import { useControl } from "./controlStore";
 import { formatMinutes, formatSpeed } from "./format";
+import { NetworkPanel } from "./NetworkPanel";
 import { useSpeed } from "./useSpeed";
 import "./control.css";
 
@@ -107,7 +108,7 @@ function Toggles({
   );
 }
 
-function NetworkCard({ snapshot }: { snapshot: ControlSnapshot }) {
+function NetworkCard({ snapshot, onMore }: { snapshot: ControlSnapshot; onMore: () => void }) {
   const speed = useSpeed();
   const { network } = snapshot;
   const Icon = network.internet === "offline" ? WifiOff : network.kind === "ethernet" ? Cable : Wifi;
@@ -157,6 +158,9 @@ function NetworkCard({ snapshot }: { snapshot: ControlSnapshot }) {
           <ArrowUp size={12} aria-hidden /> {speed ? formatSpeed(speed.up) : "…"}
         </span>
       </div>
+      <button type="button" className="nd-chip control-card__more" onClick={onMore}>
+        Speed test & apps
+      </button>
     </div>
   );
 }
@@ -246,6 +250,7 @@ function Devices({ snapshot }: { snapshot: ControlSnapshot }) {
 export default function ControlExpanded() {
   const snapshot = useControl((s) => s.snapshot);
   const [error, setError] = useState<string | null>(null);
+  const [network, setNetwork] = useState(false);
   // Fresh readings each time the panel opens (headphones may have just connected).
   useEffect(() => {
     ipc.controlRefresh().then(
@@ -254,6 +259,7 @@ export default function ControlExpanded() {
     );
   }, []);
   if (!snapshot) return <section className="control" aria-label="Control" />;
+  if (network) return <NetworkPanel onBack={() => setNetwork(false)} />;
   return (
     <section className="control" aria-label="Control">
       <Toggles snapshot={snapshot} onError={setError} />
@@ -263,7 +269,7 @@ export default function ControlExpanded() {
         </p>
       )}
       <div className="control-cards">
-        <NetworkCard snapshot={snapshot} />
+        <NetworkCard snapshot={snapshot} onMore={() => setNetwork(true)} />
         <PowerCard snapshot={snapshot} />
       </div>
       <Devices snapshot={snapshot} />

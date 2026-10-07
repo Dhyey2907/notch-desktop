@@ -197,6 +197,8 @@ enum ShortcutAction {
     Grab,
     /// Pin the window in front on top (default Ctrl+Alt+P).
     Pin,
+    /// Quick capture (default Ctrl+Alt+Space).
+    Capture,
 }
 
 /// The shortcuts registered now, and why any of the user's choices failed.
@@ -233,6 +235,7 @@ pub fn apply_shortcuts(app: &AppHandle, keys: &crate::settings::ShortcutSettings
         ("clipboard", &keys.clipboard, ShortcutAction::Clipboard),
         ("grab", &keys.grab, ShortcutAction::Grab),
         ("pin", &keys.pin, ShortcutAction::Pin),
+        ("capture", &keys.capture, ShortcutAction::Capture),
     ] {
         if text.trim().is_empty() {
             continue;
@@ -328,6 +331,10 @@ pub fn shortcut_plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
                 ShortcutAction::Clipboard => AppEvent::ShellOpenModuleRequested {
                     label,
                     module: "clipboard".into(),
+                },
+                ShortcutAction::Capture => AppEvent::ShellOpenModuleRequested {
+                    label,
+                    module: "capture".into(),
                 },
                 ShortcutAction::Toggle | ShortcutAction::Grab | ShortcutAction::Pin => {
                     AppEvent::ShellToggleRequested { label }
@@ -465,6 +472,16 @@ pub fn is_fullscreen(label: &str) -> bool {
         .as_ref()
         .and_then(|map| map.get(label).copied())
         .unwrap_or(false)
+}
+
+/// Something fills a screen on any monitor right now (a video, a game…).
+pub fn any_fullscreen() -> bool {
+    FULLSCREEN_PID.load(std::sync::atomic::Ordering::Relaxed) != 0
+        || FULLSCREEN
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .as_ref()
+            .is_some_and(|map| map.values().any(|on| *on))
 }
 
 /// The process whose window fills a screen right now (0: none).

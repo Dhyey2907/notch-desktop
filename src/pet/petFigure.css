@@ -1,0 +1,146 @@
+.pf {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.pf svg {
+  display: block;
+  overflow: visible;
+}
+
+.pf-eye {
+  fill: #141416;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pf-blink 4.8s infinite;
+}
+
+.pf-line,
+.pf-stroke {
+  fill: none;
+  stroke: #141416;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pf-heart {
+  fill: #ff4f7b;
+}
+
+.pf-z,
+.pf-bang {
+  font:
+    700 8px/1 system-ui,
+    sans-serif;
+  fill: var(--text-muted, #9b9ca3);
+}
+
+.pf-bang {
+  fill: #ffb547;
+  font-size: 9px;
+}
+
+.pf-z {
+  animation: pf-z 2.4s ease-in-out infinite;
+}
+
+.pf-body,
+.pf-prop,
+.pf-umbrella {
+  transform-box: view-box;
+  transform-origin: 50% 100%;
+}
+
+.pf--dance .pf-body {
+  animation: pf-dance 0.9s ease-in-out infinite;
+}
+
+.pf--bounce svg {
+  animation: pf-bounce 0.5s ease-in-out infinite;
+}
+
+.pf--wiggle .pf-body {
+  animation: pf-wiggle 0.35s ease-in-out 3;
+}
+
+.pf--sleepy {
+  opacity: 0.8;
+}
+
+.pf--droopy .pf-body {
+  transform: scaleY(0.93);
+}
+
+/* The bubble's pet nods along to the beat the island already detects. */
+.island--beat .pf--dance svg {
+  transform: translateY(-8%) scale(1.06);
+  transition: transform 80ms ease-out;
+}
+
+@keyframes pf-blink {
+  0%,
+  94%,
+  100% {
+    transform: scaleY(1);
+  }
+  97% {
+    transform: scaleY(0.12);
+  }
+}
+
+@keyframes pf-dance {
+  0%,
+  100% {
+    transform: rotate(-7deg);
+  }
+  50% {
+    transform: rotate(7deg) translateY(-3%);
+  }
+}
+
+@keyframes pf-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-14%);
+  }
+}
+
+@keyframes pf-wiggle {
+  0%,
+  100% {
+    transform: rotate(0) scale(1);
+  }
+  30% {
+    transform: rotate(-9deg) scale(1.04, 0.96);
+  }
+  70% {
+    transform: rotate(9deg) scale(0.97, 1.03);
+  }
+}
+
+@keyframes pf-z {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: translate(0, 0);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(1px, -2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pf *,
+  .pf svg {
+    animation: none !important;
+    transition: none !important;
+  }
+}
