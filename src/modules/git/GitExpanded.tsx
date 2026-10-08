@@ -94,7 +94,7 @@ export default function GitExpanded() {
       <ModuleContainer title="Git">
         <EmptyState
           title="Git isn't installed"
-          body="Install Git for Windows (git-scm.com), then reopen Notch Desktop to see your repositories here."
+          body="Install Git for Windows (git-scm.com), then reopen Overline to see your repositories here."
         />
       </ModuleContainer>
     );

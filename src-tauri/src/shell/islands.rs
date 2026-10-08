@@ -209,7 +209,7 @@ pub fn monitor_for(window: &WebviewWindow, shell: &ShellState) -> Option<Monitor
 fn build_island_window(app: &AppHandle, label: &str, size: (f64, f64)) -> AppResult<WebviewWindow> {
     Ok(
         WebviewWindowBuilder::new(app, label, WebviewUrl::App("index.html".into()))
-            .title("Notch Desktop")
+            .title("Overline")
             .inner_size(size.0, size.1)
             .transparent(true)
             .decorations(false)

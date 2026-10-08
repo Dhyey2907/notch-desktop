@@ -186,7 +186,7 @@ impl SystemService {
         tauri::async_runtime::spawn(async move {
             let http = reqwest::Client::builder()
                 .timeout(Duration::from_secs(15))
-                .user_agent("Notch-Desktop")
+                .user_agent("Overline")
                 .build()
                 .expect("static client config");
             loop {

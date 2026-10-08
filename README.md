@@ -1,4 +1,4 @@
-# Notch Desktop
+# Overline
 
 A Windows Dynamic Island–style system layer: a small persistent surface at the top of the screen that expands into media, calendar, Git, and coding-agent modules.
 
@@ -6,7 +6,7 @@ Source-of-truth design docs live in [`docs/`](docs/): [architecture](docs/archit
 
 ## Install
 
-Download `Notch Desktop_<version>_x64-setup.exe` (or build it, below) and run it. It installs for the current user only — no admin prompt — and downloads WebView2 if it's missing. The notch appears at the top of your primary screen; **Ctrl+Alt+N** opens it, and the tray icon has Settings and Quit.
+Download `Overline_<version>_x64-setup.exe` (or build it, below) and run it. It installs for the current user only — no admin prompt — and downloads WebView2 if it's missing. The notch appears at the top of your primary screen; **Ctrl+Alt+N** opens it, and the tray icon has Settings and Quit.
 
 Uninstalling removes the app and its "Start with Windows" entry. Your settings stay in `%APPDATA%\com.notchdesktop.app` in case you reinstall; delete that folder to remove them too. Disconnect Google, Spotify, and Claude Code in Settings before uninstalling to also remove their stored credentials.
 
@@ -24,9 +24,9 @@ Everything runs locally. Secrets (OAuth refresh tokens, client secrets, the hook
 
 ## One-click sign-in ("Continue with Google / Spotify / GitHub")
 
-Those buttons are OAuth sign-ins. The app is registered once with each provider, and that registration's **client ID** is built into the app. Clicking the button opens the provider's own sign-in page in your browser; when you approve, the provider hands Notch a token, which it keeps in Windows Credential Manager. Google and Spotify send you back to Notch through a local `127.0.0.1` address (with PKCE). GitHub uses the "device code" flow, the same one the GitHub CLI uses: Notch shows a code, and you enter it on github.com.
+Those buttons are OAuth sign-ins. The app is registered once with each provider, and that registration's **client ID** is built into the app. Clicking the button opens the provider's own sign-in page in your browser; when you approve, the provider hands Overline a token, which it keeps in Windows Credential Manager. Google and Spotify send you back to Overline through a local `127.0.0.1` address (with PKCE). GitHub uses the "device code" flow, the same one the GitHub CLI uses: Overline shows a code, and you enter it on github.com.
 
-Notch has no client of its own until you register one. To turn the buttons on, copy `src-tauri/oauth-clients.example.json` to `src-tauri/oauth-clients.json` (gitignored, so it never reaches the repo), fill in what you register below, and rebuild. Leave a provider's placeholder in place to skip it. Without the file, Settings shows the "paste your own client ID" setup instead.
+Overline has no client of its own until you register one. To turn the buttons on, copy `src-tauri/oauth-clients.example.json` to `src-tauri/oauth-clients.json` (gitignored, so it never reaches the repo), fill in what you register below, and rebuild. Leave a provider's placeholder in place to skip it. Without the file, Settings shows the "paste your own client ID" setup instead.
 
 - **Google** (console.cloud.google.com):
   1. Create a project and enable the **Google Calendar API**.
@@ -41,7 +41,7 @@ Notch has no client of its own until you register one. To turn the buttons on, c
   2. Tick **Enable Device Flow**.
   3. Copy the **Client ID**. No secret is needed.
 
-Signing in to GitHub asks for the `repo` scope, which lets Notch list pull requests in your private repositories as well as public ones.
+Signing in to GitHub asks for the `repo` scope, which lets Overline list pull requests in your private repositories as well as public ones.
 
 ## Stack
 

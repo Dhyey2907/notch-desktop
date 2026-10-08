@@ -140,13 +140,13 @@ fn handle_connection(
     let result = parse_callback(&line, expected_state);
     let message = match &result {
         Ok(Callback::Code(_)) => {
-            format!("{service} connected. You can close this tab and return to Notch Desktop.")
+            format!("{service} connected. You can close this tab and return to Overline.")
         }
         Ok(Callback::Denied(_)) => "Sign-in was cancelled. You can close this tab.".to_owned(),
-        Err(_) => "Something went wrong with sign-in. Please try again from Notch Desktop.".to_owned(),
+        Err(_) => "Something went wrong with sign-in. Please try again from Overline.".to_owned(),
     };
     let body = format!(
-        "<!doctype html><meta charset=utf-8><title>Notch Desktop</title>\
+        "<!doctype html><meta charset=utf-8><title>Overline</title>\
          <body style=\"font-family:system-ui;background:#090909;color:#f5f5f5;display:grid;place-items:center;height:100vh;margin:0\">\
          <p>{message}</p>"
     );

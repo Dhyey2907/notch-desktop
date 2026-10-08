@@ -91,6 +91,48 @@ pub fn snooze(
     Ok(())
 }
 
+/// The sample inbox for demo mode (recording the website's videos).
+pub fn demo_messages(now: DateTime<Utc>) -> Vec<MailMessage> {
+    let m = |id: &str, from: &str, subject: &str, snippet: &str, minutes: i64| MailMessage {
+        id: id.into(),
+        thread_id: id.into(),
+        from: from.into(),
+        subject: subject.into(),
+        snippet: snippet.into(),
+        at: now - chrono::Duration::minutes(minutes),
+    };
+    vec![
+        m(
+            "demo1",
+            "Ann Patel",
+            "Notes from Tuesday",
+            "Here's the summary and the next steps we agreed on…",
+            4,
+        ),
+        m(
+            "demo2",
+            "Focus Weekly",
+            "10 tips for deep work",
+            "This week: music, fewer tabs and the two-minute rule…",
+            38,
+        ),
+        m(
+            "demo3",
+            "Sam Rivera",
+            "Lunch on Friday?",
+            "There's a new place near the office — 1 pm works for me…",
+            95,
+        ),
+        m(
+            "demo4",
+            "GitHub",
+            "Your weekly digest",
+            "3 repositories had new activity this week…",
+            180,
+        ),
+    ]
+}
+
 /// The display name from a From header.
 pub fn sender_name(from: &str) -> String {
     let from = from.trim();

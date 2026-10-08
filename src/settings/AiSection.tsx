@@ -35,7 +35,7 @@ const DECIDED_BY_LABEL: Record<string, string> = {
   you: "by you",
   session_rule: "for this session",
   timeout: "no answer in time",
-  app_closed: "Notch closed",
+  app_closed: "Overline closed",
   agent_exited: "the agent closed",
   elsewhere: "answered in the agent",
 };
@@ -48,7 +48,7 @@ function RecentApprovals() {
         <span className="settings__row-text">
           <span className="settings__row-label">Recent approvals</span>
           <span className="settings__row-description">
-            Permission requests answered through Notch, kept on this PC only (last 500).
+            Permission requests answered through Overline, kept on this PC only (last 500).
           </span>
         </span>
       </div>
@@ -102,7 +102,7 @@ function PlanLimitsSetting({
           <span className="settings__row-label">Plan limits</span>
           <span className="settings__row-description">
             Show your 5-hour and weekly limits in the notch. Claude Code shares them only with a status line,
-            so this adds a small one that sends just those two numbers to Notch — and shows them in your
+            so this adds a small one that sends just those two numbers to Overline — and shows them in your
             terminal too. Only terminal (CLI) sessions update them; the desktop app doesn't run status lines.
           </span>
         </span>
@@ -112,12 +112,12 @@ function PlanLimitsSetting({
       </div>
       {statusLineTaken ? (
         <p className="settings__note">
-          You already have a status line in Claude Code, so Notch won't replace it.
+          You already have a status line in Claude Code, so Overline won't replace it.
         </p>
       ) : statusLine ? (
         <div className="settings__buttons">
           <ConfirmButton
-            confirmLabel="Remove Notch's status line from Claude Code?"
+            confirmLabel="Remove Overline's status line from Claude Code?"
             onConfirm={() => void run(ipc.claudeStatusLineDisable)}
           >
             Turn off
@@ -204,9 +204,9 @@ export function AiSection() {
             <span className="settings__row-label">Claude Code</span>
             <span className="settings__row-description">
               Show when Claude Code is working or waiting for you, and answer its permission requests from the
-              notch. Adds hooks to Claude Code's settings that send events to Notch on this PC only. If Notch
-              doesn't answer, Claude Code asks in the terminal as usual — nothing is ever allowed without your
-              click.
+              notch. Adds hooks to Claude Code's settings that send events to Overline on this PC only. If
+              Overline doesn't answer, Claude Code asks in the terminal as usual — nothing is ever allowed
+              without your click.
             </span>
           </span>
           {installed ? (
@@ -226,7 +226,7 @@ export function AiSection() {
           <div className="settings__buttons">
             {status?.hooks.outdated && (
               <ConfirmButton
-                confirmLabel="Update Notch's hooks in Claude Code settings?"
+                confirmLabel="Update Overline's hooks in Claude Code settings?"
                 onConfirm={() => void run(ipc.claudeConnect)}
               >
                 Update hooks (adds approvals)
@@ -234,7 +234,7 @@ export function AiSection() {
             )}
             <ConfirmButton
               variant="danger"
-              confirmLabel="Remove Notch's hooks from Claude Code?"
+              confirmLabel="Remove Overline's hooks from Claude Code?"
               onConfirm={() => void run(ipc.claudeDisconnect)}
             >
               Disconnect
@@ -244,8 +244,8 @@ export function AiSection() {
           <>
             <p className="settings__lead">
               Connecting adds the entries below to <strong>~/.claude/settings.json</strong>. Your existing
-              settings and hooks are kept, and a backup of the file is saved next to it first. If Notch isn't
-              running, Claude Code simply carries on.
+              settings and hooks are kept, and a backup of the file is saved next to it first. If Overline
+              isn't running, Claude Code simply carries on.
             </p>
             {preview && (
               <details className="settings__details">

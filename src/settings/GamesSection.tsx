@@ -67,7 +67,7 @@ export function GamesSection() {
         <p className="settings__row-label">Your games</p>
         {game.games.length === 0 ? (
           <p className="settings__note">
-            None yet. When an app goes fullscreen, Notch asks once whether it's a game.
+            None yet. When an app goes fullscreen, Overline asks once whether it's a game.
           </p>
         ) : (
           <ul className="settings__chips" aria-label="Games">

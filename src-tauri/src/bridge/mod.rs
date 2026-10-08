@@ -204,11 +204,11 @@ pub fn page(files: &[String], pc_name: &str) -> String {
     };
     format!(
         r#"<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1">
-<title>Notch · {pc}</title><style>
+<title>Overline · {pc}</title><style>
 body{{margin:0;font:16px system-ui,sans-serif;background:#0b0b0c;color:#f2f2f2}}main{{max-width:520px;margin:0 auto;padding:20px}}
 h1{{font-size:20px;margin:8px 0 2px}}.muted{{color:#9a9aa0;font-size:14px}}.file{{display:block;padding:14px;margin:8px 0;border-radius:12px;background:#1b1b1f;color:#f2f2f2;text-decoration:none;word-break:break-all}}
 label.up{{display:block;margin-top:22px;padding:16px;border-radius:12px;background:#2b6fe0;color:#fff;text-align:center;font-weight:600}}input{{display:none}}#s{{margin-top:12px;font-size:14px;color:#9a9aa0}}
-</style></head><body><main><h1>Notch · {pc}</h1><p class=muted>Files from your PC</p>{list}
+</style></head><body><main><h1>Overline · {pc}</h1><p class=muted>Files from your PC</p>{list}
 <label class=up>Send files to the PC<input id=f type=file multiple></label><p id=s></p></main>
 <script>
 const s=document.getElementById('s');

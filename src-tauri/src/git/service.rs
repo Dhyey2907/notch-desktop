@@ -397,7 +397,11 @@ impl Inner {
             repo: state.repo.as_deref().map(|p| {
                 let mut info = repo_info(p);
                 if self.mock {
-                    info.name = "notch-desktop (MOCK)".into();
+                    info.name = if crate::demo() {
+                        "overline".into()
+                    } else {
+                        "notch-desktop (MOCK)".into()
+                    };
                 }
                 info
             }),
@@ -406,7 +410,7 @@ impl Inner {
             activity: state.activity.clone(),
             recent_repos,
             running: state.running,
-            mock: self.mock,
+            mock: self.mock && !crate::demo(),
         }
     }
 
@@ -516,7 +520,11 @@ fn mock_repo() -> (BranchStatus, Vec<Commit>, Vec<DayCount>) {
     .map(|(i, subject)| Commit {
         hash: format!("{i:040}"),
         short: format!("abc{i}d{i}f"),
-        subject: format!("{subject} (MOCK)"),
+        subject: if crate::demo() {
+            subject.to_string()
+        } else {
+            format!("{subject} (MOCK)")
+        },
         author: "Mock Author".into(),
         time: now - D::hours(3 * (i as i64 + 1)),
     })
@@ -550,7 +558,11 @@ fn mock_pull_requests() -> PullRequests {
     PullRequests::Ready {
         items: vec![super::PullRequest {
             number: 214,
-            title: "Notch shell and activity engine (MOCK)".into(),
+            title: if crate::demo() {
+                "Add quick capture".into()
+            } else {
+                "Overline shell and activity engine (MOCK)".into()
+            },
             author: "mock-author".into(),
             is_draft: false,
             review_decision: "REVIEW_REQUIRED".into(),

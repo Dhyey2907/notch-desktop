@@ -97,6 +97,11 @@ impl ClaudeService {
             })
             .ok()
             .and_then(|json| serde_json::from_str::<PlanLimits>(&json).ok());
+        let limits = if crate::demo() {
+            Some(limits::demo(chrono::Utc::now()))
+        } else {
+            limits
+        };
         Ok(Self {
             inner: Arc::new(Inner {
                 app,
@@ -224,9 +229,9 @@ impl ClaudeService {
             let payload = PermissionPayload {
                 agent: Default::default(),
                 session_id: "notch-test".into(),
-                cwd: Some("Notch test".into()),
+                cwd: Some("Overline test".into()),
                 tool_name: "Bash".into(),
-                tool_input: serde_json::json!({ "command": "echo \"This is a test from Notch — nothing will run\"" }),
+                tool_input: serde_json::json!({ "command": "echo \"This is a test from Overline — nothing will run\"" }),
             };
             inner.handle_permission(&payload);
         });
@@ -240,7 +245,14 @@ impl ClaudeService {
             let payload = PermissionPayload {
                 agent: Default::default(),
                 session_id: "dev-test".into(),
-                cwd: Some("C:/dev/notch-desktop".into()),
+                cwd: Some(
+                    if crate::demo() {
+                        "C:/dev/overline"
+                    } else {
+                        "C:/dev/notch-desktop"
+                    }
+                    .into(),
+                ),
                 tool_name: tool,
                 tool_input: input,
             };
@@ -350,7 +362,7 @@ fn relay_command(agent: Agent) -> AppResult<String> {
 fn read_agent_config(agent: Agent, path: &std::path::Path) -> AppResult<serde_json::Value> {
     let config = connect::read(path).map_err(|_| {
         AppError::InvalidInput(format!(
-            "{} isn't valid JSON, so Notch won't touch it. Fix it and try again",
+            "{} isn't valid JSON, so Overline won't touch it. Fix it and try again",
             path.display()
         ))
     })?;

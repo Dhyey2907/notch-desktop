@@ -115,7 +115,7 @@ impl Client {
             stream,
             devices: Vec::new(),
         };
-        client.send(0, SET_CLIENT_NAME, b"Notch Desktop\0")?;
+        client.send(0, SET_CLIENT_NAME, b"Overline\0")?;
         client.send(0, REQUEST_CONTROLLER_COUNT, &[])?;
         let count = u32::from_le_bytes(
             client.reply(REQUEST_CONTROLLER_COUNT)?[..4]

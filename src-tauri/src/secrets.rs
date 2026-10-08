@@ -4,6 +4,16 @@
 use crate::error::{AppError, AppResult};
 
 const SERVICE: &str = "com.notchdesktop.app";
+/// Demo mode (dev builds): a separate, empty store, so recordings never touch real sign-ins.
+const DEMO_SERVICE: &str = "com.notchdesktop.app.demo";
+
+fn service() -> &'static str {
+    if crate::demo() {
+        DEMO_SERVICE
+    } else {
+        SERVICE
+    }
+}
 
 /// Names of stored secrets. Keeping them in one enum makes every secret the app holds
 /// easy to audit (and to clear on disconnect).
@@ -41,7 +51,7 @@ impl Credential {
 }
 
 fn entry(secret: Credential) -> AppResult<keyring::Entry> {
-    keyring::Entry::new(SERVICE, secret.key()).map_err(|e| AppError::Platform(e.to_string()))
+    keyring::Entry::new(service(), secret.key()).map_err(|e| AppError::Platform(e.to_string()))
 }
 
 /// A 2FA account's secret (one per account, keyed by its id).
@@ -49,7 +59,7 @@ fn totp_entry(id: &str) -> AppResult<keyring::Entry> {
     if id.is_empty() || id.len() > 64 || !id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') {
         return Err(AppError::InvalidInput("invalid account id".into()));
     }
-    keyring::Entry::new(SERVICE, &format!("totp/{id}")).map_err(|e| AppError::Platform(e.to_string()))
+    keyring::Entry::new(service(), &format!("totp/{id}")).map_err(|e| AppError::Platform(e.to_string()))
 }
 
 pub fn totp_get(id: &str) -> AppResult<Option<String>> {

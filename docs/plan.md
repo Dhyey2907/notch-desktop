@@ -1,4 +1,4 @@
-# Notch Desktop --- Implementation Plan
+# Overline --- Implementation Plan
 
 ## 0. Objective
 
@@ -50,7 +50,7 @@ Create a working Tauri + React + TypeScript Windows application.
 
 ------------------------------------------------------------------------
 
-# Phase 2 --- Notch Shell
+# Phase 2 --- Overline Shell
 
 ## Goal
 
@@ -500,7 +500,7 @@ Do NOT attempt every integration immediately.
 The first impressive MVP should contain:
 
 ``` text
-1. Notch shell
+1. Overline shell
 2. Animation system
 3. Media controls
 4. Fake/live activity engine
@@ -549,7 +549,7 @@ Example:
 Media adapter
  → Event
  → Activity manager
- → Notch UI
+ → Overline UI
  → Controls
 ```
 

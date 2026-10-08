@@ -132,7 +132,7 @@ fn check(id: i64) -> AppResult<HWND> {
         return Err(AppError::InvalidInput("That window was closed".into()));
     }
     if pid_of(h) == std::process::id() {
-        return Err(AppError::InvalidInput("That's Notch itself".into()));
+        return Err(AppError::InvalidInput("That's Overline itself".into()));
     }
     Ok(h)
 }

@@ -155,6 +155,18 @@ pub fn display_name(app_user_model_id: &str) -> String {
         ("MSEdge", "Microsoft Edge"),
     ];
 
+    // Sites installed as apps (or opened in app mode) play under the browser's own id plus a
+    // generated suffix: "MSEdge.localhost_x7k2…", "Chrome._crx_abc…". Name the browser.
+    for (prefix, browser) in [
+        ("MSEdge.", "Microsoft Edge"),
+        ("Chrome.", "Google Chrome"),
+        ("Brave.", "Brave"),
+    ] {
+        if app_user_model_id.starts_with(prefix) {
+            return browser.to_owned();
+        }
+    }
+
     let (package, app) = match app_user_model_id.split_once('!') {
         Some((package, app)) => (Some(package), app),
         None => (None, app_user_model_id),
@@ -226,6 +238,8 @@ mod tests {
         );
         assert_eq!(display_name("Contoso.Player_abc!App"), "Player");
         assert_eq!(display_name(""), "Unknown app");
+        assert_eq!(display_name("MSEdge.localhost_kdrop.html_x7k2"), "Microsoft Edge");
+        assert_eq!(display_name("Chrome._crx_abcdef"), "Google Chrome");
     }
 
     #[test]

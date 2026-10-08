@@ -21,7 +21,7 @@ use crate::{
 /// Pulses sent to the notch at most this often.
 const PULSE_EVERY: Duration = Duration::from_millis(30);
 const LYRICS_CACHE: usize = 50;
-const USER_AGENT: &str = "Notch-Desktop (https://github.com/Dhyey2907/notch-desktop)";
+const USER_AGENT: &str = "Overline (https://github.com/Dhyey2907/notch-desktop)";
 
 #[derive(Default)]
 struct Inner {

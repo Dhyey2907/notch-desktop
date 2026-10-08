@@ -42,7 +42,7 @@ const SHORTCUTS: { key: keyof ShortcutSettings; label: string; description: stri
     key: "capture",
     label: "Quick capture",
     description:
-      "Type a task, reminder, note, event or link from anywhere — Notch files it in the right place.",
+      "Type a task, reminder, note, event or link from anywhere — Overline files it in the right place.",
     fallback: "Ctrl+Alt+Space",
   },
 ];

@@ -226,7 +226,9 @@ impl FunService {
                 .media_playing();
             let allowed = fun.pet_walk && !locked && !playing && !crate::shell::any_fullscreen();
             if !out {
-                if allowed && idle >= PET_AFTER_MS {
+                // Demo mode (recording the website's videos) doesn't wait two minutes.
+                let after = if crate::demo() { 8_000 } else { PET_AFTER_MS };
+                if allowed && idle >= after {
                     out = self.show_pet();
                     busy_since = None;
                 }
@@ -280,7 +282,7 @@ impl FunService {
 
     fn open_pet(&self) -> tauri::Result<()> {
         let w = WebviewWindowBuilder::new(&self.app, PET_WINDOW, WebviewUrl::App("index.html#pet".into()))
-            .title("Notch pet")
+            .title("Overline pet")
             .decorations(false)
             .transparent(true)
             .always_on_top(true)

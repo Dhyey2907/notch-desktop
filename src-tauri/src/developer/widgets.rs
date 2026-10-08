@@ -159,7 +159,7 @@ fn run_command(source: &str) -> AppResult<String> {
 async fn fetch(url: &str) -> AppResult<String> {
     let response = reqwest::Client::builder()
         .timeout(TIMEOUT)
-        .user_agent("Notch-Desktop")
+        .user_agent("Overline")
         .build()
         .map_err(|e| AppError::Platform(e.to_string()))?
         .get(url)

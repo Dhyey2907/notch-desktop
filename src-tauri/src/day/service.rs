@@ -50,7 +50,7 @@ impl DayService {
             app,
             http: reqwest::Client::builder()
                 .timeout(Duration::from_secs(20))
-                .user_agent("Notch-Desktop")
+                .user_agent("Overline")
                 .build()
                 .unwrap_or_default(),
             inner: Arc::new(Mutex::new(Inner {

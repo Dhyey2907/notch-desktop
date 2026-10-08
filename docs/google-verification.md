@@ -1,4 +1,4 @@
-# Google OAuth verification — Notch Desktop
+# Google OAuth verification — Overline
 
 Goal: anyone can "Continue with Google" without the *unverified app* warning, without the 100-user cap,
 and without sign-ins expiring every 7 days.
@@ -15,7 +15,7 @@ Scopes requested (incrementally — calendar editing, Gmail and Classroom only w
 | `https://www.googleapis.com/auth/classroom.coursework.me.readonly` | sensitive | Assignment titles, due dates, turned-in state |
 
 Because of `gmail.modify` (restricted), Google may also ask for a **CASA security assessment** (yearly,
-roughly $540–$4,500 through an approved lab). Notch has no server — all Google data stays on the user's PC
+roughly $540–$4,500 through an approved lab). Overline has no server — all Google data stays on the user's PC
 — and Google's restricted-scope page ties the assessment to apps that access data "from or through a
 third-party server", so say so clearly in the submission; Google decides whether it applies.
 
@@ -42,10 +42,10 @@ publish, click Verify. (Use the same Google account that owns the Cloud project.
 
 ## Step 2 — Google Cloud Console → Google Auth Platform
 
-Project: the one that owns Notch's built-in OAuth client (`src-tauri/oauth-clients.json`).
+Project: the one that owns Overline's built-in OAuth client (`src-tauri/oauth-clients.json`).
 
 **Branding**
-- App name: `Notch Desktop` (must match the website and the app exactly)
+- App name: `Overline` (must match the website and the app exactly)
 - User support email: your address
 - App logo: `site/google-logo-120.png` (120×120)
 - Application home page: `https://dhyey2907.github.io/`
@@ -58,23 +58,23 @@ Project: the one that owns Notch's built-in OAuth client (`src-tauri/oauth-clien
 
 **Data access** → add exactly the six scopes above. Justifications to paste:
 
-- *calendar.readonly*: "Notch Desktop is a Windows desktop app that shows the user's next Google Calendar
+- *calendar.readonly*: "Overline is a Windows desktop app that shows the user's next Google Calendar
   event in a small bar at the top of their screen, reminds them shortly before it starts, and offers a
   one-click button to join the video meeting. It only reads upcoming events (title, time, location,
   meeting link); it never creates, edits or deletes events. Data is fetched by the app on the user's PC
   and never sent to our servers (we have none)."
-- *calendar.events*: "Only when the user turns on 'Add events and answer invites' in Settings, Notch shows
+- *calendar.events*: "Only when the user turns on 'Add events and answer invites' in Settings, Overline shows
   a New event form (title, day, time, length, place) and Yes / Maybe / No buttons on meeting invites. Each
   action happens only when the user clicks it: events.insert / events.quickAdd for an event the user typed,
-  and events.patch of the user's own attendee responseStatus for an invite they answer. Notch never deletes
+  and events.patch of the user's own attendee responseStatus for an invite they answer. Overline never deletes
   events and never edits events beyond the user's own answer. calendar.readonly cannot create events or
   answer invites, which is why this scope is needed. Data stays on the user's PC."
-- *gmail.modify*: "When the user turns on Gmail in Settings, Notch shows their unread count and the sender
+- *gmail.modify*: "When the user turns on Gmail in Settings, Overline shows their unread count and the sender
   and subject of the newest unread inbox messages, and notifies them of new mail. Each message in the
   notch has 'Archive' and 'Mark as read' buttons, which remove that message's INBOX or UNREAD label via
-  users.messages.modify — this is why gmail.readonly is not enough. Notch requests format=metadata only
+  users.messages.modify — this is why gmail.readonly is not enough. Overline requests format=metadata only
   (From and Subject headers plus Gmail's snippet); it never reads message bodies or attachments, never
-  sends, drafts or deletes mail, and never changes settings. Snooze is done by Notch itself: it keeps only
+  sends, drafts or deletes mail, and never changes settings. Snooze is done by Overline itself: it keeps only
   the snoozed message's id and time on the PC and hides it until then (no label is changed). All processing happens on the user's
   computer; mail data is kept only in memory and is never transmitted to any server of ours or to any AI
   service."
@@ -89,11 +89,11 @@ Project: the one that owns Notch's built-in OAuth client (`src-tauri/oauth-clien
 Record the screen (Win+Alt+R, or OBS) in English, ~3–5 minutes. Google checks that the OAuth client ID in
 the consent URL matches the project, and that every scope is shown in use.
 
-1. Open Notch → Settings → Calendar. Say what the app is.
+1. Open Overline → Settings → Calendar. Say what the app is.
 2. Click **Continue with Google**. When the browser opens, **zoom into the address bar** so the
-   `client_id=…` is readable. Show the consent screen with the app name "Notch Desktop" and the Calendar
+   `client_id=…` is readable. Show the consent screen with the app name "Overline" and the Calendar
    permission. Approve.
-3. Back in Notch: show the next meeting in the notch, the reminder card, and the **Join** button.
+3. Back in Overline: show the next meeting in the notch, the reminder card, and the **Join** button.
 4. Settings → Calendar → turn on **Gmail**. Show the second consent screen (Gmail permission) with the
    client ID visible. Approve. Open the Mail module: unread count, senders/subjects. Click **Mark as read**
    on one message and **Archive** on another, then show in Gmail (web) that they changed.

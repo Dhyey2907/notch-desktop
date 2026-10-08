@@ -3,79 +3,361 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Notch Desktop</title>
+    <title>Overline — your day, at the top of your screen</title>
     <meta
       name="description"
-      content="Notch Desktop puts a small, quiet Dynamic Island at the top of your Windows screen: your calendar, mail, music, timers and coding agents at a glance."
+      content="Overline is a free Windows app: a small bar at the top of your screen for music, meetings, mail, AI coding agents, to-dos and a little pet — without switching windows."
     />
+    <meta name="theme-color" content="#060608" />
+    <meta property="og:title" content="Overline — your day, at the top of your screen" />
+    <meta
+      property="og:description"
+      content="Music, meetings, mail, AI coding agents and to-dos in one small bar at the top of your Windows screen."
+    />
+    <meta property="og:image" content="media/poster.jpg" />
     <link rel="icon" href="logo.png" />
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="home.css" />
   </head>
   <body>
-    <header>
-      <img src="logo.png" alt="" />
-      <a class="name" href="./">Notch Desktop</a>
+    <div class="sky" aria-hidden="true">
+      <span class="blob b1"></span>
+      <span class="blob b2"></span>
+      <span class="blob b3"></span>
+    </div>
+
+    <header class="top">
+      <a class="brand" href="./"><span class="brand-pill" aria-hidden="true"></span>Overline</a>
       <nav>
-        <a href="./" aria-current="page">Home</a>
-        <a href="privacy.html">Privacy</a>
-        <a href="terms.html">Terms</a>
+        <a href="#features">Features</a>
+        <a href="#how">How it works</a>
+        <a href="#privacy">Privacy</a>
+        <a class="nav-cta" href="#get">Get it</a>
       </nav>
     </header>
+
     <main>
-      <h1>A Dynamic Island for Windows</h1>
-      <p class="lead">
-        Notch Desktop is a small bar at the top of your screen that shows what matters right now — your next
-        meeting, new mail, the song that's playing, a running timer — and opens into a panel when you want
-        more.
-      </p>
+      <!-- Hero -->
+      <section class="hero">
+        <div class="demo">
+          <div class="screen">
+            <video
+              class="hero-video"
+              src="media/hero-loop.mp4"
+              poster="media/poster-hero.jpg"
+              autoplay
+              muted
+              loop
+              playsinline
+              aria-label="Overline at the top of the screen: a song starting, Claude Code asking to run a command, and mail"
+            ></video>
+          </div>
+          <p class="demo-note">The real app, recorded with sample data.</p>
+        </div>
 
-      <ul class="features">
-        <li>
-          <strong>Your day</strong>Your next Google Calendar meeting with a one-click join link, and Classroom
-          deadlines that are due soon.
-        </li>
-        <li>
-          <strong>Mail at a glance</strong>Unread count and the latest senders from Gmail; archive or mark as
-          read without opening a browser.
-        </li>
-        <li><strong>Media &amp; Spotify</strong>Album art, playback and lyrics for whatever is playing.</li>
-        <li>
-          <strong>Focus &amp; to-do</strong>Tasks, timers, focus sessions, ambient sounds and break reminders.
-        </li>
-        <li>
-          <strong>Coding agents</strong>Live status and approvals for Claude Code, Codex and Gemini CLI.
-        </li>
-        <li>
-          <strong>Private by design</strong>Everything runs on your PC. There is no Notch server and no
-          account.
-        </li>
-      </ul>
+        <h1 class="reveal">Your day, at the top of your screen.</h1>
+        <p class="lead reveal">
+          Overline is a small bar that lives at the top of Windows — like the iPhone's Dynamic Island. Music,
+          meetings, mail, AI coding agents and your to-dos show up there, so you never have to switch windows
+          to check on them.
+        </p>
+        <div class="ctas reveal">
+          <a class="btn primary" href="#get">Get Overline — free</a>
+          <a class="btn" href="#film">▶ Watch the film</a>
+        </div>
+        <p class="small reveal">Windows 10 &amp; 11 · No account · Runs on your PC</p>
+      </section>
 
-      <h2>Google sign-in</h2>
-      <p>
-        "Continue with Google" is optional. It lets Notch Desktop show your Google Calendar events and, if you
-        turn them on, your Gmail inbox summary and Google Classroom deadlines. Notch Desktop runs only on your
-        computer: your Google data goes straight from Google to the app on your PC and is never sent to us.
-        Read exactly what is accessed and why in the
-        <a href="privacy.html">privacy policy</a>.
-      </p>
-      <p class="note">
-        Notch Desktop's use and transfer of information received from Google APIs adheres to the
-        <a href="https://developers.google.com/terms/api-services-user-data-policy"
-          >Google API Services User Data Policy</a
-        >, including the Limited Use requirements.
-      </p>
+      <!-- Film -->
+      <section class="film reveal" id="film">
+        <div class="film-frame">
+          <video
+            id="film-video"
+            src="media/overline-film.mp4"
+            poster="media/poster.jpg"
+            controls
+            muted
+            playsinline
+            preload="metadata"
+          ></video>
+        </div>
+        <p class="caption">Two minutes of the real app, start to finish — recorded with sample data.</p>
+      </section>
 
-      <h2>Get it</h2>
-      <p>
-        Notch Desktop runs on Windows 10 and 11.
-        <a href="mailto:dhyey2970@gmail.com">Ask for the installer</a>.
-      </p>
+      <!-- Why -->
+      <section class="why">
+        <div class="why-grid">
+          <div class="why-card reveal">
+            <span class="why-num">01</span>
+            <h3>Stay in your flow</h3>
+            <p>
+              Skip the alt-tab to check Spotify, your calendar or a waiting AI agent. It's all one glance up.
+            </p>
+          </div>
+          <div class="why-card reveal">
+            <span class="why-num">02</span>
+            <h3>Only when it matters</h3>
+            <p>
+              The bar stays a quiet pill until something needs you — then it opens, tells you, and gets out of
+              the way.
+            </p>
+          </div>
+          <div class="why-card reveal">
+            <span class="why-num">03</span>
+            <h3>Yours, and private</h3>
+            <p>Everything runs on your PC. No account, no ads, no tracking — and you choose what it shows.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Features -->
+      <section id="features" class="features">
+        <h2 class="section-title reveal">Every part of your day, one bar.</h2>
+
+        <article class="feature reveal" data-accent="#ff7ab6">
+          <div class="feature-media">
+            <video
+              data-src="media/clip-music.mp4"
+              poster="media/poster-music.jpg"
+              muted
+              loop
+              playsinline
+            ></video>
+          </div>
+          <div class="feature-text">
+            <span class="kicker">Music &amp; video</span>
+            <h3>Everything playing, in its own colors.</h3>
+            <p>
+              Spotify, YouTube, Netflix, Prime Video — whatever plays, Overline shows it with play, pause and
+              skip. The panel takes the album art's colors (Netflix red, Prime blue) and the edge glows with
+              the beat.
+            </p>
+            <ul class="how">
+              <li>Hover the bar for a peek; click to open the player.</li>
+              <li>Time-synced lyrics and your pinned Spotify playlists.</li>
+              <li>Turn the glow off any time in Settings → Look.</li>
+            </ul>
+          </div>
+        </article>
+
+        <article class="feature flip reveal" data-accent="#5aa9ff">
+          <div class="feature-media">
+            <video
+              data-src="media/clip-calendar.mp4"
+              poster="media/poster-calendar.jpg"
+              muted
+              loop
+              playsinline
+            ></video>
+          </div>
+          <div class="feature-text">
+            <span class="kicker">Calendar</span>
+            <h3>Never miss the start of a meeting.</h3>
+            <p>
+              A countdown appears before every meeting with a one-click Join. Add an event in seconds, and
+              answer invites with Yes, Maybe or No — right from the top of your screen.
+            </p>
+            <ul class="how">
+              <li>Connect Google Calendar in Settings → Calendar.</li>
+              <li>Choose how early the countdown starts.</li>
+              <li>Classroom deadlines show up in “Your day”.</li>
+            </ul>
+          </div>
+        </article>
+
+        <article class="feature reveal" data-accent="#fbbf24">
+          <div class="feature-media">
+            <video
+              data-src="media/clip-mail.mp4"
+              poster="media/poster-mail.jpg"
+              muted
+              loop
+              playsinline
+            ></video>
+          </div>
+          <div class="feature-text">
+            <span class="kicker">Mail</span>
+            <h3>Inbox zero, one swipe at a time.</h3>
+            <p>
+              Unread Gmail shows up one message at a time. Swipe left to archive, right to mark it read, or
+              snooze it until tomorrow. Overline never sends or deletes mail.
+            </p>
+            <ul class="how">
+              <li>
+                Keys: <kbd>A</kbd> archive · <kbd>R</kbd> read · <kbd>S</kbd> snooze · <kbd>→</kbd> skip.
+              </li>
+              <li>A small card for new mail, so you can stay in your work.</li>
+            </ul>
+          </div>
+        </article>
+
+        <article class="feature flip reveal" data-accent="#d97757">
+          <div class="feature-media">
+            <video data-src="media/clip-ai.mp4" poster="media/poster-ai.jpg" muted loop playsinline></video>
+          </div>
+          <div class="feature-text">
+            <span class="kicker">AI coding · Claude Code · Codex · GitHub</span>
+            <h3>Your agents ask. You answer from the top.</h3>
+            <p>
+              When Claude Code or Codex needs permission, an Allow / Deny card drops down — no hunting for the
+              right terminal. See your usage limits as rings, know when a long task finishes, and keep an eye
+              on pull requests waiting for your review.
+            </p>
+            <ul class="how">
+              <li>One click in Settings → AI connects Claude Code and Codex.</li>
+              <li>Questions from the agent still open in its own window.</li>
+              <li>Sign in to GitHub for reviews, checks and notifications.</li>
+            </ul>
+          </div>
+        </article>
+
+        <article class="feature reveal" data-accent="#a99cff">
+          <div class="feature-media">
+            <video
+              data-src="media/clip-productivity.mp4"
+              poster="media/poster-productivity.jpg"
+              muted
+              loop
+              playsinline
+            ></video>
+          </div>
+          <div class="feature-text">
+            <span class="kicker">Get things done</span>
+            <h3>Type it once. It lands in the right place.</h3>
+            <p>
+              Press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Space</kbd> anywhere and type a line: “call mom at 5”
+              becomes a reminder, “note: …” a note, “lunch with Ann friday 1pm” a calendar event, a link goes
+              to Read later. To-dos get timers that ring, and saved links get a reading time and an AI
+              summary.
+            </p>
+            <ul class="how">
+              <li>
+                Clipboard history with <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>V</kbd>, and a drop shelf for
+                files.
+              </li>
+              <li>Focus sessions with break reminders.</li>
+            </ul>
+          </div>
+        </article>
+
+        <article class="feature flip reveal" data-accent="#f2f2f2">
+          <div class="feature-media">
+            <video data-src="media/clip-pet.mp4" poster="media/poster-pet.jpg" muted loop playsinline></video>
+          </div>
+          <div class="feature-text">
+            <span class="kicker">Your pet</span>
+            <h3>A little friend who keeps you company.</h3>
+            <p>
+              Give it a name, a color and a personality — cheerful, sarcastic, calm, a coach… It dances to
+              your music, reminds you to take a break, cheers your finished to-dos, and walks along the
+              taskbar while you're away.
+            </p>
+            <ul class="how">
+              <li>Click it for a little love; it levels up with you.</li>
+              <li>Choose exactly what it talks about in Settings → Pet.</li>
+            </ul>
+          </div>
+        </article>
+
+        <div class="more reveal">
+          <h3>And the small things that add up</h3>
+          <div class="more-grid">
+            <span>Wi-Fi, Bluetooth &amp; hotspot switches</span>
+            <span>Internet speed test</span>
+            <span>Apps using your network</span>
+            <span>Battery &amp; headphone levels</span>
+            <span>Weather</span>
+            <span>Screen time</span>
+            <span>Password vault in Obsidian</span>
+            <span>Phone notifications</span>
+            <span>Ask AI about any window</span>
+            <span>Grab text from the screen</span>
+            <span>Pin any window on top</span>
+            <span>Git status of your projects</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- How it works -->
+      <section id="how" class="steps">
+        <h2 class="section-title reveal">Up and running in a minute.</h2>
+        <ol class="step-list">
+          <li class="reveal">
+            <span class="step-n">1</span>
+            <h3>Install</h3>
+            <p>Run the installer — no admin rights, no account. The bar appears at the top of your screen.</p>
+          </li>
+          <li class="reveal">
+            <span class="step-n">2</span>
+            <h3>Pick what it shows</h3>
+            <p>Turn panels on or off, reorder the dock, choose colors, size, and which screen it lives on.</p>
+          </li>
+          <li class="reveal">
+            <span class="step-n">3</span>
+            <h3>Glance, hover, click</h3>
+            <p>
+              Glance up for status, hover for a peek, click to open — or press
+              <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd>.
+            </p>
+          </li>
+        </ol>
+      </section>
+
+      <!-- Privacy & Google -->
+      <section id="privacy" class="privacy reveal">
+        <div class="privacy-card">
+          <svg
+            class="lock"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <rect x="4.5" y="10.5" width="15" height="10" rx="2.5" />
+            <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" />
+          </svg>
+          <h2>Runs on your PC. Nothing else.</h2>
+          <p>
+            There is no Overline server and no account. Settings and history stay on your computer; passwords
+            and sign-ins live in Windows Credential Manager. No ads, no analytics, no tracking.
+          </p>
+          <h3>Google sign-in</h3>
+          <p>
+            “Continue with Google” is optional. It lets Overline show your Google Calendar events and, if you
+            turn them on, your Gmail inbox summary and Google Classroom deadlines, and — only if you allow it
+            — add events and answer invites. Your Google data goes straight from Google to the app on your PC
+            and is never sent to us. Read exactly what is accessed and why in the
+            <a href="privacy.html">privacy policy</a>.
+          </p>
+          <p class="note">
+            Overline's use and transfer of information received from Google APIs adheres to the
+            <a href="https://developers.google.com/terms/api-services-user-data-policy"
+              >Google API Services User Data Policy</a
+            >, including the Limited Use requirements.
+          </p>
+        </div>
+      </section>
+
+      <!-- Get it -->
+      <section id="get" class="get reveal">
+        <span class="get-pill" aria-hidden="true"></span>
+        <h2>Get Overline</h2>
+        <p>Free for Windows 10 and 11.</p>
+        <a class="btn primary" href="mailto:dhyey2970@gmail.com?subject=Overline%20installer"
+          >Ask for the installer</a
+        >
+      </section>
     </main>
-    <footer>
-      © 2026 Notch Desktop · <a href="privacy.html">Privacy policy</a> ·
-      <a href="terms.html">Terms of service</a> ·
+
+    <footer class="foot">
+      <span>© 2026 Overline</span>
+      <a href="privacy.html">Privacy policy</a>
+      <a href="terms.html">Terms of service</a>
       <a href="mailto:dhyey2970@gmail.com">dhyey2970@gmail.com</a>
     </footer>
+
+    <script src="home.js"></script>
   </body>
 </html>

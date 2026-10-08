@@ -327,7 +327,7 @@ impl Inner {
             premium: state.premium,
             playlists: state.playlists.clone(),
             pinned: settings.pinned_playlists,
-            mock: self.mock,
+            mock: self.mock && !crate::demo(),
         }
     }
 
@@ -391,7 +391,11 @@ fn mock_playlists() -> Vec<SpotifyPlaylist> {
     .enumerate()
     .map(|(i, name)| SpotifyPlaylist {
         id: format!("mock{i}"),
-        name: format!("{name} (MOCK)"),
+        name: if crate::demo() {
+            name.to_string()
+        } else {
+            format!("{name} (MOCK)")
+        },
         image_url: None,
         track_count: 20 + i as u32 * 7,
         owner: "Mock listener".into(),

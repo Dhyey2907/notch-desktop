@@ -252,6 +252,9 @@ impl CalendarService {
 
     /// Whether the user allowed this extra (Gmail, Classroom) when signing in.
     pub fn granted(&self, scope: &str) -> bool {
+        if self.inner.mock && crate::demo() {
+            return true;
+        }
         let calendar = settings_of(&self.inner.app).calendar;
         calendar.account_email.is_some()
             && scope
@@ -260,6 +263,13 @@ impl CalendarService {
     }
 
     /// Calendar actions need the user's OK (Settings → Calendar) and Google's.
+    /// Demo mode: change the sample calendar in place.
+    fn demo_edit(&self, change: impl FnOnce(&mut Vec<CalendarEvent>)) {
+        change(&mut self.inner.lock().events);
+        self.inner.lock().events.sort_by_key(|e| e.start);
+        self.inner.publish();
+    }
+
     fn can_edit(&self) -> AppResult<()> {
         if self.inner.mock {
             return Err(AppError::InvalidInput("Not with sample events".into()));
@@ -309,6 +319,22 @@ impl CalendarService {
 
     pub async fn create_event(&self, event: super::NewEvent) -> AppResult<()> {
         event.validate()?;
+        if self.inner.mock && crate::demo() {
+            self.demo_edit(|events| {
+                events.push(CalendarEvent {
+                    id: format!("demo-{}", event.start.timestamp()),
+                    title: event.title.trim().to_owned(),
+                    start: event.start,
+                    end: event.end,
+                    all_day: event.all_day,
+                    join_url: None,
+                    location: event.location.clone(),
+                    html_link: None,
+                    my_response: None,
+                })
+            });
+            return Ok(());
+        }
         self.write(|http, token| {
             let event = event.clone();
             async move { google::create_event(&http, &token, &event).await }
@@ -340,6 +366,14 @@ impl CalendarService {
         }
         if answer == super::InviteResponse::NeedsAction {
             return Err(AppError::InvalidInput("Pick yes, maybe or no".into()));
+        }
+        if self.inner.mock && crate::demo() {
+            self.demo_edit(|events| {
+                if let Some(e) = events.iter_mut().find(|e| e.id == event_id) {
+                    e.my_response = Some(answer);
+                }
+            });
+            return Ok(());
         }
         self.write(|http, token| {
             let id = event_id.to_owned();
@@ -383,7 +417,7 @@ impl Inner {
             },
             events: state.events.clone(),
             last_synced_at: state.last_synced_at,
-            mock: self.mock,
+            mock: self.mock && !crate::demo(),
         }
     }
 
@@ -650,7 +684,11 @@ fn mock_events(now: DateTime<Utc>) -> Vec<CalendarEvent> {
     let at = |minutes: i64| anchor + Duration::minutes(minutes);
     let event = |id: &str, title: &str, start: DateTime<Utc>, minutes: i64, join: bool| CalendarEvent {
         id: id.into(),
-        title: format!("{title} · MOCK"),
+        title: if crate::demo() {
+            title.to_owned()
+        } else {
+            format!("{title} · MOCK")
+        },
         start,
         end: start + Duration::minutes(minutes),
         all_day: false,
@@ -674,6 +712,18 @@ fn mock_events(now: DateTime<Utc>) -> Vec<CalendarEvent> {
             false,
         ),
     ];
+    if crate::demo() {
+        events.push(CalendarEvent {
+            my_response: Some(super::InviteResponse::NeedsAction),
+            ..event(
+                "demoinvite",
+                "Lunch with Ann",
+                today + Duration::hours(24 * 2 + 13),
+                60,
+                false,
+            )
+        });
+    }
     events.sort_by_key(|e| e.start);
     events
 }

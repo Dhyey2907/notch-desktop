@@ -23,7 +23,7 @@ const pages = targets.filter(
 );
 if (pages.length === 0) {
   console.error(
-    "no Notch Desktop webview found; targets:",
+    "no Overline webview found; targets:",
     targets.map((t) => t.url),
   );
   process.exit(1);

@@ -191,7 +191,9 @@ impl DeveloperService {
             .insert(pid);
         #[cfg(windows)]
         if !super::ports::kill(pid) {
-            return Err(AppError::InvalidInput("Windows didn't let Notch stop it".into()));
+            return Err(AppError::InvalidInput(
+                "Windows didn't let Overline stop it".into(),
+            ));
         }
         std::thread::sleep(Duration::from_millis(300));
         self.scan();

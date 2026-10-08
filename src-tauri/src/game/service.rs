@@ -378,7 +378,7 @@ impl GameService {
         }
         let bytes = reqwest::Client::builder()
             .timeout(Duration::from_secs(60))
-            .user_agent("Notch-Desktop")
+            .user_agent("Overline")
             .build()
             .map_err(|e| AppError::Platform(e.to_string()))?
             .get(PRESENTMON_URL)

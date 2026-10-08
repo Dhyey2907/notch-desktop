@@ -1,4 +1,4 @@
-# Dev helper: print the Notch Desktop window's on-screen rectangle, style flags, and the primary monitor work area.
+# Dev helper: print the Overline window's on-screen rectangle, style flags, and the primary monitor work area.
 Add-Type @"
 using System;
 using System.Runtime.InteropServices;

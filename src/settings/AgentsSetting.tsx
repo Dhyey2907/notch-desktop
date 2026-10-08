@@ -10,7 +10,7 @@ const ABOUT: Record<string, { file: string; does: string; note: string }> = {
   codex: {
     file: "~/.codex/hooks.json",
     does: "Show when Codex is working or waiting for you, and allow or deny its approval requests from the notch — the same as Claude Code. Works with the Codex app and the codex command.",
-    note: "Codex runs new hooks only after you trust them once: open Codex, type /hooks and trust Notch's.",
+    note: "Codex runs new hooks only after you trust them once: open Codex, type /hooks and trust Overline's.",
   },
   gemini: {
     file: "~/.gemini/settings.json",
@@ -54,7 +54,7 @@ function AgentCard({ link, run }: { link: AgentLink; run: (action: () => Promise
         <div className="settings__buttons">
           <ConfirmButton
             variant="danger"
-            confirmLabel={`Remove Notch's hooks from ${link.name}?`}
+            confirmLabel={`Remove Overline's hooks from ${link.name}?`}
             onConfirm={() => void run(() => ipc.agentDisconnect(link.agent))}
           >
             Disconnect
@@ -64,7 +64,7 @@ function AgentCard({ link, run }: { link: AgentLink; run: (action: () => Promise
         <>
           <p className="settings__lead">
             Connecting adds hooks to <strong>{about.file}</strong>. Your own settings are kept, and a backup
-            is saved next to it first. If Notch isn't running, {link.name} simply carries on.
+            is saved next to it first. If Overline isn't running, {link.name} simply carries on.
             {!link.detected && ` ${link.name} wasn't found on this PC, but you can connect it now for later.`}
           </p>
           <details

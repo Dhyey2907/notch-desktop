@@ -80,7 +80,7 @@ function GithubAccount() {
       ) : status.pending ? (
         <>
           <p className="settings__lead">
-            On the GitHub page that just opened, enter this code and approve Notch Desktop:
+            On the GitHub page that just opened, enter this code and approve Overline:
           </p>
           <p className="github-code" aria-label="GitHub sign-in code">
             {status.pending.userCode}
@@ -128,7 +128,7 @@ export function GitSection() {
         </div>
         {snapshot?.status.state === "gitMissing" && (
           <p className="settings__note settings__note--warning">
-            Git isn't installed. Get it from git-scm.com, then reopen Notch Desktop.
+            Git isn't installed. Get it from git-scm.com, then reopen Overline.
           </p>
         )}
         {snapshot && snapshot.recentRepos.length === 0 ? (

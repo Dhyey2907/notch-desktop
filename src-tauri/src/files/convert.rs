@@ -46,7 +46,7 @@ fn open(path: &Path) -> AppResult<DynamicImage> {
         .map_err(|_| AppError::InvalidInput("Couldn't open that image".into()))?;
     let (w, h) = reader
         .into_dimensions()
-        .map_err(|_| AppError::InvalidInput("That isn't an image Notch can read".into()))?;
+        .map_err(|_| AppError::InvalidInput("That isn't an image Overline can read".into()))?;
     if u64::from(w) * u64::from(h) > MAX_PIXELS {
         return Err(AppError::InvalidInput(
             "That image is too large to convert".into(),
@@ -56,7 +56,7 @@ fn open(path: &Path) -> AppResult<DynamicImage> {
         .and_then(|r| r.with_guessed_format())
         .map_err(|_| AppError::InvalidInput("Couldn't open that image".into()))?
         .decode()
-        .map_err(|_| AppError::InvalidInput("That isn't an image Notch can read".into()))
+        .map_err(|_| AppError::InvalidInput("That isn't an image Overline can read".into()))
 }
 
 fn save(image: &DynamicImage, path: &Path, target: ImageTarget, quality: u8) -> AppResult<()> {

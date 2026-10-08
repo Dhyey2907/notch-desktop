@@ -22,7 +22,7 @@ export function useFirstRunPrompt() {
       priority: "normal",
       persistent: true,
       dedupKey: "first-run",
-      title: "Start Notch Desktop with Windows?",
+      title: "Start Overline with Windows?",
       body: "You can change this anytime in Settings.",
       actions: [
         { id: "later", label: "Not now", run: complete },

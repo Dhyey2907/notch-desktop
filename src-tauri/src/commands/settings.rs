@@ -78,11 +78,11 @@ pub async fn settings_import(app: AppHandle, state: State<'_, AppState>) -> AppR
     let text = std::fs::read_to_string(path)?;
     if text.len() > 1_000_000 {
         return Err(AppError::InvalidInput(
-            "That file is too big to be Notch settings".into(),
+            "That file is too big to be Overline settings".into(),
         ));
     }
     let mut next: Settings = serde_json::from_str(&text)
-        .map_err(|_| AppError::InvalidInput("That file isn't Notch settings".into()))?;
+        .map_err(|_| AppError::InvalidInput("That file isn't Overline settings".into()))?;
     let current = state.settings.lock().unwrap_or_else(|e| e.into_inner()).clone();
     next.calendar.account_email = current.calendar.account_email;
     next.spotify.account_name = current.spotify.account_name;
@@ -138,4 +138,31 @@ pub fn autostart_set(enabled: bool, app: AppHandle) -> AppResult<bool> {
 #[tauri::command]
 pub async fn open_settings_window(app: AppHandle, section: Option<String>) -> AppResult<()> {
     shell::open_settings_window(&app, section.as_deref())
+}
+
+/// The app used to be called "Notch Desktop", and "Start with Windows" is stored under the app's
+/// name. Move an old entry to the new name once, so the setting survives the rename.
+pub fn migrate_autostart(app: &AppHandle) {
+    #[cfg(windows)]
+    {
+        use windows::{
+            core::w,
+            Win32::System::Registry::{RegDeleteKeyValueW, RegGetValueW, HKEY_CURRENT_USER, RRF_RT_REG_SZ},
+        };
+        let key = w!(r"Software\Microsoft\Windows\CurrentVersion\Run");
+        let old = w!("Notch Desktop");
+        // SAFETY: only asks whether the value exists (no buffer), then deletes that one value.
+        let had_old =
+            unsafe { RegGetValueW(HKEY_CURRENT_USER, key, old, RRF_RT_REG_SZ, None, None, None) }.is_ok();
+        if !had_old {
+            return;
+        }
+        let _ = unsafe { RegDeleteKeyValueW(HKEY_CURRENT_USER, key, old) };
+        match app.autolaunch().enable() {
+            Ok(()) => tracing::info!("moved start-with-Windows to the new app name"),
+            Err(error) => tracing::warn!(%error, "could not re-register start-with-Windows"),
+        }
+    }
+    #[cfg(not(windows))]
+    let _ = app;
 }

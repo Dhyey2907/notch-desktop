@@ -45,7 +45,7 @@ impl MailService {
             app,
             http: reqwest::Client::builder()
                 .timeout(Duration::from_secs(20))
-                .user_agent("Notch-Desktop")
+                .user_agent("Overline")
                 .build()
                 .unwrap_or_default(),
             inner: Arc::new(Mutex::new(Inner {
@@ -86,6 +86,15 @@ impl MailService {
     }
 
     pub fn start(&self) {
+        if crate::demo() {
+            self.set(MailState {
+                status: MailStatus::Ready,
+                unread: 4,
+                messages: super::demo_messages(chrono::Utc::now()),
+                snoozed: 0,
+            });
+            return;
+        }
         let this = self.clone();
         tauri::async_runtime::spawn(async move {
             // Also check again whenever settings change (Gmail turned on, signed in again).
@@ -251,11 +260,29 @@ impl MailService {
         Ok(())
     }
 
+    /// Demo mode: drop it from the sample inbox.
+    fn demo_remove(&self, id: &str) {
+        let mut state = self.state();
+        if let Some(pos) = state.messages.iter().position(|m| m.id == id) {
+            state.messages.remove(pos);
+            state.unread = state.unread.saturating_sub(1);
+            self.set(state);
+        }
+    }
+
     pub async fn archive(&self, id: &str) -> AppResult<()> {
+        if crate::demo() {
+            self.demo_remove(id);
+            return Ok(());
+        }
         self.modify(id, "INBOX").await
     }
 
     pub async fn mark_read(&self, id: &str) -> AppResult<()> {
+        if crate::demo() {
+            self.demo_remove(id);
+            return Ok(());
+        }
         self.modify(id, "UNREAD").await
     }
 
@@ -273,7 +300,9 @@ impl MailService {
             state.snoozed += 1;
             self.set(state);
         }
-        self.wake.notify_one();
+        if !crate::demo() {
+            self.wake.notify_one();
+        }
         Ok(())
     }
 

@@ -55,7 +55,7 @@ pub fn mbps(bytes: u64, elapsed: Duration) -> f64 {
 pub fn client() -> reqwest::Client {
     reqwest::Client::builder()
         .timeout(PHASE_LIMIT + Duration::from_secs(8))
-        .user_agent("Notch-Desktop")
+        .user_agent("Overline")
         .build()
         .unwrap_or_default()
 }

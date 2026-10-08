@@ -32,7 +32,7 @@ const TOKEN_URL: &str = "https://github.com/login/oauth/access_token";
 const API: &str = "https://api.github.com";
 /// `repo` lets Notch list pull requests in your private repositories too (read only here).
 const SCOPE: &str = "repo read:user";
-const USER_AGENT: &str = "Notch-Desktop";
+const USER_AGENT: &str = "Overline";
 
 const PR_QUERY: &str = "query($owner: String!, $name: String!) {
   repository(owner: $owner, name: $name) {

@@ -140,7 +140,7 @@ pub fn status_line_taken(settings: &Value) -> bool {
 pub fn add_status_line(settings: &mut Value, token: &str) -> AppResult<()> {
     if status_line_taken(settings) {
         return Err(AppError::InvalidInput(
-            "Claude Code already has a status line, so Notch won't replace it".into(),
+            "Claude Code already has a status line, so Overline won't replace it".into(),
         ));
     }
     let root = settings
@@ -201,7 +201,7 @@ pub fn read(path: &Path) -> AppResult<Value> {
         Ok(text) if text.trim().is_empty() => Ok(json!({})),
         Ok(text) => serde_json::from_str(&text).map_err(|_| {
             AppError::InvalidInput(
-                "Claude Code's settings.json isn't valid JSON, so Notch won't touch it. Fix it and try again"
+                "Claude Code's settings.json isn't valid JSON, so Overline won't touch it. Fix it and try again"
                     .into(),
             )
         }),

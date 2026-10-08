@@ -36,7 +36,7 @@ export default function PhoneExpanded() {
     body = (
       <EmptyState
         title="Allow notification access"
-        body="Windows needs your OK for Notch to read notifications. Turn on “Notification access” for apps in Windows Settings."
+        body="Windows needs your OK for Overline to read notifications. Turn on “Notification access” for apps in Windows Settings."
         action={<Button onClick={() => void ipc.phoneOpenAccessSettings()}>Open Windows Settings</Button>}
       />
     );

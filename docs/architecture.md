@@ -1,8 +1,8 @@
-# Notch Desktop — Architecture
+# Overline — Architecture
 
 ## 1. Product summary
 
-Notch Desktop is a Windows desktop companion that presents a small, persistent Dynamic Island–style surface near the top edge of the screen. It starts with Windows, stays quiet while idle, and expands into focused modules when the user interacts with it or when an event needs attention.
+Overline is a Windows desktop companion that presents a small, persistent Dynamic Island–style surface near the top edge of the screen. It starts with Windows, stays quiet while idle, and expands into focused modules when the user interacts with it or when an event needs attention.
 
 The product is a system layer for notifications, media, calendar, development activity, and assistant usage—not a conventional full-screen dashboard. Its foundation must let new modules be added without coupling them to the shell or to one another.
 
@@ -22,7 +22,7 @@ The product is a system layer for notifications, media, calendar, development ac
 │                     Windows Desktop                     │
 │                                                         │
 │  ┌───────────────────────────────────────────────────┐  │
-│  │                 Notch Desktop Shell               │  │
+│  │                 Overline Shell               │  │
 │  │  Window / positioning / animation / navigation     │  │
 │  │  collapsed island / expanded module host           │  │
 │  └──────────────────────┬────────────────────────────┘  │

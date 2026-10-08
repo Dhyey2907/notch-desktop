@@ -189,12 +189,14 @@
 
 .calendar__invite {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-2) var(--space-3);
 }
 
+/* The name gets a full line; the answers sit below it. */
 .calendar__invite-text {
-  flex: 1;
+  flex: 1 1 100%;
   min-width: 0;
   display: flex;
   align-items: baseline;

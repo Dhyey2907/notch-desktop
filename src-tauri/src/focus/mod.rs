@@ -124,7 +124,7 @@ mod tests {
         start(&conn, 50, at(30 * 60)).unwrap();
         assert!(
             finish_if_due(&conn, at(90 * 60)).unwrap(),
-            "finished while Notch was closed"
+            "finished while Overline was closed"
         );
         assert_eq!(state(&conn, at(91 * 60)).unwrap().done_today, 2);
     }

@@ -276,18 +276,26 @@ macro_rules! app_commands {
     };
 }
 
+/// Dev builds only: `NOTCH_DEMO=1` runs a separate copy for recording the website's videos —
+/// its own data folder and sign-in store, sample data everywhere, and nothing that reads the
+/// user's PC (clipboard, phone, location, network, AI transcripts). Always false in release.
+pub(crate) fn demo() -> bool {
+    cfg!(debug_assertions) && std::env::var("NOTCH_DEMO").is_ok_and(|v| v == "1")
+}
+
 /// Dev builds only: `NOTCH_MOCK=media,calendar` swaps those adapters for mocks (plan.md
-/// Rule 9). Always false in release builds.
+/// Rule 9); demo mode mocks them all. Always false in release builds.
 fn mock_enabled(module: &str) -> bool {
     cfg!(debug_assertions)
-        && std::env::var("NOTCH_MOCK")
-            .map(|v| v.split(',').any(|m| m.trim().eq_ignore_ascii_case(module)))
-            .unwrap_or(false)
+        && (demo()
+            || std::env::var("NOTCH_MOCK")
+                .map(|v| v.split(',').any(|m| m.trim().eq_ignore_ascii_case(module)))
+                .unwrap_or(false))
 }
 
 fn media_port(app: &tauri::AppHandle) -> Result<Box<dyn media::MediaPort>, Box<dyn std::error::Error>> {
     #[cfg(debug_assertions)]
-    if mock_enabled("media") {
+    if mock_enabled("media") && !demo() {
         tracing::info!("using mock media adapter");
         return Ok(Box::new(media::mock::MockMediaPort::default()));
     }
@@ -318,8 +326,14 @@ pub fn run() {
         .plugin(shell::shortcut_plugin())
         .setup(|app| {
             let handle = app.handle();
+            commands::settings::migrate_autostart(handle);
+            let demo = demo();
             let paths = AppPaths {
-                data_dir: handle.path().app_data_dir()?,
+                data_dir: if demo {
+                    handle.path().app_data_dir()?.join("demo")
+                } else {
+                    handle.path().app_data_dir()?
+                },
                 log_dir: handle.path().app_log_dir()?,
             };
             std::fs::create_dir_all(&paths.data_dir)?;
@@ -327,7 +341,7 @@ pub fn run() {
 
             app.manage(logging::init(&paths.log_dir));
             let version = handle.package_info().version.to_string();
-            tracing::info!(%version, "starting Notch Desktop");
+            tracing::info!(%version, "starting Overline");
 
             let paths_db = paths.data_dir.join("notch.db");
             let db = Db::open(&paths_db)?;
@@ -353,43 +367,65 @@ pub fn run() {
             app.manage(calendar);
 
             let github = github::service::GithubService::new(handle.clone());
-            github.start();
+            if !demo {
+                github.start();
+            }
             app.manage(github);
 
             let phone = phone::service::PhoneService::new(handle.clone());
-            phone.start();
+            if !demo {
+                phone.start();
+            }
             app.manage(phone);
 
             let clips_dir = app.path().app_cache_dir()?.join("clips");
             let clipboard = clipboard::service::ClipboardService::new(handle.clone(), clips_dir);
-            clipboard.start();
+            if !demo {
+                clipboard.start();
+            }
             app.manage(clipboard);
 
             app.manage(shelf::service::ShelfService::new(handle.clone()));
-            app.manage(readlater::service::ReadLaterService::new(handle.clone()));
+            let readlater = readlater::service::ReadLaterService::new(handle.clone());
+            if demo {
+                readlater.seed_demo();
+            }
+            app.manage(readlater);
             let vault = vault::service::VaultService::new(handle.clone());
-            vault.start();
+            if !demo {
+                vault.start();
+            }
             app.manage(vault);
             let expander = expander::service::ExpanderService::new(handle.clone());
-            expander.start();
+            if !demo {
+                expander.start();
+            }
             app.manage(expander);
             app.manage(grab::service::GrabService::new(handle.clone()));
             let developer = developer::service::DeveloperService::new(handle.clone());
-            developer.start();
+            if !demo {
+                developer.start();
+            }
             app.manage(developer);
             let files = files::service::FilesService::new(handle.clone());
-            files.start();
+            if !demo {
+                files.start();
+            }
             app.manage(files);
             app.manage(bridge::service::BridgeService::new(handle.clone()));
 
             let system = system::service::SystemService::new(handle.clone());
-            system.start();
+            if !demo {
+                system.start();
+            }
             app.manage(system);
 
             // After the system service: it reads Bluetooth batteries from there.
             let control = control::service::ControlService::new(handle.clone());
             app.manage(control.clone());
-            control.start();
+            if !demo {
+                control.start();
+            }
 
             let music = music::service::MusicService::new(
                 handle.clone(),
@@ -407,7 +443,9 @@ pub fn run() {
                 handle.clone(),
                 app.path().app_local_data_dir()?.join("tools"),
             );
-            game.start();
+            if !demo {
+                game.start();
+            }
             app.manage(game);
 
             let focus = focus::service::FocusService::new(handle.clone());
@@ -424,7 +462,9 @@ pub fn run() {
             mail.start();
             let desk = desk::service::DeskService::new(handle.clone());
             app.manage(desk.clone());
-            desk.start();
+            if !demo {
+                desk.start();
+            }
             let fun = fun::service::FunService::new(handle.clone());
             app.manage(fun.clone());
             fun.start();
@@ -441,12 +481,14 @@ pub fn run() {
             app.manage(git);
 
             let claude = claude::service::ClaudeService::new(handle.clone(), paths_db.clone())?;
-            claude.start();
+            if !demo {
+                claude.start();
+            }
             app.manage(claude);
             shell::init(handle)?;
             Ok(())
         })
         .invoke_handler(app_commands!())
         .run(tauri::generate_context!())
-        .expect("error while running Notch Desktop");
+        .expect("error while running Overline");
 }

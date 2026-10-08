@@ -46,7 +46,7 @@ impl ReadLaterService {
             app,
             http: reqwest::Client::builder()
                 .timeout(Duration::from_secs(15))
-                .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) Notch-Desktop")
+                .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) Overline")
                 .build()
                 .unwrap_or_default(),
             busy: Arc::default(),
@@ -59,6 +59,35 @@ impl ReadLaterService {
 
     fn busy(&self) -> std::sync::MutexGuard<'_, Busy> {
         self.busy.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    /// Demo mode: a few saved articles, so the list isn't empty on camera.
+    pub fn seed_demo(&self) {
+        let items = [
+            ("https://example.com/fewer-tabs", "The case for fewer tabs", "focus.blog", 1400, Some("Fewer open tabs means less switching: the article shows three small habits that keep you in one task at a time.")),
+            ("https://example.com/deep-work-music", "What music actually helps you focus", "soundmind.io", 2100, None),
+            ("https://example.com/rust-windows", "Building a Windows app in Rust", "devnotes.dev", 3200, None),
+        ];
+        let _ = self.db(|conn| {
+            for (i, (url, title, site, words, summary)) in items.into_iter().enumerate() {
+                let url = super::check_url(url)?;
+                if super::exists(conn, url.as_str())? {
+                    continue;
+                }
+                let item = super::insert(
+                    conn,
+                    &url,
+                    title,
+                    site,
+                    Some(words),
+                    Utc::now() - chrono::Duration::hours(i as i64 * 5),
+                )?;
+                if let Some(summary) = summary {
+                    super::set_summary(conn, &item.id, summary)?;
+                }
+            }
+            Ok(())
+        });
     }
 
     pub fn snapshot(&self) -> AppResult<ReadLaterSnapshot> {

@@ -25,7 +25,7 @@ export type PageId =
 export interface PageInfo {
   id: PageId;
   label: string;
-  group: "Notch" | "Features" | "More";
+  group: "Overline" | "Features" | "More";
   /** One line under the page title. */
   lead: string;
 }
@@ -34,20 +34,20 @@ export const PAGES: PageInfo[] = [
   {
     id: "general",
     label: "General",
-    group: "Notch",
+    group: "Overline",
     lead: "Starting up, which screens show the notch, and motion.",
   },
-  { id: "look", label: "Look", group: "Notch", lead: "Size, colors, shape and where the notch sits." },
+  { id: "look", label: "Look", group: "Overline", lead: "Size, colors, shape and where the notch sits." },
   {
     id: "behavior",
     label: "Behavior",
-    group: "Notch",
+    group: "Overline",
     lead: "How the notch opens, how long notifications stay, and quiet times.",
   },
   {
     id: "shortcuts",
     label: "Shortcuts & gestures",
-    group: "Notch",
+    group: "Overline",
     lead: "Keyboard shortcuts that work in any app, and touchpad swipes on the notch.",
   },
   { id: "home", label: "Home", group: "Features", lead: "What the Home dashboard shows." },
@@ -112,9 +112,9 @@ export const PAGES: PageInfo[] = [
     id: "privacy",
     label: "Privacy & data",
     group: "More",
-    lead: "What Notch keeps, and moving your settings to another PC.",
+    lead: "What Overline keeps, and moving your settings to another PC.",
   },
-  { id: "about", label: "About", group: "More", lead: "Version and where Notch keeps its files." },
+  { id: "about", label: "About", group: "More", lead: "Version and where Overline keeps its files." },
 ];
 
 /** Old deep links (`#settings/appearance`) still land somewhere sensible. */

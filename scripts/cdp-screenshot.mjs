@@ -15,7 +15,7 @@ const matches = targets.filter(
 );
 const page = matches[Number(process.env.CDP_INDEX ?? 0)] ?? matches[0];
 if (!page) {
-  console.error("no Notch Desktop webview found");
+  console.error("no Overline webview found");
   process.exit(1);
 }
 

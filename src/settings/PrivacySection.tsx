@@ -27,7 +27,7 @@ export function PrivacySection() {
     <Section title="Privacy & data" lead={pageLead("privacy")}>
       <Surface>
         <p className="settings__lead">
-          Everything Notch keeps stays on this PC: settings and history in its data folder, passwords and
+          Everything Overline keeps stays on this PC: settings and history in its data folder, passwords and
           sign-ins in Windows Credential Manager. Logs record what happened — never message text, copied text,
           commands or passwords.
         </p>
@@ -100,9 +100,9 @@ export function AboutSection() {
       )}
       <Surface>
         <p className="settings__lead">
-          Notch Desktop puts a Dynamic Island at the top of your screen: music, calendar, Claude Code
-          approvals, clipboard, focus and more. Press <kbd className="settings__kbd">Ctrl + Alt + N</kbd> (or
-          your own shortcut) to open it from anywhere.
+          Overline puts a Dynamic Island at the top of your screen: music, calendar, Claude Code approvals,
+          clipboard, focus and more. Press <kbd className="settings__kbd">Ctrl + Alt + N</kbd> (or your own
+          shortcut) to open it from anywhere.
         </p>
       </Surface>
     </Section>

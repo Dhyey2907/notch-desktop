@@ -31,6 +31,21 @@ pub struct PlanLimits {
     pub updated_at: DateTime<Utc>,
 }
 
+/// Sample limits for demo mode (recording the website's videos).
+pub fn demo(now: DateTime<Utc>) -> PlanLimits {
+    PlanLimits {
+        five_hour: Some(LimitWindow {
+            used_percent: 42.0,
+            resets_at: now + chrono::Duration::minutes(134),
+        }),
+        seven_day: Some(LimitWindow {
+            used_percent: 68.0,
+            resets_at: now + chrono::Duration::days(3),
+        }),
+        updated_at: now,
+    }
+}
+
 #[derive(Deserialize)]
 struct RawWindow {
     used_percentage: Option<f64>,

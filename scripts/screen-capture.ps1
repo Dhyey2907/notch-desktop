@@ -1,4 +1,4 @@
-# Dev helper: capture real screen pixels around the Notch Desktop window (shows true transparency/shadow).
+# Dev helper: capture real screen pixels around the Overline window (shows true transparency/shadow).
 # Usage: powershell -File scripts/screen-capture.ps1 <out.png> [padding]
 param([string]$Out = "notch-screen.png", [int]$Padding = 40)
 Add-Type @"

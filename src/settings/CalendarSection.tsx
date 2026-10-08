@@ -139,7 +139,7 @@ export function CalendarSection() {
             onContinue={() => void connectBuiltin()}
           >
             <p className="settings__lead">
-              Notch Desktop connects with your own Google Cloud OAuth client, so your calendar data goes only
+              Overline connects with your own Google Cloud OAuth client, so your calendar data goes only
               between your PC and Google. One-time setup:
             </p>
             <ol className="settings__steps">
@@ -185,8 +185,8 @@ export function CalendarSection() {
           </SignInWith>
         )}
         <p className="settings__note">
-          Notch Desktop asks for read-only access to your calendar and your email address (to label the
-          account). It only adds events or answers invites when you turn that on below and click it yourself.
+          Overline asks for read-only access to your calendar and your email address (to label the account).
+          It only adds events or answers invites when you turn that on below and click it yourself.
         </p>
       </Surface>
 
@@ -202,7 +202,7 @@ export function CalendarSection() {
         <div id="setting-gmail-glance">
           <Switch
             label="Gmail glance"
-            description="Unread mail in the Mail module, with Archive and Mark read, and a card for new mail. Notch can read your inbox and change labels — it can't send or delete. Sign in with Google again after turning this on."
+            description="Unread mail in the Mail module, with Archive and Mark read, and a card for new mail. Overline can read your inbox and change labels — it can't send or delete. Sign in with Google again after turning this on."
             checked={settings?.calendar.gmail ?? false}
             onChange={(gmail) => void update((s) => ({ ...s, calendar: { ...s.calendar, gmail } }))}
           />

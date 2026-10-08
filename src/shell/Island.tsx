@@ -300,7 +300,7 @@ export function Island() {
         className="island"
         data-mode={mode}
         data-bubble={look?.bubble ?? "pill"}
-        aria-label="Notch"
+        aria-label="Overline"
         initial={false}
         animate={{
           width: size.width,
@@ -314,7 +314,7 @@ export function Island() {
         onWheel={onWheel}
       >
         {(mode === "collapsed" || mode === "peek") && (
-          <button className="island-hit" aria-label="Open Notch" aria-expanded={false} onClick={expand} />
+          <button className="island-hit" aria-label="Open Overline" aria-expanded={false} onClick={expand} />
         )}
         <AnimatePresence mode="popLayout" initial={false}>
           <motion.div

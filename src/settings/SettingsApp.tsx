@@ -97,7 +97,7 @@ const CONTENT: Record<PageId, () => ReactNode> = {
   about: () => <AboutSection />,
 };
 
-const GROUPS = ["Notch", "Features", "More"] as const;
+const GROUPS = ["Overline", "Features", "More"] as const;
 
 /** `#settings/calendar` → "calendar"; anything unknown falls back to General. */
 function pageFromHash(): PageId {
@@ -158,7 +158,7 @@ export function SettingsApp() {
   return (
     <div className="settings">
       <nav className="settings__nav" aria-label="Settings sections">
-        <p className="settings__app-name">Notch Desktop</p>
+        <p className="settings__app-name">Overline</p>
         <label className="settings__search">
           <Search size={14} aria-hidden />
           <input
@@ -262,7 +262,7 @@ function GeneralSection() {
         <span id={settingAnchor("Start with Windows")} />
         <Switch
           label="Start with Windows"
-          description="Open Notch Desktop when you sign in."
+          description="Open Overline when you sign in."
           checked={launchAtLogin ?? false}
           disabled={launchAtLogin === null}
           onChange={(v) => void toggle(v)}

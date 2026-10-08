@@ -30,7 +30,7 @@ export default function MailExpanded() {
     body = (
       <EmptyState
         title="See your Gmail here"
-        body="Turn on Gmail in Settings → Calendar, then sign in with Google again to allow it. Notch can read your inbox, archive and mark read — never send or delete."
+        body="Turn on Gmail in Settings → Calendar, then sign in with Google again to allow it. Overline can read your inbox, archive and mark read — never send or delete."
         action={
           <Button onClick={() => void ipc.openSettingsWindow("calendar")}>Open Calendar settings</Button>
         }

@@ -43,7 +43,7 @@ export function ClipboardSection() {
       <Surface>
         <Switch
           label="Keep clipboard history"
-          description="Everything you copy shows up in the Clipboard module (Ctrl+Alt+V). History stays in memory and is gone when Notch restarts; only pinned clips are saved."
+          description="Everything you copy shows up in the Clipboard module (Ctrl+Alt+V). History stays in memory and is gone when Overline restarts; only pinned clips are saved."
           checked={!clipboard?.paused}
           onChange={(on) => save({ paused: !on })}
         />

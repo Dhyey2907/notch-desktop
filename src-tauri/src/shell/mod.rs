@@ -47,7 +47,7 @@ pub fn open_settings_window(app: &AppHandle, section: Option<&str>) -> AppResult
         SETTINGS_WINDOW,
         WebviewUrl::App(format!("index.html{hash}").into()),
     )
-    .title("Notch Desktop Settings")
+    .title("Overline Settings")
     .inner_size(760.0, 540.0)
     .min_inner_size(640.0, 440.0)
     .center()
@@ -150,11 +150,11 @@ fn toggle_visibility(app: &AppHandle) {
 fn setup_tray(app: &AppHandle) -> AppResult<()> {
     let toggle = MenuItem::with_id(app, "toggle", "Show / hide notch", true, None::<&str>)?;
     let settings = MenuItem::with_id(app, "settings", "Settings…", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, "quit", "Quit Notch Desktop", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", "Quit Overline", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&toggle, &settings, &quit])?;
 
     let mut tray = TrayIconBuilder::with_id("main")
-        .tooltip("Notch Desktop")
+        .tooltip("Overline")
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id.as_ref() {

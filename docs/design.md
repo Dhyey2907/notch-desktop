@@ -1,4 +1,4 @@
-# Notch Desktop --- Design System
+# Overline --- Design System
 
 ## 1. Design Direction
 

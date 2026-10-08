@@ -132,7 +132,7 @@ function Agenda({ snapshot, now }: { snapshot: CalendarSnapshot; now: number }) 
           />
         ) : (
           <EmptyState
-            title="Let Notch add events"
+            title="Let Overline add events"
             body="Turn on “Add events and answer invites” in Settings → Calendar, then sign in with Google again to allow it."
             action={<Button onClick={openSettings}>Open Calendar settings</Button>}
           />
