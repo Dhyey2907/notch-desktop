@@ -119,6 +119,8 @@ const defaults: Settings = {
     born: "",
     pats: 0,
     xp: 0,
+    treats: 0,
+    buddyOut: false,
   },
   ai: { provider: "claude", models: {}, baseUrl: "" },
   day: {

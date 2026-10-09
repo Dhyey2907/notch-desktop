@@ -35,6 +35,22 @@ describe("islandStore", () => {
     expect(sizes).toEqual([windowSizeFor("collapsed")]);
   });
 
+  it("widens the expanded window to fit a long dock", async () => {
+    const { store, sizes } = setup();
+    await store.getState().request("expanded");
+    sizes.length = 0;
+
+    // A dock wider than the panel: the window grows so its ends aren't cut off.
+    await store.getState().setDockWidth(760);
+    expect(sizes).toEqual([windowSizeFor("expanded", undefined, 760)]);
+    expect(sizes[0].width).toBe(760 + 44);
+
+    // A dock narrower than the panel changes nothing about the width.
+    expect(windowSizeFor("expanded", undefined, 300).width).toBe(windowSizeFor("expanded").width);
+    // And the resting bubble ignores the dock entirely.
+    expect(windowSizeFor("collapsed", undefined, 760)).toEqual(windowSizeFor("collapsed"));
+  });
+
   it("ignores requests for the current mode", async () => {
     const { store, resize } = setup();
     await store.getState().request("collapsed");

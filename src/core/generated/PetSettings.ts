@@ -43,4 +43,16 @@ born: string, pats: number,
 /**
  * Grows with focus sessions, breaks and finished tasks.
  */
-xp: number, };
+xp: number, 
+/**
+ * Treats given while it sits on the desktop.
+ */
+treats: number, 
+/**
+ * Called out of the notch onto the desktop.
+ */
+buddyOut: boolean, 
+/**
+ * Where it was dropped on the desktop (physical pixels).
+ */
+buddyX?: number, buddyY?: number, };

@@ -1,6 +1,7 @@
 //! Fun: PC lights that follow the notch (OpenRGB) and the pet walking along the taskbar
 //! while you're away.
 
+pub mod buddy;
 pub mod openrgb;
 pub mod service;
 

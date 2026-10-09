@@ -42,6 +42,7 @@ import { useFirstRunPrompt } from "./useFirstRunPrompt";
 import { useBreaks } from "../focus/useBreaks";
 import { usePetCheers } from "../focus/usePetCheers";
 import { usePetTalk } from "../pet/usePetTalk";
+import { useBuddyLink } from "../pet/useBuddyLink";
 import { useIsland } from "./useIsland";
 import { openFirstModule, useModuleLifecycle, useModuleNav } from "./useModules";
 import "./island.css";
@@ -103,6 +104,7 @@ export function Island() {
   useBreaks();
   usePetCheers();
   usePetTalk();
+  useBuddyLink();
   useLook();
   useCardTime();
   useQuietHours();

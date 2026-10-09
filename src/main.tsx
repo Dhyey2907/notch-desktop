@@ -7,6 +7,7 @@ import "./design/tokens.css";
 import "./index.css";
 import { useSettings } from "./settings";
 import { PetWalk } from "./focus/PetWalk";
+import { PetBuddy } from "./pet/PetBuddy";
 import { GrabApp } from "./grab/GrabApp";
 import { SettingsApp } from "./settings/SettingsApp";
 
@@ -26,9 +27,22 @@ if (isGrabWindow) document.documentElement.classList.add("grab-window");
 // The pet's walk along the taskbar (#pet).
 const isPetWindow = window.location.hash.startsWith("#pet");
 if (isPetWindow) document.documentElement.classList.add("pet-window");
+// The pet called out onto the desktop (#buddy).
+const isBuddyWindow = window.location.hash.startsWith("#buddy");
+if (isBuddyWindow) document.documentElement.classList.add("buddy-window");
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
-    {isSettingsWindow ? <SettingsApp /> : isGrabWindow ? <GrabApp /> : isPetWindow ? <PetWalk /> : <App />}
+    {isSettingsWindow ? (
+      <SettingsApp />
+    ) : isGrabWindow ? (
+      <GrabApp />
+    ) : isBuddyWindow ? (
+      <PetBuddy />
+    ) : isPetWindow ? (
+      <PetWalk />
+    ) : (
+      <App />
+    )}
   </React.StrictMode>,
 );

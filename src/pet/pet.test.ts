@@ -28,6 +28,8 @@ const SETTINGS: PetSettings = {
   born: "",
   pats: 0,
   xp: 0,
+  treats: 0,
+  buddyOut: false,
 };
 
 const base: PetInputs = {
@@ -43,6 +45,22 @@ const base: PetInputs = {
   busyDay: false,
   settings: SETTINGS,
 };
+
+describe("pet look on the desktop", () => {
+  it("gets its laptop out while you code (an editor or terminal in front)", () => {
+    expect(petLook({ ...base, editing: true })).toMatchObject({
+      prop: "laptop",
+      face: "focused",
+      status: "Coding with you",
+    });
+    // Watching beats coding: popcorn, not a laptop.
+    expect(petLook({ ...base, editing: true, video: true, music: true }).prop).toBe("popcorn");
+    // Turned off in settings: no laptop.
+    expect(petLook({ ...base, editing: true, settings: { ...SETTINGS, reactCoding: false } }).prop).toBe(
+      "none",
+    );
+  });
+});
 
 describe("pet look", () => {
   it("is happy by default, and reacts to what's going on", () => {
@@ -109,6 +127,18 @@ describe("pet lines", () => {
       "Battery at 14%. Please connect power.",
     );
     expect(lineFor("unknown", "pat", {}, () => 0)).toBe("Hehe, that tickles!");
+  });
+
+  it("has desktop-pet lines in every tone, and treats are always welcome", () => {
+    for (const { id } of TONES) {
+      for (const event of ["hello", "treat", "coding", "watching", "chat"] as const) {
+        const line = lineFor(id, event, { name: "Mochi" }, () => 0);
+        expect(line.length).toBeGreaterThan(5);
+        expect(line).not.toMatch(/\{\w+\}/);
+      }
+    }
+    expect(maySpeak("treat", "quiet", 0, 1000)).toBe(true);
+    expect(maySpeak("chat", "quiet", 0, 1000)).toBe(false);
   });
 
   it("waits between lines, except for things that can't wait", () => {

@@ -23,6 +23,9 @@ export interface IslandState {
   /** Width of the resting bubble: wider when it has more to show (music, downloads, pet…). */
   bubbleWidth: number;
   setBubbleWidth: (width: number) => Promise<void>;
+  /** Natural width of the module dock; the expanded window is at least this wide. */
+  dockWidth: number;
+  setDockWidth: (width: number) => Promise<void>;
 }
 
 export function createIslandStore(resizeWindow: ResizeWindow, initialMode: IslandMode = "collapsed") {
@@ -45,6 +48,13 @@ export function createIslandStore(resizeWindow: ResizeWindow, initialMode: Islan
     size: ISLAND_SIZE[initialMode],
 
     bubbleWidth: ISLAND_SIZE.collapsed.width,
+    dockWidth: 0,
+
+    setDockWidth: async (width) => {
+      if (width === get().dockWidth) return;
+      set({ dockWidth: width });
+      if (get().mode === "expanded") await resizeTo(windowSizeFor("expanded", get().size, width));
+    },
 
     setBubbleWidth: async (width) => {
       if (width === get().bubbleWidth) return;
@@ -59,7 +69,12 @@ export function createIslandStore(resizeWindow: ResizeWindow, initialMode: Islan
       const current = get();
       if (mode === current.mode && sameSize(current.size, size)) return;
       const requestId = ++latestRequest;
-      await resizeTo(unionSize(windowSizeFor(current.mode, current.size), windowSizeFor(mode, size)));
+      await resizeTo(
+        unionSize(
+          windowSizeFor(current.mode, current.size, current.dockWidth),
+          windowSizeFor(mode, size, current.dockWidth),
+        ),
+      );
       // A newer request arrived while we were resizing; let it win.
       if (requestId !== latestRequest) return;
       set({ mode, size });
@@ -67,11 +82,11 @@ export function createIslandStore(resizeWindow: ResizeWindow, initialMode: Islan
 
     toggleExpanded: () => get().request(get().mode === "expanded" ? "collapsed" : "expanded"),
 
-    settle: () => resizeTo(windowSizeFor(get().mode, get().size)),
+    settle: () => resizeTo(windowSizeFor(get().mode, get().size, get().dockWidth)),
 
     refit: () => {
       windowSize = null;
-      return resizeTo(windowSizeFor(get().mode, get().size));
+      return resizeTo(windowSizeFor(get().mode, get().size, get().dockWidth));
     },
   }));
 }

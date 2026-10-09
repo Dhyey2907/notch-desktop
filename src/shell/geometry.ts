@@ -47,13 +47,18 @@ export const WINDOW_MARGIN = { x: 22, top: 6, bottom: 30 } as const;
 /** Module dock shown beneath the expanded island (design.md §17). */
 export const DOCK = { height: 40, gap: 8 } as const;
 
-export function windowSizeFor(mode: IslandMode, island: Size = ISLAND_SIZE[mode]): Size {
+/**
+ * The window for a state. `dockWidth`: the dock's natural width; when expanded the window grows
+ * to fit it, so a long dock is never cut off at the ends.
+ */
+export function windowSizeFor(mode: IslandMode, island: Size = ISLAND_SIZE[mode], dockWidth = 0): Size {
   // At rest the window is exactly the bubble: no shadow margin, so the transparent area
   // around it never swallows clicks meant for the apps underneath (e.g. browser tabs).
   if (mode === "collapsed") return { width: island.width, height: island.height + WINDOW_MARGIN.top };
   const dock = mode === "expanded" ? DOCK.gap + DOCK.height : 0;
+  const content = mode === "expanded" ? Math.max(island.width, dockWidth) : island.width;
   return {
-    width: island.width + WINDOW_MARGIN.x * 2,
+    width: content + WINDOW_MARGIN.x * 2,
     height: island.height + dock + WINDOW_MARGIN.top + WINDOW_MARGIN.bottom,
   };
 }

@@ -1,6 +1,6 @@
 // The Pet section: your pet up close (click to pat it), what it's up to, its latest line, and
 // its stats card — age, level, pats and streaks.
-import { MessageCircle, Settings2 } from "lucide-react";
+import { MessageCircle, Monitor, Settings2, Undo2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { ipc } from "../../core/ipc";
@@ -126,13 +126,23 @@ export default function PetExpanded() {
               </span>
             </div>
             <Stat label="Age" value={age === 0 ? "New!" : `${age} ${age === 1 ? "day" : "days"}`} />
-            <Stat label="Pats" value={pet.pats.toLocaleString()} />
+            <Stat
+              label="Pats · treats"
+              value={`${pet.pats.toLocaleString()} · ${pet.treats.toLocaleString()}`}
+            />
             <Stat label="Break streak" value={String(streak)} hint={`best ${breaks.best}`} />
             <Stat label="Focus today" value={String(sessions)} />
           </div>
           <div className="petsec__actions">
             <Button onClick={() => say(CHAT[Math.floor(Math.random() * CHAT.length)])}>
               <MessageCircle size={13} aria-hidden /> Say something
+            </Button>
+            <Button
+              variant={pet.buddyOut ? "secondary" : "primary"}
+              onClick={() => void (pet.buddyOut ? ipc.petBuddyHide() : ipc.petBuddyShow())}
+            >
+              {pet.buddyOut ? <Undo2 size={13} aria-hidden /> : <Monitor size={13} aria-hidden />}{" "}
+              {pet.buddyOut ? "Send back" : "Call out"}
             </Button>
             <span className="petsec__tone">Tone: {tone}</span>
           </div>

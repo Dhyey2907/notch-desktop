@@ -14,6 +14,8 @@ import { petLook, type PetLook } from "./petState";
 import { usePetLive } from "./petStore";
 
 const IDLE_CHECK_MS = 60_000;
+/** How often to look whether a code editor or terminal is in front. */
+const CODING_CHECK_MS = 8_000;
 const BUSY_MEETINGS = 4;
 const DEADLINE_SOON_MS = 6 * 3600_000;
 
@@ -30,6 +32,14 @@ export function usePetLook(): (PetLook & { name: string; color: string }) | null
   const assignments = useDay((s) => s.state?.assignments);
   const [idleMs, setIdleMs] = useState(0);
   const [now, setNow] = useState(() => Date.now());
+  const [editing, setEditing] = useState(false);
+
+  useEffect(() => {
+    const check = () => ipc.petCodingInFront().then(setEditing, () => {});
+    void check();
+    const id = window.setInterval(() => void check(), CODING_CHECK_MS);
+    return () => window.clearInterval(id);
+  }, []);
 
   useEffect(() => {
     const check = () =>
@@ -84,6 +94,7 @@ export function usePetLook(): (PetLook & { name: string; color: string }) | null
     music: playing && !brand?.video,
     video: playing && !!brand?.video,
     coding: waiting ? "waiting" : working ? "working" : "none",
+    editing,
     agent: agentName((waiting ?? working)?.agent),
     weather,
     battery: power ? { percent: power.percent, plugged: power.plugged } : null,

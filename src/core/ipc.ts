@@ -265,6 +265,14 @@ export const ipc = {
   systemIdleMs: () => invoke<number>("system_idle_ms"),
   /** Screen time on a past day (YYYY-MM-DD). */
   screenTimeDay: (date: string) => invoke<ScreenTime>("screen_time_day", { date }),
+  /** Call the pet out of the notch onto the desktop. */
+  petBuddyShow: () => invoke<void>("pet_buddy_show"),
+  /** Send the pet back into the notch. */
+  petBuddyHide: () => invoke<void>("pet_buddy_hide"),
+  /** Remember where the pet was dropped. */
+  petBuddyMoved: () => invoke<void>("pet_buddy_moved"),
+  /** A code editor or terminal is in front. */
+  petCodingInFront: () => invoke<boolean>("pet_coding_in_front"),
   rgbMusicColor: (hex: string | null) => invoke<void>("rgb_music_color", { hex }),
   rgbStatus: () => invoke<RgbStatus>("rgb_status"),
   soundState: () => invoke<SoundState | null>("sound_state"),

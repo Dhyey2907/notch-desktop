@@ -29,6 +29,8 @@ export interface PetInputs {
   music: boolean;
   video: boolean;
   coding: "none" | "working" | "waiting";
+  /** A code editor or terminal is in front (you're coding yourself). */
+  editing?: boolean;
   /** Who's coding, for the status line ("Claude Code"). */
   agent?: string;
   /** Weather icon (sun, rain, snow, storm…) and temperature, when known. */
@@ -57,7 +59,7 @@ export function petLook(i: PetInputs): PetLook {
   const lowBattery = s.reactBattery && !!i.battery && !i.battery.plugged && i.battery.percent <= LOW_BATTERY;
   const lateNight = s.reactDay && i.hour >= 1 && i.hour < 5 && i.idleMs < SLEEPY_AFTER_MS;
   const waiting = s.reactCoding && i.coding === "waiting";
-  const coding = s.reactCoding && i.coding === "working";
+  const coding = s.reactCoding && (i.coding === "working" || !!i.editing);
   const video = s.reactVideo && i.video;
   const music = s.reactMusic && i.music && !video;
 
@@ -89,7 +91,11 @@ export function petLook(i: PetInputs): PetLook {
     status = "A busy day — hang in there";
   } else if (i.focusing || coding) {
     face = "focused";
-    status = coding ? `Coding alongside ${i.agent ?? "your agent"}` : "Focusing with you";
+    status = coding
+      ? i.coding === "working"
+        ? `Coding alongside ${i.agent ?? "your agent"}`
+        : "Coding with you"
+      : "Focusing with you";
   } else {
     face = "happy";
     status = "Happy to be here";

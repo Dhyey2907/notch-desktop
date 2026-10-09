@@ -1,11 +1,12 @@
 import { Settings } from "lucide-react";
 import { motion } from "motion/react";
-import type { KeyboardEvent } from "react";
+import { useLayoutEffect, useRef, type KeyboardEvent } from "react";
 
 import { ipc } from "../core/ipc";
 import { IconButton } from "../design/components";
 import { contentEnter } from "../design/motion";
 import { useReduceMotion } from "../design/useReduceMotion";
+import { useIsland } from "./useIsland";
 import { useDockModules, useModuleNav } from "./useModules";
 
 /**
@@ -18,6 +19,19 @@ export function Dock() {
   const setActive = useModuleNav((s) => s.setActive);
   const step = useModuleNav((s) => s.step);
   const reduceMotion = useReduceMotion();
+  const dock = useRef<HTMLDivElement>(null);
+
+  // Tell the island how wide the dock wants to be, so the window grows to fit it (more modules
+  // in the dock than the panel is wide would otherwise be cut off at both ends).
+  useLayoutEffect(() => {
+    const el = dock.current;
+    if (!el) return;
+    const report = () => void useIsland.getState().setDockWidth(Math.ceil(el.offsetWidth));
+    report();
+    const observer = new ResizeObserver(report);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
@@ -29,6 +43,7 @@ export function Dock() {
 
   return (
     <motion.div
+      ref={dock}
       className="dock"
       role="toolbar"
       aria-label="Modules"

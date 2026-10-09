@@ -1,0 +1,195 @@
+/* The pet's own window on the desktop: transparent, just the pet, its bubble and a hover bar. */
+html.buddy-window,
+html.buddy-window body,
+html.buddy-window #root {
+  background: transparent !important;
+  overflow: hidden;
+}
+
+.buddy {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding-bottom: 6px;
+  font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  user-select: none;
+}
+
+/* Comments, in a bubble with a tail pointing at the pet. */
+.buddy__bubble {
+  position: relative;
+  max-width: 230px;
+  margin-bottom: 10px;
+  padding: 9px 13px;
+  border-radius: 16px;
+  background: rgba(20, 20, 26, 0.92);
+  color: #f5f5f7;
+  font-size: 13px;
+  line-height: 1.35;
+  text-align: center;
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.1);
+  animation: buddy-pop 260ms cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.buddy__bubble::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  background: rgba(20, 20, 26, 0.92);
+  transform: rotate(45deg);
+  box-shadow: 1px 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+@keyframes buddy-pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.92);
+  }
+}
+
+/* The pet, sitting: a slow breath. */
+.buddy__pet {
+  position: relative;
+  cursor: grab;
+  animation: buddy-breathe 3.6s ease-in-out infinite;
+  touch-action: none;
+}
+
+.buddy__pet:active {
+  cursor: grabbing;
+}
+
+@keyframes buddy-breathe {
+  50% {
+    transform: scale(1.025, 0.985);
+  }
+}
+
+.buddy__shadow {
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  bottom: -2px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.35);
+  filter: blur(3px);
+  z-index: -1;
+}
+
+/* A treat: the cookie flies into its mouth, hearts float up. */
+.buddy__cookie {
+  position: absolute;
+  left: -16px;
+  top: 30px;
+  font-size: 22px;
+  animation: buddy-cookie 700ms ease-in forwards;
+  z-index: 2;
+}
+
+@keyframes buddy-cookie {
+  from {
+    transform: translate(0, -20px) rotate(-30deg);
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  to {
+    transform: translate(52px, 26px) rotate(20deg) scale(0.4);
+    opacity: 0;
+  }
+}
+
+.buddy__heart {
+  position: absolute;
+  top: 10px;
+  color: #ff6b9a;
+  font-size: 16px;
+  opacity: 0;
+  animation: buddy-heart 1.6s ease-out forwards;
+  z-index: 2;
+}
+
+.buddy__heart--a {
+  left: 18px;
+  animation-delay: 0.5s;
+}
+.buddy__heart--b {
+  left: 50px;
+  font-size: 20px;
+  animation-delay: 0.7s;
+}
+.buddy__heart--c {
+  left: 80px;
+  animation-delay: 0.9s;
+}
+
+@keyframes buddy-heart {
+  15% {
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-46px) scale(1.2);
+    opacity: 0;
+  }
+}
+
+/* Hover: what it's up to, and "Send back". */
+.buddy__tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  opacity: 0;
+  transition: opacity 160ms;
+}
+
+.buddy:hover .buddy__tools {
+  opacity: 1;
+}
+
+.buddy__status {
+  max-width: 150px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(20, 20, 26, 0.85);
+  color: #c9c9d1;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.buddy__back {
+  padding: 3px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: #f5f5f7;
+  color: #0b0b0d;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .buddy__pet,
+  .buddy__bubble,
+  .buddy__cookie,
+  .buddy__heart {
+    animation: none;
+  }
+  .buddy__heart {
+    opacity: 1;
+  }
+}

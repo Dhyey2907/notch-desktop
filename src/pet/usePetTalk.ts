@@ -32,6 +32,11 @@ const TOPIC: Record<LineEvent, keyof PetSettings | null> = {
   late: "sayLate",
   rain: "sayWeather",
   pat: null,
+  hello: null,
+  treat: null,
+  coding: null,
+  watching: null,
+  chat: null,
 };
 /** Notch already shows a card for these; the pet's line goes to its own section only. */
 const SECTION_ONLY: LineEvent[] = ["meeting", "agentDone", "agentWaiting", "pat"];
@@ -110,6 +115,8 @@ export function usePetTalk() {
       const text = lineFor(s.tone, event, { ...vars, name });
       usePetLive.setState({ line: { text, event, at: now } });
       if (SECTION_ONLY.includes(event)) return;
+      // Out on the desktop, it says it in its own speech bubble (urgent ones still pop up here).
+      if (s.buddyOut && !urgent) return;
       useActivities.getState().push({
         moduleId: "pet",
         priority: "low",

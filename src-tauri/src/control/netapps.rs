@@ -29,6 +29,13 @@ pub struct ProcSample {
     pub io_bytes: u64,
 }
 
+/// A connection to this PC itself (127.x.x.x) or to nowhere (0.0.0.0). Windows gives the address
+/// in network byte order, so its bytes in memory are the dotted octets in order.
+pub fn is_local_v4(addr: u32) -> bool {
+    let octets = addr.to_ne_bytes();
+    octets[0] == 127 || addr == 0
+}
+
 /// Per-app rates from two samples `millis` apart; an app's processes are added together.
 /// Busiest first, then most connections; at most `limit` apps.
 pub fn aggregate(
@@ -104,8 +111,9 @@ pub fn sample() -> Vec<ProcSample> {
                 let rows = std::slice::from_raw_parts(table.table.as_ptr(), table.dwNumEntries as usize);
                 for row in rows {
                     // Established, and not to this PC itself (127.x).
-                    let remote = u32::from_be(row.dwRemoteAddr).to_be_bytes();
-                    if row.dwState == MIB_TCP_STATE_ESTAB.0 as u32 && remote[3] != 127 && row.dwOwningPid > 4
+                    if row.dwState == MIB_TCP_STATE_ESTAB.0 as u32
+                        && !is_local_v4(row.dwRemoteAddr)
+                        && row.dwOwningPid > 4
                     {
                         *per_pid.entry(row.dwOwningPid).or_default() += 1;
                     }
@@ -176,6 +184,19 @@ mod tests {
             connections,
             io_bytes,
         }
+    }
+
+    #[test]
+    fn skips_connections_to_this_pc() {
+        // 127.0.0.1 and 93.184.216.34 as Windows stores them (network order in memory).
+        let local = u32::from_ne_bytes([127, 0, 0, 1]);
+        let web = u32::from_ne_bytes([93, 184, 216, 34]);
+        assert!(is_local_v4(local));
+        assert!(is_local_v4(u32::from_ne_bytes([127, 5, 6, 7])));
+        assert!(is_local_v4(0));
+        assert!(!is_local_v4(web));
+        // An address ending in .127 is not loopback.
+        assert!(!is_local_v4(u32::from_ne_bytes([10, 0, 0, 127])));
     }
 
     #[test]

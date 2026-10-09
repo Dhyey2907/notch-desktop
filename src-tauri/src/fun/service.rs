@@ -224,7 +224,18 @@ impl FunService {
                 .app
                 .state::<crate::system::service::SystemService>()
                 .media_playing();
-            let allowed = fun.pet_walk && !locked && !playing && !crate::shell::any_fullscreen();
+            let fullscreen = crate::shell::any_fullscreen();
+            super::buddy::follow_fullscreen(&self.app, fullscreen);
+            // Already out on the desktop: no walk along the taskbar as well.
+            let buddy_out = self
+                .app
+                .state::<AppState>()
+                .settings
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .pet
+                .buddy_out;
+            let allowed = fun.pet_walk && !locked && !playing && !fullscreen && !buddy_out;
             if !out {
                 // Demo mode (recording the website's videos) doesn't wait two minutes.
                 let after = if crate::demo() { 8_000 } else { PET_AFTER_MS };

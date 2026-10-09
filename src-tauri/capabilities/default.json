@@ -2,6 +2,6 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Capability for the island windows (one per chosen screen) and the settings window",
-  "windows": ["main", "island-*", "settings", "grab", "petwalk"],
-  "permissions": ["core:default"]
+  "windows": ["main", "island-*", "settings", "grab", "petwalk", "petbuddy"],
+  "permissions": ["core:default", "core:window:allow-start-dragging"]
 }

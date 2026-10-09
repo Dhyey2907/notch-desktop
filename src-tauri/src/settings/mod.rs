@@ -566,6 +566,17 @@ pub struct PetSettings {
     pub pats: u32,
     /// Grows with focus sessions, breaks and finished tasks.
     pub xp: u32,
+    /// Treats given while it sits on the desktop.
+    pub treats: u32,
+    /// Called out of the notch onto the desktop.
+    pub buddy_out: bool,
+    /// Where it was dropped on the desktop (physical pixels).
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub buddy_x: Option<i32>,
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub buddy_y: Option<i32>,
 }
 
 impl Default for PetSettings {
@@ -594,6 +605,10 @@ impl Default for PetSettings {
             born: String::new(),
             pats: 0,
             xp: 0,
+            treats: 0,
+            buddy_out: false,
+            buddy_x: None,
+            buddy_y: None,
         }
     }
 }
