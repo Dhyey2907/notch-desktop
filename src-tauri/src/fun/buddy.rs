@@ -1,135 +1,225 @@
-//! The pet, called out of the notch onto the desktop: a small window you can drag anywhere,
-//! where it sits and keeps you company (with a laptop while you code, popcorn while you watch,
-//! a speech bubble for its comments). The island decides how it looks and what it says and sends
-//! that over; this window only draws it and reports taps and drags.
+//! Calling the pet out of the notch, and what's happening on the pet's own screen.
+//!
+//! There is one pet and it is never "placed" anywhere: called out, it walks the taskbar (the
+//! pet loop in `service` does the walking) and keeps walking until you send it back.
+//!
+//! The pet lives on one screen (the one the notch is on) and only that screen matters to it:
+//! where you're coding, where a video plays, where you click. Another screen never affects it.
 
-use tauri::{AppHandle, Manager, PhysicalPosition, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Manager};
 
 use crate::{error::AppResult, state::AppState};
 
-pub const BUDDY_WINDOW: &str = "petbuddy";
-/// Logical size: room for the pet, its speech bubble above and the hover buttons.
-const WIDTH: f64 = 260.0;
-const HEIGHT: f64 = 250.0;
-
-fn settings(app: &AppHandle) -> crate::settings::Settings {
+fn called_out(app: &AppHandle) -> bool {
     app.state::<AppState>()
         .settings
         .lock()
         .unwrap_or_else(|e| e.into_inner())
-        .clone()
+        .pet
+        .buddy_out
 }
 
-fn update(app: &AppHandle, change: impl FnOnce(&mut crate::settings::PetSettings)) -> AppResult<()> {
+fn set_called_out(app: &AppHandle, out: bool) -> AppResult<()> {
+    if called_out(app) == out {
+        return Ok(());
+    }
     let state = app.state::<AppState>();
-    let mut next = settings(app);
-    change(&mut next.pet);
+    let mut next = state.settings.lock().unwrap_or_else(|e| e.into_inner()).clone();
+    next.pet.buddy_out = out;
     crate::commands::settings::persist_and_broadcast(&state, next).map(|_| ())
 }
 
-/// Where it sits: the saved spot if it's still on a screen, else the bottom-right of the screen
-/// the notch is on.
-fn place(app: &AppHandle, w: &tauri::WebviewWindow) {
-    let pet = settings(app).pet;
-    if let (Some(x), Some(y)) = (pet.buddy_x, pet.buddy_y) {
-        let on_screen = w.available_monitors().unwrap_or_default().iter().any(|m| {
-            let (p, s) = (m.position(), m.size());
-            x >= p.x && y >= p.y && x < p.x + s.width as i32 - 40 && y < p.y + s.height as i32 - 40
-        });
-        if on_screen {
-            let _ = w.set_position(PhysicalPosition::new(x, y));
-            return;
-        }
-    }
-    let monitor = app
-        .get_webview_window(crate::shell::MAIN_WINDOW)
-        .and_then(|main| main.current_monitor().ok().flatten())
-        .or_else(|| w.primary_monitor().ok().flatten());
-    if let Some(m) = monitor {
-        let area = m.work_area();
-        let scale = m.scale_factor();
-        let (bw, bh) = ((WIDTH * scale) as i32, (HEIGHT * scale) as i32);
-        let _ = w.set_position(PhysicalPosition::new(
-            area.position.x + area.size.width as i32 - bw - (40.0 * scale) as i32,
-            area.position.y + area.size.height as i32 - bh,
-        ));
-    }
-}
-
-/// Bring the pet out onto the desktop (and remember it's out).
+/// Call the pet out: it starts walking the taskbar and keeps walking.
 pub fn show(app: &AppHandle) -> AppResult<()> {
-    let existing = app.get_webview_window(BUDDY_WINDOW);
-    let created = existing.is_none();
-    let w = match existing {
-        Some(w) => w,
-        None => WebviewWindowBuilder::new(app, BUDDY_WINDOW, WebviewUrl::App("index.html#buddy".into()))
-            .title("Overline pet")
-            .inner_size(WIDTH, HEIGHT)
-            .decorations(false)
-            .transparent(true)
-            .always_on_top(true)
-            .skip_taskbar(true)
-            .resizable(false)
-            .shadow(false)
-            .focused(false)
-            .visible(false)
-            .build()?,
-    };
-    // However the window goes (Send back, Alt+F4, a crash of its page), the pet is back in the
-    // notch: don't leave the setting saying it's out.
-    let handle = app.clone();
-    if created {
-        w.on_window_event(move |event| {
-            if matches!(event, tauri::WindowEvent::Destroyed) && settings(&handle).pet.buddy_out {
-                if let Err(error) = update(&handle, |pet| pet.buddy_out = false) {
-                    tracing::warn!(kind = error.kind(), "could not save that the pet went back");
-                }
-            }
-        });
-    }
-    place(app, &w);
-    w.show()?;
-    if !settings(app).pet.buddy_out {
-        update(app, |pet| pet.buddy_out = true)?;
-    }
-    Ok(())
+    set_called_out(app, true)
 }
 
 /// Send it back into the notch.
 pub fn hide(app: &AppHandle) -> AppResult<()> {
-    if let Some(w) = app.get_webview_window(BUDDY_WINDOW) {
-        let _ = w.close();
-    }
-    if settings(app).pet.buddy_out {
-        update(app, |pet| pet.buddy_out = false)?;
-    }
-    Ok(())
+    set_called_out(app, false)
 }
 
-/// Remember where it was dropped (physical pixels, the window's top-left).
-pub fn save_position(app: &AppHandle) -> AppResult<()> {
-    let Some(w) = app.get_webview_window(BUDDY_WINDOW) else {
-        return Ok(());
-    };
-    let p = w.outer_position()?;
-    update(app, |pet| {
-        pet.buddy_x = Some(p.x);
-        pet.buddy_y = Some(p.y);
-    })
+/// Where something is, seen from the pet: on its own screen, on another one, or unknown.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Place {
+    Here,
+    Elsewhere,
+    Unknown,
 }
 
-/// Hidden over a fullscreen app (a game, a film), back afterwards. Called from the pet loop.
-pub fn follow_fullscreen(app: &AppHandle, fullscreen: bool) {
-    if !settings(app).pet.buddy_out {
-        return;
-    }
-    if let Some(w) = app.get_webview_window(BUDDY_WINDOW) {
-        let visible = w.is_visible().unwrap_or(true);
-        if fullscreen && visible {
-            let _ = w.hide();
-        } else if !fullscreen && !visible {
-            let _ = w.show();
+impl Place {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Place::Here => "here",
+            Place::Elsewhere => "elsewhere",
+            Place::Unknown => "unknown",
         }
+    }
+}
+
+/// From "does it have a window on the pet's screen / on another screen".
+fn place_of(here: bool, elsewhere: bool) -> Place {
+    match (here, elsewhere) {
+        (true, _) => Place::Here,
+        (false, true) => Place::Elsewhere,
+        (false, false) => Place::Unknown,
+    }
+}
+
+/// A window's program is the app that's playing: "chrome" for the source "Chrome" or
+/// "Chrome._crx_…", "spotify" for "SpotifyAB.SpotifyMusic_…!Spotify". Short names are skipped
+/// so they can't match by accident.
+fn plays_from(source_id: &str, exe_stem: &str) -> bool {
+    exe_stem.len() >= 3 && source_id.to_lowercase().contains(&exe_stem.to_lowercase())
+}
+
+#[cfg(windows)]
+mod win {
+    use tauri::{AppHandle, Manager};
+    use windows::core::BOOL;
+    use windows::Win32::{
+        Foundation::{HWND, LPARAM, POINT},
+        Graphics::Gdi::{MonitorFromPoint, MonitorFromWindow, HMONITOR, MONITOR_DEFAULTTONEAREST},
+        UI::WindowsAndMessaging::{
+            EnumWindows, GetCursorPos, GetForegroundWindow, GetWindowThreadProcessId, IsIconic,
+            IsWindowVisible,
+        },
+    };
+
+    /// The screen the pet walks on: the one the notch is on.
+    pub fn pet_monitor(app: &AppHandle) -> Option<HMONITOR> {
+        let notch = app.get_webview_window(crate::shell::MAIN_WINDOW)?.hwnd().ok()?;
+        // SAFETY: a live top-level window of this process; this only asks which monitor it's on.
+        Some(unsafe { MonitorFromWindow(HWND(notch.0), MONITOR_DEFAULTTONEAREST) })
+    }
+
+    pub fn front_window() -> (HWND, u32) {
+        // SAFETY: read-only queries of the foreground window.
+        unsafe {
+            let front = GetForegroundWindow();
+            let mut pid = 0;
+            GetWindowThreadProcessId(front, Some(&mut pid));
+            (front, pid)
+        }
+    }
+
+    pub fn monitor_of(window: HWND) -> HMONITOR {
+        // SAFETY: only asks which monitor a window is on (nearest one for an invalid handle).
+        unsafe { MonitorFromWindow(window, MONITOR_DEFAULTTONEAREST) }
+    }
+
+    pub fn cursor_point() -> Option<POINT> {
+        let mut p = POINT::default();
+        // SAFETY: writes the cursor position into a POINT we own.
+        unsafe { GetCursorPos(&mut p) }.ok()?;
+        Some(p)
+    }
+
+    pub fn cursor_monitor() -> Option<HMONITOR> {
+        let p = cursor_point()?;
+        // SAFETY: only asks which monitor a point is on.
+        Some(unsafe { MonitorFromPoint(p, MONITOR_DEFAULTTONEAREST) })
+    }
+
+    /// Every visible, not minimized top-level window with its process id.
+    pub fn open_windows() -> Vec<(HWND, u32)> {
+        unsafe extern "system" fn collect(window: HWND, data: LPARAM) -> BOOL {
+            // SAFETY: `data` is the Vec passed below, alive for the whole EnumWindows call.
+            let found = unsafe { &mut *(data.0 as *mut Vec<(HWND, u32)>) };
+            // SAFETY: read-only queries on a window handle EnumWindows just gave us.
+            unsafe {
+                if IsWindowVisible(window).as_bool() && !IsIconic(window).as_bool() {
+                    let mut pid = 0;
+                    GetWindowThreadProcessId(window, Some(&mut pid));
+                    found.push((window, pid));
+                }
+            }
+            true.into()
+        }
+        let mut found: Vec<(HWND, u32)> = Vec::new();
+        // SAFETY: `collect` only touches the Vec behind `data`, which outlives this call.
+        unsafe {
+            let _ = EnumWindows(Some(collect), LPARAM(&mut found as *mut _ as isize));
+        }
+        found
+    }
+}
+
+/// Where the mouse is (physical pixels).
+pub fn cursor() -> Option<(i32, i32)> {
+    #[cfg(windows)]
+    {
+        win::cursor_point().map(|p| (p.x, p.y))
+    }
+    #[cfg(not(windows))]
+    None
+}
+
+/// The mouse is on the pet's own screen (true when that can't be told).
+pub fn cursor_on_pet_screen(app: &AppHandle) -> bool {
+    #[cfg(windows)]
+    {
+        match (win::pet_monitor(app), win::cursor_monitor()) {
+            (Some(pet), Some(cursor)) => pet == cursor,
+            _ => true,
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = app;
+        true
+    }
+}
+
+/// The app in front is on the pet's own screen (true when that can't be told).
+pub fn front_on_pet_screen(app: &AppHandle) -> bool {
+    #[cfg(windows)]
+    {
+        win::pet_monitor(app).is_none_or(|pet| win::monitor_of(win::front_window().0) == pet)
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = app;
+        true
+    }
+}
+
+/// Where the app that's playing shows its windows: on the pet's screen, only on another
+/// screen, or unknown (no window found for it, or nothing playing).
+pub fn media_place(app: &AppHandle) -> Place {
+    let source = crate::media::playing_source();
+    if source.is_empty() {
+        return Place::Unknown;
+    }
+    #[cfg(windows)]
+    {
+        let Some(pet) = win::pet_monitor(app) else {
+            return Place::Unknown;
+        };
+        let mut stems: std::collections::HashMap<u32, Option<String>> = std::collections::HashMap::new();
+        let (mut here, mut elsewhere) = (false, false);
+        for (window, pid) in win::open_windows() {
+            let stem = stems.entry(pid).or_insert_with(|| {
+                crate::clipboard::win::exe_of(pid).and_then(|exe| {
+                    std::path::Path::new(&exe)
+                        .file_stem()
+                        .map(|s| s.to_string_lossy().into_owned())
+                })
+            });
+            if stem.as_deref().is_some_and(|stem| plays_from(&source, stem)) {
+                if win::monitor_of(window) == pet {
+                    here = true;
+                } else {
+                    elsewhere = true;
+                }
+            }
+        }
+        place_of(here, elsewhere)
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = app;
+        Place::Unknown
     }
 }
 
@@ -143,26 +233,74 @@ const TERMINALS: &[&str] = &[
     "tabby",
 ];
 
-/// The app in front is a code editor or a terminal.
-pub fn coding_in_front() -> bool {
+/// Whether you're coding (a code editor or a terminal is the app in front), and where:
+/// `"here"` on the pet's own screen (the one the notch is on), `"elsewhere"` on another
+/// screen, `"none"` when you aren't.
+pub fn coding_in_front(app: &AppHandle) -> &'static str {
     #[cfg(windows)]
     {
-        use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowThreadProcessId};
-        // SAFETY: read-only query of the foreground window's process id.
-        let pid = unsafe {
-            let mut pid = 0;
-            GetWindowThreadProcessId(GetForegroundWindow(), Some(&mut pid));
-            pid
-        };
+        let (front, pid) = win::front_window();
         let Some(exe) = crate::clipboard::win::exe_of(pid) else {
-            return false;
+            return "none";
         };
         let stem = std::path::Path::new(&exe)
             .file_stem()
             .map(|s| s.to_string_lossy().to_lowercase())
             .unwrap_or_default();
-        crate::developer::is_editor(&stem) || TERMINALS.contains(&stem.as_str())
+        if !(crate::developer::is_editor(&stem) || TERMINALS.contains(&stem.as_str())) {
+            return "none";
+        }
+        let same_screen = win::pet_monitor(app).is_none_or(|pet| win::monitor_of(front) == pet);
+        where_coding(true, same_screen)
     }
     #[cfg(not(windows))]
-    false
+    {
+        let _ = app;
+        "none"
+    }
+}
+
+fn where_coding(coding: bool, same_screen: bool) -> &'static str {
+    match (coding, same_screen) {
+        (false, _) => "none",
+        (true, true) => "here",
+        (true, false) => "elsewhere",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{place_of, plays_from, where_coding, Place};
+
+    #[test]
+    fn coding_counts_as_here_only_on_the_pets_own_screen() {
+        assert_eq!(where_coding(true, true), "here");
+        assert_eq!(where_coding(true, false), "elsewhere");
+        assert_eq!(where_coding(false, true), "none");
+    }
+
+    #[test]
+    fn a_video_with_windows_only_on_another_screen_is_elsewhere() {
+        assert_eq!(place_of(false, true), Place::Elsewhere);
+        // A window on the pet's screen too (two browser windows): it's here.
+        assert_eq!(place_of(true, true), Place::Here);
+        assert_eq!(place_of(true, false), Place::Here);
+        // No window found for the app that's playing: can't tell.
+        assert_eq!(place_of(false, false), Place::Unknown);
+    }
+
+    #[test]
+    fn matches_a_window_to_the_app_that_is_playing() {
+        assert!(plays_from("Chrome", "chrome"));
+        assert!(plays_from("Chrome._crx_abcdef", "chrome"));
+        assert!(plays_from("MSEdge", "msedge"));
+        assert!(plays_from(
+            "SpotifyAB.SpotifyMusic_zpdnekdrzrea0!Spotify",
+            "Spotify"
+        ));
+        assert!(!plays_from("Chrome", "code"));
+        assert!(!plays_from("MSEdge", "explorer"));
+        // Too short to mean anything.
+        assert!(!plays_from("Chrome", "ch"));
+    }
 }

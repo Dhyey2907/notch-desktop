@@ -79,6 +79,17 @@ const REACTIONS: { key: keyof PetSettings; label: string; description: string }[
   },
 ];
 
+const LEAVE = [
+  { value: "click", label: "When I click the screen" },
+  { value: "manual", label: "When I send it back" },
+];
+
+const CHAT_EVERY = [
+  { value: "0", label: "Off" },
+  { value: "2", label: "2 min" },
+  { value: "5", label: "5 min" },
+];
+
 const CHATTINESS = [
   { value: "quiet", label: "Quiet" },
   { value: "normal", label: "Normal" },
@@ -158,6 +169,17 @@ export function PetSection() {
                 onChange={(chattiness) => set({ chattiness })}
               />
             </Row>
+            <Row
+              label="Says something on the taskbar"
+              description={`While you keep ${name} out on the taskbar, it says something in its cloud this often. Reminders that come due show there too.`}
+            >
+              <SegmentedControl<string>
+                label="Says something on the taskbar"
+                value={pet.chatMinutes === 0 ? "0" : pet.chatMinutes <= 2 ? "2" : "5"}
+                options={CHAT_EVERY}
+                onChange={(v) => set({ chatMinutes: Number(v) })}
+              />
+            </Row>
             {TALK_TOPICS.map((t) => (
               <Switch
                 key={t.key}
@@ -195,6 +217,12 @@ export function PetSection() {
       <h2 id="setting-where-it-shows" className="settings__subhead">
         Where it shows
       </h2>
+      <p className="settings__lead">
+        There's one {name}. It lives in the notch and goes for walks along the taskbar, where it talks through
+        a little cloud. Call it out from its section of the notch and it keeps walking until you send it back;
+        click it there to give it a treat. Only its own screen matters to it: what you do on another screen
+        doesn't affect it.
+      </p>
       <Surface>
         <Switch
           label="In the resting bubble"
@@ -203,11 +231,31 @@ export function PetSection() {
           onChange={(on) => patch("focus", { hidePet: !on })}
         />
         <Switch
-          label="Walks the taskbar"
-          description="After two minutes away it strolls along the taskbar; click anywhere and it jumps and runs off."
+          label="Walks the taskbar when you're away"
+          description={
+            pet.leave === "manual"
+              ? "After two minutes away it strolls along the taskbar, and keeps strolling until you send it back."
+              : "After two minutes away it strolls along the taskbar; click anywhere and it jumps and runs off."
+          }
           checked={fun.petWalk}
           onChange={(on) => patch("fun", { petWalk: on })}
         />
+        <Row
+          label="Goes back after an away walk"
+          description={
+            pet.leave === "manual"
+              ? `After a walk while you were away, ${name} keeps walking until you press Send back in its section of the notch.`
+              : `After a walk while you were away, a click on ${name}'s screen sends it back into the notch.`
+          }
+          stacked
+        >
+          <SegmentedControl<string>
+            label="Goes back"
+            value={pet.leave === "manual" ? "manual" : "click"}
+            options={LEAVE}
+            onChange={(leave) => set({ leave })}
+          />
+        </Row>
       </Surface>
 
       <h2 id="setting-pet-stats" className="settings__subhead">

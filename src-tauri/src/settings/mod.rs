@@ -543,6 +543,9 @@ pub struct PetSettings {
     pub talk: bool,
     /// How often it may speak: quiet, normal or chatty.
     pub chattiness: String,
+    /// While you keep it out on the taskbar it says something every this many minutes
+    /// (0 = never).
+    pub chat_minutes: u32,
     /// What it talks about.
     pub say_meetings: bool,
     pub say_breaks: bool,
@@ -561,6 +564,9 @@ pub struct PetSettings {
     pub react_day: bool,
     /// Clicking it pats it.
     pub petting: bool,
+    /// When it goes back from its walk along the taskbar into the notch:
+    /// "click" = when you click the screen, "manual" = only when you send it back.
+    pub leave: String,
     /// The day it was "born" (YYYY-MM-DD), set on first launch.
     pub born: String,
     pub pats: u32,
@@ -568,9 +574,9 @@ pub struct PetSettings {
     pub xp: u32,
     /// Treats given while it sits on the desktop.
     pub treats: u32,
-    /// Called out of the notch onto the desktop.
+    /// Called out of the notch: it walks the taskbar until it goes back.
     pub buddy_out: bool,
-    /// Where it was dropped on the desktop (physical pixels).
+    /// No longer used (the pet isn't placed on the desktop any more); kept so older settings load.
     #[ts(optional)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub buddy_x: Option<i32>,
@@ -587,6 +593,7 @@ impl Default for PetSettings {
             tone: "cheerful".into(),
             talk: true,
             chattiness: "normal".into(),
+            chat_minutes: 5,
             say_meetings: true,
             say_breaks: true,
             say_focus: true,
@@ -602,6 +609,7 @@ impl Default for PetSettings {
             react_battery: true,
             react_day: true,
             petting: true,
+            leave: "click".into(),
             born: String::new(),
             pats: 0,
             xp: 0,

@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import type { PetSettings } from "../core/generated/PetSettings";
 import { lineFor, maySpeak, TONES } from "./lines";
 import { ageInDays, levelFor, outfitFor, petLook, type PetInputs } from "./petState";
+import { petOut, showInPetCloud, usePetLive } from "./petStore";
+import { chatEveryMs } from "./useWalkLook";
 
 const SETTINGS: PetSettings = {
   name: "Mochi",
@@ -10,6 +12,7 @@ const SETTINGS: PetSettings = {
   tone: "cheerful",
   talk: true,
   chattiness: "normal",
+  chatMinutes: 5,
   sayMeetings: true,
   sayBreaks: true,
   sayFocus: true,
@@ -25,12 +28,50 @@ const SETTINGS: PetSettings = {
   reactBattery: true,
   reactDay: true,
   petting: true,
+  leave: "click",
   born: "",
   pats: 0,
   xp: 0,
   treats: 0,
   buddyOut: false,
 };
+
+describe("where the one pet is", () => {
+  it("is home in the notch unless it was called out or is walking", () => {
+    expect(petOut(false, false)).toBe(false);
+  });
+
+  it("is out while it walks, and from the moment it's called out", () => {
+    expect(petOut(false, true)).toBe(true);
+    expect(petOut(true, false)).toBe(true);
+    expect(petOut(true, true)).toBe(true);
+  });
+});
+
+describe("the pet's cloud on the taskbar", () => {
+  it("shows a reminder that comes due while it's out, and holds it longer than a chat line", () => {
+    usePetLive.setState({ walking: true, line: null });
+    expect(showInPetCloud("Reminder: Call mum", 20_000, 5000)).toBe(true);
+    expect(usePetLive.getState().line).toMatchObject({
+      text: "Reminder: Call mum",
+      at: 5000,
+      holdMs: 20_000,
+    });
+  });
+
+  it("says nothing when the pet is home in the notch", () => {
+    usePetLive.setState({ walking: false, line: null });
+    expect(showInPetCloud("Reminder: Call mum")).toBe(false);
+    expect(usePetLive.getState().line).toBeNull();
+  });
+
+  it("times its messages from the setting: every 2 or 5 minutes, or never", () => {
+    expect(chatEveryMs(2)).toBe(120_000);
+    expect(chatEveryMs(5)).toBe(300_000);
+    expect(chatEveryMs(0)).toBe(0);
+    expect(chatEveryMs(undefined)).toBe(0);
+  });
+});
 
 const base: PetInputs = {
   now: 1000,
@@ -53,8 +94,15 @@ describe("pet look on the desktop", () => {
       face: "focused",
       status: "Coding with you",
     });
-    // Watching beats coding: popcorn, not a laptop.
-    expect(petLook({ ...base, editing: true, video: true, music: true }).prop).toBe("popcorn");
+    // Coding on the pet's own screen while a video plays: laptop, not popcorn.
+    expect(petLook({ ...base, editing: true, video: true, music: true })).toMatchObject({
+      prop: "laptop",
+      status: "Coding with you",
+    });
+    // Netflix on the other screen only: no popcorn on this one.
+    expect(petLook({ ...base, video: true, videoElsewhere: true }).prop).toBe("none");
+    // The video is on the pet's screen (or we can't tell where): popcorn.
+    expect(petLook({ ...base, video: true }).prop).toBe("popcorn");
     // Turned off in settings: no laptop.
     expect(petLook({ ...base, editing: true, settings: { ...SETTINGS, reactCoding: false } }).prop).toBe(
       "none",

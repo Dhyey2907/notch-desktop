@@ -29,8 +29,10 @@ export interface PetInputs {
   music: boolean;
   video: boolean;
   coding: "none" | "working" | "waiting";
-  /** A code editor or terminal is in front (you're coding yourself). */
+  /** A code editor or terminal is in front on the pet's own screen (you're coding there yourself). */
   editing?: boolean;
+  /** What's playing is only on another screen: none of the pet's business (no popcorn). */
+  videoElsewhere?: boolean;
   /** Who's coding, for the status line ("Claude Code"). */
   agent?: string;
   /** Weather icon (sun, rain, snow, storm…) and temperature, when known. */
@@ -59,11 +61,22 @@ export function petLook(i: PetInputs): PetLook {
   const lowBattery = s.reactBattery && !!i.battery && !i.battery.plugged && i.battery.percent <= LOW_BATTERY;
   const lateNight = s.reactDay && i.hour >= 1 && i.hour < 5 && i.idleMs < SLEEPY_AFTER_MS;
   const waiting = s.reactCoding && i.coding === "waiting";
+  // Coding right here, on the pet's screen: it codes with you, whatever else is going on.
+  const editing = s.reactCoding && !!i.editing;
   const coding = s.reactCoding && (i.coding === "working" || !!i.editing);
-  const video = s.reactVideo && i.video;
+  // A video only counts on the pet's own screen.
+  const video = s.reactVideo && i.video && !i.videoElsewhere && !editing;
   const music = s.reactMusic && i.music && !video;
 
-  const prop: Prop = video ? "popcorn" : music ? "headphones" : coding ? "laptop" : "none";
+  const prop: Prop = editing
+    ? "laptop"
+    : video
+      ? "popcorn"
+      : music
+        ? "headphones"
+        : coding
+          ? "laptop"
+          : "none";
   const outfit: Outfit = s.reactWeather ? outfitFor(i.weather) : "none";
 
   let face: Face;
@@ -103,7 +116,7 @@ export function petLook(i: PetInputs): PetLook {
   // What it's doing beats a plain mood in the status line.
   if (face === "happy" || face === "focused") {
     if (video) status = "Watching with you";
-    else if (music) status = "Dancing to your music";
+    else if (music && !editing) status = "Dancing to your music";
   }
 
   const motion: Motion =

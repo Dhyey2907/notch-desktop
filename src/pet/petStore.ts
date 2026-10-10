@@ -12,11 +12,28 @@ export interface PetLine {
   text: string;
   event: LineEvent;
   at: number;
+  /** How long it stays in the pet's cloud on the taskbar (a reminder stays longer than a chat line). */
+  holdMs?: number;
 }
 
-export const usePetLive = create<{ lovedUntil: number; weather: Weather | null; line: PetLine | null }>(
-  () => ({ lovedUntil: 0, weather: null, line: null }),
-);
+/** A reminder stays in the cloud this long. */
+export const REMINDER_CLOUD_MS = 20_000;
+
+export const usePetLive = create<{
+  lovedUntil: number;
+  weather: Weather | null;
+  line: PetLine | null;
+  /** Out walking the taskbar right now. */
+  walking: boolean;
+}>(() => ({ lovedUntil: 0, weather: null, line: null, walking: false }));
+
+/**
+ * There is one pet. It's out of the notch while it walks the taskbar, and from the moment you
+ * call it out (so it doesn't linger in the notch while it gets going).
+ */
+export function petOut(calledOut: boolean, walking: boolean): boolean {
+  return calledOut || walking;
+}
 
 export function lovePet(now = Date.now()) {
   usePetLive.setState({ lovedUntil: now + LOVE_MS });
@@ -39,4 +56,14 @@ export function tellPet(news: PetNews) {
 export function onPetNews(listener: (news: PetNews) => void): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
+}
+
+/**
+ * While the pet is out on the taskbar, it shows this in its cloud (a reminder that just came due,
+ * for instance). Does nothing while it's home in the notch. Returns whether it was shown.
+ */
+export function showInPetCloud(text: string, holdMs = REMINDER_CLOUD_MS, now = Date.now()): boolean {
+  if (!usePetLive.getState().walking) return false;
+  usePetLive.setState({ line: { text, event: "chat", at: now, holdMs } });
+  return true;
 }

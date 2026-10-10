@@ -221,8 +221,18 @@ export const ENTRIES: Entry[] = [
   { page: "pet", label: "Talks to you", keywords: "pet speech bubble lines messages chatty quiet" },
   { page: "pet", label: "Reactions", keywords: "pet dance music popcorn video coding weather battery mood" },
   { page: "pet", label: "Petting", keywords: "pet pat click" },
+  {
+    page: "pet",
+    label: "Says something on the taskbar",
+    keywords: "pet message text every minutes 2 5 cloud chat reminder taskbar",
+  },
   { page: "pet", label: "In the resting bubble", keywords: "pet character bubble show hide" },
-  { page: "pet", label: "Walks the taskbar", keywords: "pet idle away walk" },
+  { page: "pet", label: "Walks the taskbar when you're away", keywords: "pet idle away walk" },
+  {
+    page: "pet",
+    label: "Goes back",
+    keywords: "pet leave click screen send back stay taskbar walk dismiss",
+  },
   { page: "focus", label: "Ambient volume", keywords: "rain ocean sounds noise" },
   {
     page: "focus",

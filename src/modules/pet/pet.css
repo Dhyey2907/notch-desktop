@@ -21,6 +21,23 @@
   cursor: default;
 }
 
+/* The pet is out walking: its spot is empty and says where it went. */
+.petsec__away {
+  display: grid;
+  gap: 4px;
+  padding: 0 10px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.petsec__away small {
+  color: var(--text-tertiary, var(--text-secondary));
+  font-size: 11px;
+  font-weight: 400;
+}
+
 .petsec__stage:focus-visible {
   outline: 2px solid var(--active);
   outline-offset: 2px;

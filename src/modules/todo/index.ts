@@ -7,6 +7,7 @@ import type { Task } from "../../core/generated/Task";
 import type { TodoSnapshot } from "../../core/generated/TodoSnapshot";
 import { ipc } from "../../core/ipc";
 import type { ModuleContext, NotchModule } from "../types";
+import { showInPetCloud } from "../../pet/petStore";
 import { formatMinutes } from "./parse";
 import { TodoCompact, TodoPeek } from "./TodoIndicators";
 import { runningTimers, useTodo } from "./todoStore";
@@ -47,6 +48,8 @@ function init({ events, activities }: ModuleContext) {
       ],
     });
     shown.set(task.id, id);
+    // Out on the taskbar, the pet tells you too.
+    if (!late) showInPetCloud(length ? `Time's up: ${task.title}` : `Reminder: ${task.title}`);
   };
 
   const apply = (snapshot: TodoSnapshot) => {

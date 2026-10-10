@@ -14,6 +14,14 @@ use notify::{RecursiveMode, Watcher};
 use super::{final_name, speed, DownloadDone, DownloadProgress};
 
 const TICK: Duration = Duration::from_secs(1);
+/// A temporary file nothing has written to for this long is a download that was abandoned or
+/// paused, not one in progress (an old `.crdownload` would otherwise show the arrow forever).
+pub const STALE_AFTER: Duration = Duration::from_secs(90);
+
+/// Still being written to: changed within `STALE_AFTER` of `now`.
+pub fn is_active(modified: std::time::SystemTime, now: std::time::SystemTime) -> bool {
+    now.duration_since(modified).map_or(true, |age| age < STALE_AFTER)
+}
 
 struct Partial {
     bytes: u64,
@@ -21,7 +29,9 @@ struct Partial {
     speed: u64,
 }
 
-fn partials(dir: &Path) -> HashMap<String, u64> {
+/// Every browser temporary file in `dir`: its size and whether it's still being written to.
+fn partials(dir: &Path) -> HashMap<String, (u64, bool)> {
+    let now = std::time::SystemTime::now();
     std::fs::read_dir(dir)
         .map(|entries| {
             entries
@@ -30,7 +40,8 @@ fn partials(dir: &Path) -> HashMap<String, u64> {
                     let name = e.file_name().to_string_lossy().into_owned();
                     final_name(&name)?;
                     let meta = e.metadata().ok()?;
-                    meta.is_file().then_some((name, meta.len()))
+                    let active = meta.modified().map_or(true, |m| is_active(m, now));
+                    meta.is_file().then_some((name, (meta.len(), active)))
                 })
                 .collect()
         })
@@ -78,10 +89,17 @@ pub fn watch(
                     Err(RecvTimeoutError::Disconnected) => return,
                 }
                 let now = Instant::now();
-                let seen = partials(&dir);
+                let all = partials(&dir);
                 let was_busy = !known.is_empty();
+                // Abandoned or paused: no longer "downloading" (but not finished either).
+                known.retain(|name, _| all.get(name).is_none_or(|(_, active)| *active));
+                let seen: HashMap<String, u64> = all
+                    .iter()
+                    .filter(|(_, (_, active))| *active)
+                    .map(|(name, (bytes, _))| (name.clone(), *bytes))
+                    .collect();
                 // Finished (or cancelled): the temporary file is gone.
-                let gone: Vec<String> = known.keys().filter(|k| !seen.contains_key(*k)).cloned().collect();
+                let gone: Vec<String> = known.keys().filter(|k| !all.contains_key(*k)).cloned().collect();
                 for name in gone {
                     known.remove(&name);
                     let Some(final_name) = final_name(&name).filter(|n| !n.is_empty()) else {
@@ -135,4 +153,20 @@ pub fn watch(
             }
         })
         .ok();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::SystemTime;
+
+    #[test]
+    fn old_temporary_files_are_not_downloads_in_progress() {
+        let now = SystemTime::now();
+        assert!(is_active(now - Duration::from_secs(5), now));
+        assert!(!is_active(now - Duration::from_secs(4 * 24 * 3600), now));
+        assert!(!is_active(now - STALE_AFTER, now));
+        // A clock that says "the future" is treated as fresh, not stale.
+        assert!(is_active(now + Duration::from_secs(10), now));
+    }
 }

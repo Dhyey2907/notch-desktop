@@ -474,16 +474,6 @@ pub fn is_fullscreen(label: &str) -> bool {
         .unwrap_or(false)
 }
 
-/// Something fills a screen on any monitor right now (a video, a game…).
-pub fn any_fullscreen() -> bool {
-    FULLSCREEN_PID.load(std::sync::atomic::Ordering::Relaxed) != 0
-        || FULLSCREEN
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .as_ref()
-            .is_some_and(|map| map.values().any(|on| *on))
-}
-
 /// The process whose window fills a screen right now (0: none).
 static FULLSCREEN_PID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 

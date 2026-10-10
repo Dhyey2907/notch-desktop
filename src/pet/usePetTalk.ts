@@ -115,8 +115,8 @@ export function usePetTalk() {
       const text = lineFor(s.tone, event, { ...vars, name });
       usePetLive.setState({ line: { text, event, at: now } });
       if (SECTION_ONLY.includes(event)) return;
-      // Out on the desktop, it says it in its own speech bubble (urgent ones still pop up here).
-      if (s.buddyOut && !urgent) return;
+      // Out on the taskbar it says it in its speech cloud there (urgent ones still pop up here).
+      if (usePetLive.getState().walking && !urgent) return;
       useActivities.getState().push({
         moduleId: "pet",
         priority: "low",

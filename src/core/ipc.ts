@@ -265,14 +265,16 @@ export const ipc = {
   systemIdleMs: () => invoke<number>("system_idle_ms"),
   /** Screen time on a past day (YYYY-MM-DD). */
   screenTimeDay: (date: string) => invoke<ScreenTime>("screen_time_day", { date }),
-  /** Call the pet out of the notch onto the desktop. */
+  /** Call the pet out of the notch: it walks the taskbar until it goes back. */
   petBuddyShow: () => invoke<void>("pet_buddy_show"),
-  /** Send the pet back into the notch. */
+  /** Send the pet back: off the taskbar and into the notch. */
   petBuddyHide: () => invoke<void>("pet_buddy_hide"),
-  /** Remember where the pet was dropped. */
-  petBuddyMoved: () => invoke<void>("pet_buddy_moved"),
-  /** A code editor or terminal is in front. */
-  petCodingInFront: () => invoke<boolean>("pet_coding_in_front"),
+  /** The pet is out walking the taskbar. */
+  petWalking: () => invoke<boolean>("pet_walking"),
+  /** A code editor or terminal is in front: on the pet's own screen, on another one, or not at all. */
+  petCodingInFront: () => invoke<"here" | "elsewhere" | "none">("pet_coding_in_front"),
+  /** Where the app that's playing is, seen from the pet: on its screen, only on another one, or unknown. */
+  petMediaPlace: () => invoke<"here" | "elsewhere" | "unknown">("pet_media_place"),
   rgbMusicColor: (hex: string | null) => invoke<void>("rgb_music_color", { hex }),
   rgbStatus: () => invoke<RgbStatus>("rgb_status"),
   soundState: () => invoke<SoundState | null>("sound_state"),

@@ -32,10 +32,16 @@ export function usePetLook(): (PetLook & { name: string; color: string }) | null
   const assignments = useDay((s) => s.state?.assignments);
   const [idleMs, setIdleMs] = useState(0);
   const [now, setNow] = useState(() => Date.now());
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState<"here" | "elsewhere" | "none">("none");
+
+  const [mediaPlace, setMediaPlace] = useState<"here" | "elsewhere" | "unknown">("unknown");
 
   useEffect(() => {
-    const check = () => ipc.petCodingInFront().then(setEditing, () => {});
+    const check = () =>
+      Promise.all([
+        ipc.petCodingInFront().then(setEditing, () => {}),
+        ipc.petMediaPlace().then(setMediaPlace, () => {}),
+      ]);
     void check();
     const id = window.setInterval(() => void check(), CODING_CHECK_MS);
     return () => window.clearInterval(id);
@@ -94,7 +100,9 @@ export function usePetLook(): (PetLook & { name: string; color: string }) | null
     music: playing && !brand?.video,
     video: playing && !!brand?.video,
     coding: waiting ? "waiting" : working ? "working" : "none",
-    editing,
+    // Only the pet's own screen counts: coding or a video on another screen doesn't change it.
+    editing: editing === "here",
+    videoElsewhere: mediaPlace === "elsewhere",
     agent: agentName((waiting ?? working)?.agent),
     weather,
     battery: power ? { percent: power.percent, plugged: power.plugged } : null,

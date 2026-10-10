@@ -12,6 +12,7 @@ import { PetFigure } from "../../pet/PetFigure";
 import { ageInDays, levelFor } from "../../pet/petState";
 import { lovePet, usePetLive } from "../../pet/petStore";
 import { usePetLook } from "../../pet/usePetLook";
+import { usePetOut } from "../../pet/usePetPlace";
 import { useSettings } from "../../settings";
 import "./pet.css";
 
@@ -28,6 +29,8 @@ export default function PetExpanded() {
   const [now] = useState(() => new Date());
   const unsaved = useRef(0);
   const saveTimer = useRef<number | undefined>(undefined);
+  // One pet: while it walks the taskbar it isn't here.
+  const away = usePetOut();
 
   // Save pats that haven't been saved yet when the section closes.
   useEffect(
@@ -94,17 +97,24 @@ export default function PetExpanded() {
           type="button"
           className="petsec__stage"
           onClick={pat}
-          aria-label={pet.petting ? `Pat ${look.name}` : look.name}
-          disabled={!pet.petting}
+          aria-label={away ? `${look.name} is out for a walk` : pet.petting ? `Pat ${look.name}` : look.name}
+          disabled={away || !pet.petting}
         >
-          <PetFigure
-            size={112}
-            face={look.face}
-            prop={look.prop}
-            outfit={look.outfit}
-            motion={look.motion}
-            color={look.color}
-          />
+          {away ? (
+            <span className="petsec__away">
+              Out for a walk
+              <small>Send back to bring {look.name} home</small>
+            </span>
+          ) : (
+            <PetFigure
+              size={112}
+              face={look.face}
+              prop={look.prop}
+              outfit={look.outfit}
+              motion={look.motion}
+              color={look.color}
+            />
+          )}
           {hearts.map((id) => (
             <span key={id} className="petsec__heart" aria-hidden>
               ♥
@@ -138,11 +148,11 @@ export default function PetExpanded() {
               <MessageCircle size={13} aria-hidden /> Say something
             </Button>
             <Button
-              variant={pet.buddyOut ? "secondary" : "primary"}
-              onClick={() => void (pet.buddyOut ? ipc.petBuddyHide() : ipc.petBuddyShow())}
+              variant={away ? "secondary" : "primary"}
+              onClick={() => void (away ? ipc.petBuddyHide() : ipc.petBuddyShow())}
             >
-              {pet.buddyOut ? <Undo2 size={13} aria-hidden /> : <Monitor size={13} aria-hidden />}{" "}
-              {pet.buddyOut ? "Send back" : "Call out"}
+              {away ? <Undo2 size={13} aria-hidden /> : <Monitor size={13} aria-hidden />}{" "}
+              {away ? "Send back" : "Call out"}
             </Button>
             <span className="petsec__tone">Tone: {tone}</span>
           </div>

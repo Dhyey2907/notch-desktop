@@ -235,7 +235,8 @@ macro_rules! app_commands {
             commands::fun::rgb_status,
             commands::fun::pet_buddy_show,
             commands::fun::pet_buddy_hide,
-            commands::fun::pet_buddy_moved,
+            commands::fun::pet_walking,
+            commands::fun::pet_media_place,
             commands::fun::pet_coding_in_front,
             commands::desk::desk_windows,
             commands::desk::desk_set_on_top,
@@ -490,18 +491,6 @@ pub fn run() {
             }
             app.manage(claude);
             shell::init(handle)?;
-            if app
-                .state::<AppState>()
-                .settings
-                .lock()
-                .unwrap_or_else(|e| e.into_inner())
-                .pet
-                .buddy_out
-            {
-                if let Err(error) = fun::buddy::show(handle) {
-                    tracing::warn!(kind = error.kind(), "could not bring the pet back out");
-                }
-            }
             Ok(())
         })
         .invoke_handler(app_commands!())

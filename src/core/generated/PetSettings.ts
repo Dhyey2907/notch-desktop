@@ -25,6 +25,11 @@ talk: boolean,
  */
 chattiness: string, 
 /**
+ * While you keep it out on the taskbar it says something every this many minutes
+ * (0 = never).
+ */
+chatMinutes: number, 
+/**
  * What it talks about.
  */
 sayMeetings: boolean, sayBreaks: boolean, sayFocus: boolean, sayAgents: boolean, sayBattery: boolean, sayWeather: boolean, sayLate: boolean, sayGreeting: boolean, 
@@ -36,6 +41,11 @@ reactMusic: boolean, reactVideo: boolean, reactCoding: boolean, reactWeather: bo
  * Clicking it pats it.
  */
 petting: boolean, 
+/**
+ * When it goes back from its walk along the taskbar into the notch:
+ * "click" = when you click the screen, "manual" = only when you send it back.
+ */
+leave: string, 
 /**
  * The day it was "born" (YYYY-MM-DD), set on first launch.
  */
@@ -49,10 +59,10 @@ xp: number,
  */
 treats: number, 
 /**
- * Called out of the notch onto the desktop.
+ * Called out of the notch: it walks the taskbar until it goes back.
  */
 buddyOut: boolean, 
 /**
- * Where it was dropped on the desktop (physical pixels).
+ * No longer used (the pet isn't placed on the desktop any more); kept so older settings load.
  */
 buddyX?: number, buddyY?: number, };

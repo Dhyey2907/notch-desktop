@@ -143,6 +143,21 @@ pub fn bus_publisher(app: tauri::AppHandle) -> impl Fn(EventEnvelope) + Send + S
     }
 }
 
+/// The raw id of the app whose media session is current ("Chrome", "MSEdge",
+/// "SpotifyAB.SpotifyMusic_…!Spotify"); "" when there is none.
+static PLAYING_SOURCE: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
+
+pub fn set_playing_source(app_user_model_id: &str) {
+    let mut source = PLAYING_SOURCE.lock().unwrap_or_else(|e| e.into_inner());
+    if *source != app_user_model_id {
+        app_user_model_id.clone_into(&mut source);
+    }
+}
+
+pub fn playing_source() -> String {
+    PLAYING_SOURCE.lock().unwrap_or_else(|e| e.into_inner()).clone()
+}
+
 /// Human-friendly app name from a Windows app user model id (AUMID) or executable, e.g.
 /// `SpotifyAB.SpotifyMusic_zpdnekdrzrea0!Spotify` → `Spotify`, `chrome.exe` → `Chrome`,
 /// `4DF9E0F8.Netflix_mcm4njqhnhss8!Netflix.App` → `Netflix`.

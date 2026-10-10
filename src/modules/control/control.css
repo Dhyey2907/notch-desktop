@@ -380,3 +380,39 @@
   font-size: var(--text-xs);
   color: var(--text-muted);
 }
+
+/* The network view fits the panel: the speed test keeps its size, the app list takes the rest
+   and scrolls (it was cut off at the bottom). */
+.network .control-card {
+  flex: none;
+}
+
+.network__test {
+  gap: 2px;
+}
+
+.network__results {
+  margin: 4px 0 0;
+}
+
+.network__apps.control-card {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.network__list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.network__note {
+  flex: none;
+}
+
+.network__app {
+  flex: none;
+}

@@ -6,6 +6,7 @@ import type { CalendarEvent } from "../../core/generated/CalendarEvent";
 import { ipc } from "../../core/ipc";
 import type { ModuleContext, NotchModule } from "../types";
 import { CalendarCompact, CalendarPeek } from "./CalendarIndicators";
+import { showInPetCloud } from "../../pet/petStore";
 import { countdownText, useCalendar } from "./calendarStore";
 
 /** Keep the countdown up this long after the meeting starts, so "Join" stays reachable. */
@@ -40,6 +41,8 @@ function init({ events, activities }: ModuleContext) {
         { id: "dismiss", label: "Dismiss", run: () => {} },
       ],
     });
+    // Out on the taskbar, the pet tells you too.
+    showInPetCloud(`${event.title} · ${countdownText(remaining())}`);
     const timer = window.setInterval(() => {
       activities.update(id, { body: countdownText(remaining()) });
       if (remaining() < -LINGER_AFTER_START_MS) {

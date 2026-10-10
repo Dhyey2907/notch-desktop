@@ -13,6 +13,8 @@ import { useReduceMotion } from "../design/useReduceMotion";
 import { findModule } from "../modules/registry";
 import { Dock } from "./Dock";
 import { Pet } from "../focus/Pet";
+import { usePetOut, usePetWalkLink } from "../pet/usePetPlace";
+import { useWalkLook } from "../pet/useWalkLook";
 import { useAmbient } from "../focus/useAmbient";
 import { useFocusSession } from "../focus/useFocusSession";
 import { useGameMode } from "./gameMode";
@@ -42,7 +44,6 @@ import { useFirstRunPrompt } from "./useFirstRunPrompt";
 import { useBreaks } from "../focus/useBreaks";
 import { usePetCheers } from "../focus/usePetCheers";
 import { usePetTalk } from "../pet/usePetTalk";
-import { useBuddyLink } from "../pet/useBuddyLink";
 import { useIsland } from "./useIsland";
 import { openFirstModule, useModuleLifecycle, useModuleNav } from "./useModules";
 import "./island.css";
@@ -104,7 +105,9 @@ export function Island() {
   useBreaks();
   usePetCheers();
   usePetTalk();
-  useBuddyLink();
+  usePetWalkLink();
+  useWalkLook();
+  const petHome = !usePetOut();
   useLook();
   useCardTime();
   useQuietHours();
@@ -332,7 +335,7 @@ export function Island() {
                   <span className="island-attention" role="img" aria-label="Something is waiting for you" />
                 )}
                 <CompactHost />
-                {showPet && look?.bubble === "pill" && <Pet />}
+                {showPet && petHome && look?.bubble === "pill" && <Pet />}
                 {look?.bubbleClock && look.bubble === "pill" && <BubbleClock />}
                 {look?.bubble !== "dot" && <WorkdayLine />}
               </>

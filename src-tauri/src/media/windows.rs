@@ -370,8 +370,10 @@ impl Inner {
         let position = ticks_to_ms(timeline.Position()?.Duration - timeline.StartTime()?.Duration);
         let has_timeline = duration > 0;
 
+        let source_id = session.SourceAppUserModelId()?.to_string_lossy();
+        super::set_playing_source(&source_id);
         Ok(MediaState {
-            source_app: display_name(&session.SourceAppUserModelId()?.to_string_lossy()),
+            source_app: display_name(&source_id),
             artwork_path: properties
                 .as_ref()
                 .and_then(|p| self.artwork_for(p, &format!("{title}\u{1f}{artist}\u{1f}{album}"))),
