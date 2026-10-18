@@ -1,0 +1,49 @@
+/* Meeting notes panel. */
+.meeting {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  font-size: 13px;
+}
+
+.meeting p {
+  margin: 0;
+}
+
+.meeting__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 650;
+}
+
+.meeting__sub {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.meeting__row {
+  display: flex;
+  gap: 6px;
+}
+
+.meeting__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #ff453a;
+  animation: meeting-pulse 1.2s ease-in-out infinite;
+}
+
+.meeting__error {
+  margin: 6px 0 0;
+  color: var(--warning);
+  font-size: 12px;
+}
+
+@keyframes meeting-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}

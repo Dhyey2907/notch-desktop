@@ -19,13 +19,18 @@ mod game;
 mod git;
 mod github;
 mod grab;
+mod habits;
+mod history;
 mod logging;
 mod mail;
 mod media;
+mod meeting;
 mod music;
 mod oauth;
 mod oauth_clients;
 mod phone;
+mod powerplan;
+mod prices;
 mod quick;
 mod readlater;
 mod secrets;
@@ -37,6 +42,7 @@ mod state;
 mod system;
 mod todo;
 mod vault;
+mod wallpaper;
 
 use tauri::Manager;
 
@@ -67,6 +73,12 @@ macro_rules! app_commands {
             commands::app::diagnostics_ping,
             commands::app::open_external,
             commands::shell::shell_set_window_size,
+            commands::shell::shell_preview_offset,
+            commands::shell::blur_picture,
+            commands::shell::blur_toggle,
+            commands::shell::blur_off,
+            commands::shell::lockscreen_update,
+            commands::shell::lockscreen_off,
             commands::shell::shell_is_fullscreen,
             commands::shell::shell_set_fullscreen_hidden,
             commands::shell::shell_list_screens,
@@ -116,6 +128,8 @@ macro_rules! app_commands {
             commands::spotify::spotify_disconnect,
             commands::spotify::spotify_refresh_playlists,
             commands::spotify::spotify_play_playlist,
+            commands::spotify::spotify_now,
+            commands::spotify::spotify_like,
             commands::spotify::spotify_set_pinned,
             commands::git::git_get_snapshot,
             commands::git::git_refresh,
@@ -152,6 +166,32 @@ macro_rules! app_commands {
             commands::ask::ask_snapshot,
             commands::ask::ask_question,
             commands::ask::ask_stop,
+            commands::ask::ask_explain_screen,
+            commands::ask::ask_pc,
+            commands::ask::research_start,
+            commands::prices::price_list,
+            commands::prices::price_add,
+            commands::prices::price_check,
+            commands::prices::price_set_target,
+            commands::prices::price_remove,
+            commands::desk::habit_dismiss,
+            commands::desk::sticky_list,
+            commands::desk::sticky_pin,
+            commands::desk::sticky_place,
+            commands::desk::sticky_color,
+            commands::desk::sticky_unpin,
+            commands::history::history_add,
+            commands::history::history_list,
+            commands::history::history_clear,
+            commands::meeting::meeting_state,
+            commands::meeting::meeting_install,
+            commands::meeting::meeting_start,
+            commands::meeting::meeting_stop,
+            commands::meeting::meeting_cancel,
+            commands::ask::rewrite_session,
+            commands::ask::rewrite_run,
+            commands::ask::rewrite_apply,
+            commands::ask::rewrite_cancel,
             commands::ask::ask_clear,
             commands::ask::ai_key_saved,
             commands::ask::ai_set_key,
@@ -180,11 +220,51 @@ macro_rules! app_commands {
             commands::shelf::shelf_copy,
             commands::shelf::shelf_reveal,
             commands::shelf::shelf_drag,
+            commands::shelf::shelf_pin,
+            commands::shelf::screenshot_text,
+            commands::shelf::screenshot_annotate,
+            commands::clipboard::clipboard_stack,
+            commands::clipboard::clipboard_copy_private,
+            commands::claude::claude_session_usage,
+            commands::claude::claude_focus_session,
+            commands::claude::claude_projects,
+            commands::claude::claude_launch,
+            commands::system::system_lock,
+            commands::system::system_power,
+            commands::system::apps_list,
+            commands::system::app_launch,
+            commands::system::app_close,
+            commands::system::system_monitor,
+            commands::system::disk_health,
+            commands::system::audio_mixer,
+            commands::system::audio_set_app_volume,
+            commands::system::audio_set_app_mute,
+            commands::system::audio_set_output,
+            commands::wallpaper::wallpaper_accent,
+            commands::wallpaper::wallpaper_state,
+            commands::wallpaper::wallpaper_add,
+            commands::wallpaper::wallpaper_pick,
+            commands::wallpaper::wallpaper_remove,
+            commands::wallpaper::wallpaper_pick_folder,
+            commands::wallpaper::wallpaper_set_folder,
+            commands::wallpaper::wallpaper_set_target,
+            commands::wallpaper::wallpaper_clear_recent,
+            commands::wallpaper::wallpaper_apply,
             commands::game::game_status,
             commands::game::game_mark,
             commands::game::game_setup_fps,
             commands::control::control_snapshot,
             commands::control::control_speed,
+            commands::control::control_data_usage,
+            commands::control::wifi_networks,
+            commands::control::wifi_scan,
+            commands::control::wifi_connect,
+            commands::control::wifi_open_settings,
+            commands::control::display_toggles,
+            commands::control::set_night_light,
+            commands::control::set_hdr,
+            commands::control::set_refresh_rate,
+            commands::control::open_touchpad_settings,
             commands::control::control_net_apps,
             commands::control::control_speed_test_last,
             commands::control::control_speed_test,
@@ -201,6 +281,10 @@ macro_rules! app_commands {
             commands::files::files_drag,
             commands::files::recorder_state,
             commands::files::recorder_start,
+            commands::files::screenrec_start,
+            commands::files::files_recent_downloads,
+            commands::files::screenrec_stop,
+            commands::files::screenrec_state,
             commands::files::recorder_stop,
             commands::vault::vault_state,
             commands::vault::vault_choose_folder,
@@ -236,6 +320,7 @@ macro_rules! app_commands {
             commands::fun::pet_buddy_show,
             commands::fun::pet_buddy_hide,
             commands::fun::pet_walking,
+            commands::fun::pet_capture,
             commands::fun::pet_media_place,
             commands::fun::pet_coding_in_front,
             commands::desk::desk_windows,
@@ -244,6 +329,18 @@ macro_rules! app_commands {
             commands::desk::desk_focus,
             commands::desk::desk_mini_show,
             commands::desk::desk_mini_hide,
+            commands::desk::desk_snap,
+            commands::desk::workspace_list,
+            commands::desk::workspace_save,
+            commands::desk::workspace_restore,
+            commands::desk::workspace_delete,
+            commands::desk::workspace_resume_offer,
+            commands::desk::desk_grid_show,
+            commands::desk::desk_grid_hide,
+            commands::desk::pip_open,
+            commands::desk::pip_source,
+            commands::desk::pip_place,
+            commands::desk::pip_close,
             commands::desk::routine_run,
             commands::desk::routine_pick_app,
             commands::desk::routine_pick_folder,
@@ -349,6 +446,7 @@ pub fn run() {
             tracing::info!(%version, "starting Overline");
 
             let paths_db = paths.data_dir.join("notch.db");
+            let wallpapers_dir = paths.data_dir.join("wallpapers");
             let db = Db::open(&paths_db)?;
             let settings = db.with(settings::load)?;
             let bus = EventBus::new(EventBus::tauri_emitter(handle.clone()));
@@ -390,7 +488,14 @@ pub fn run() {
             }
             app.manage(clipboard);
 
-            app.manage(shelf::service::ShelfService::new(handle.clone()));
+            let shelf = shelf::service::ShelfService::new(handle.clone());
+            shelf.start();
+            app.manage(shelf);
+            app.manage(wallpaper::service::WallpaperService::new(
+                handle.clone(),
+                wallpapers_dir,
+                app.path().app_cache_dir()?.join("wallpapers").join("thumbs"),
+            ));
             let readlater = readlater::service::ReadLaterService::new(handle.clone());
             if demo {
                 readlater.seed_demo();
@@ -465,10 +570,30 @@ pub fn run() {
             let mail = mail::service::MailService::new(handle.clone());
             app.manage(mail.clone());
             mail.start();
+            app.manage(meeting::service::MeetingService::new(handle.clone()));
+            let prices = prices::service::PriceService::new(handle.clone());
+            app.manage(prices.clone());
+            if !demo {
+                prices.start();
+            }
             let desk = desk::service::DeskService::new(handle.clone());
             app.manage(desk.clone());
             if !demo {
                 desk.start();
+                desk.start_session_keeper();
+                let stickies = app
+                    .state::<state::AppState>()
+                    .settings
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .desk
+                    .stickies
+                    .clone();
+                for s in &stickies {
+                    if let Err(error) = desk::sticky::show(handle, s) {
+                        tracing::warn!(kind = error.kind(), "could not reopen a sticky note");
+                    }
+                }
             }
             let fun = fun::service::FunService::new(handle.clone());
             app.manage(fun.clone());

@@ -58,6 +58,10 @@ pub struct AgentSession {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool: Option<String>,
     pub updated_at: DateTime<Utc>,
+    /// The agent process, when known (to bring its terminal forward).
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pid: Option<u32>,
 }
 
 /// The subset of a hook payload the notch uses. Everything else (prompt text, tool inputs,
@@ -136,6 +140,7 @@ impl LiveSessions {
                 state,
                 tool: None,
                 updated_at: now,
+                pid: None,
             });
         if let Some(cwd) = payload.cwd.as_deref().filter(|c| !c.is_empty()) {
             entry.project = folder_name(cwd);
@@ -193,7 +198,15 @@ impl LiveSessions {
     pub fn snapshot(&mut self, now: DateTime<Utc>) -> Vec<AgentSession> {
         self.sessions
             .retain(|_, s| now - s.updated_at < Duration::minutes(STALE_AFTER_MINUTES));
-        let mut list: Vec<AgentSession> = self.sessions.values().cloned().collect();
+        let mut list: Vec<AgentSession> = self
+            .sessions
+            .values()
+            .cloned()
+            .map(|mut s| {
+                s.pid = self.pids.get(&s.session_id).copied();
+                s
+            })
+            .collect();
         list.sort_by_key(|s| std::cmp::Reverse(s.updated_at));
         list
     }

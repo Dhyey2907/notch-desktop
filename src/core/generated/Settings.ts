@@ -22,9 +22,11 @@ import type { HudSettings } from "./HudSettings";
 import type { ModuleSettings } from "./ModuleSettings";
 import type { MusicSettings } from "./MusicSettings";
 import type { PetSettings } from "./PetSettings";
+import type { PowerSchedule } from "./PowerSchedule";
 import type { ShortcutSettings } from "./ShortcutSettings";
 import type { SpotifySettings } from "./SpotifySettings";
 import type { VaultSettings } from "./VaultSettings";
+import type { WallpaperSettings } from "./WallpaperSettings";
 
 export type Settings = { 
 /**
@@ -34,4 +36,8 @@ firstRunCompleted: boolean, animation: AnimationPreference,
 /**
  * Per-module preferences keyed by module id. Missing modules use defaults.
  */
-modules: { [key in string]: ModuleSettings }, calendar: CalendarSettings, spotify: SpotifySettings, git: GitSettings, display: DisplaySettings, clipboard: ClipboardSettings, hud: HudSettings, githubAlerts: GithubAlertSettings, music: MusicSettings, focus: FocusSettings, game: GameSettings, appearance: AppearanceSettings, behavior: BehaviorSettings, shortcuts: ShortcutSettings, gestures: GestureSettings, dock: DockSettings, home: HomeSettings, vault: VaultSettings, dev: DevSettings, day: DaySettings, desk: DeskSettings, breaks: BreakSettings, pet: PetSettings, ai: AiSettings, fun: FunSettings, };
+modules: { [key in string]: ModuleSettings }, calendar: CalendarSettings, spotify: SpotifySettings, git: GitSettings, display: DisplaySettings, clipboard: ClipboardSettings, hud: HudSettings, githubAlerts: GithubAlertSettings, music: MusicSettings, focus: FocusSettings, game: GameSettings, appearance: AppearanceSettings, behavior: BehaviorSettings, shortcuts: ShortcutSettings, gestures: GestureSettings, dock: DockSettings, home: HomeSettings, vault: VaultSettings, dev: DevSettings, day: DaySettings, desk: DeskSettings, breaks: BreakSettings, pet: PetSettings, ai: AiSettings, fun: FunSettings, wallpaper: WallpaperSettings, 
+/**
+ * Sleep and wake times.
+ */
+power: PowerSchedule, };

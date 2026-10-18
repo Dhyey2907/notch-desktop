@@ -15,10 +15,16 @@ import { galleryModule } from "./gallery";
 import { gitModule } from "./git";
 import { homeModule } from "./home";
 import { mediaModule } from "./media";
+import { paletteModule } from "./palette";
+import { meetingModule } from "./meeting";
+import { pricesModule } from "./prices";
+import { rewriteModule } from "./rewrite";
+import { switcherModule } from "./switcher";
 import { petModule } from "./pet";
 import { phoneModule } from "./phone";
 import { todoModule } from "./todo";
 import { vaultModule } from "./vault";
+import { wallpaperModule } from "./wallpaper";
 import type { NotchModule } from "./types";
 
 export function sortModules(modules: NotchModule[], includeDev: boolean): NotchModule[] {
@@ -49,9 +55,15 @@ export const MODULES: readonly NotchModule[] = sortModules(
     captureModule,
     todoModule,
     clipboardModule,
+    wallpaperModule,
     vaultModule,
     phoneModule,
     petModule,
+    paletteModule,
+    switcherModule,
+    rewriteModule,
+    meetingModule,
+    pricesModule,
     ...devModules,
   ],
   import.meta.env.DEV,

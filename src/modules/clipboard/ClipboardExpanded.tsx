@@ -5,6 +5,10 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import {
   BookmarkPlus,
   Braces,
+  CalendarPlus,
+  Layers,
+  MapPin,
+  Package,
   Check,
   ExternalLink,
   FileText,
@@ -25,7 +29,7 @@ import {
   Type,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { Clip } from "../../core/generated/Clip";
 import { ipc, isIpcError } from "../../core/ipc";
@@ -45,6 +49,8 @@ import { ShelfView } from "./ShelfView";
 import { ReadLaterView } from "./ReadLaterView";
 import { useReadLater } from "./readLaterStore";
 import { useMinuteClock } from "./useMinuteClock";
+import { createHoverPreview } from "./hoverPreview";
+import { calendarUrl, localDate } from "./suggestions";
 import "./clipboard.css";
 
 const COPIED_MS = 1400;
@@ -117,6 +123,9 @@ function CopiedView() {
   const [copied, setCopied] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [qr, setQr] = useState<{ svg: string; title: string } | null>(null);
+  const [previewId, setPreviewId] = useState<string | null>(null);
+  const hover = useMemo(() => createHoverPreview(setPreviewId), []);
+  useEffect(() => () => hover.dispose(), [hover]);
   const now = useMinuteClock();
 
   useEffect(() => {
@@ -149,6 +158,11 @@ function CopiedView() {
   const pinned = (snapshot?.pinned ?? []).filter((c) => matchesQuery(c, query));
   const recent = (snapshot?.recent ?? []).filter((c) => matchesQuery(c, query));
   const empty = !snapshot || snapshot.pinned.length + snapshot.recent.length === 0;
+  const stack = snapshot?.stack ?? null;
+  const pasteKeys = useSettings((s) => s.settings?.shortcuts.pasteNext ?? "");
+  const previewClip = previewId
+    ? [...(snapshot?.pinned ?? []), ...(snapshot?.recent ?? [])].find((c) => c.id === previewId)
+    : undefined;
 
   const row = (clip: Clip) => (
     <ClipRow
@@ -156,6 +170,8 @@ function CopiedView() {
       clip={clip}
       now={now}
       copied={copied === clip.id}
+      onHover={() => hover.enter(clip.id)}
+      onLeave={() => hover.leave()}
       onCopy={(formatted) => copy(clip, formatted)}
       onPin={() => run(clip.pinned ? ipc.clipboardUnpin(clip.id) : ipc.clipboardPin(clip.id))}
       onDelete={() => run(ipc.clipboardDelete(clip.id))}
@@ -163,6 +179,22 @@ function CopiedView() {
       onReadLater={() => run(ipc.readLaterAdd(clip.preview.trim()), "Saved to Read later")}
       onTask={(title) => run(ipc.todoAddTask(title, null, false), "Added to To-do")}
       onShelf={() => run(ipc.shelfAdd(clip.files), "Added to Files")}
+      onSmart={() => {
+        const smart = clip.smart;
+        if (!smart) return;
+        if (smart.url) run(ipc.openExternal(smart.url));
+        else if (smart.kind === "date")
+          run(
+            ipc.openExternal(
+              calendarUrl(
+                clipTitle(clip).slice(0, 80),
+                localDate(smart.value),
+                smart.allDay,
+                Intl.DateTimeFormat().resolvedOptions().timeZone,
+              ),
+            ),
+          );
+      }}
       onQr={() =>
         void ipc
           .clipboardText(clip.id)
@@ -195,6 +227,17 @@ function CopiedView() {
         )}
         <span className="clips-bar__spacer" />
         <IconButton
+          icon={Layers}
+          label={
+            stack !== null
+              ? `Paste stack on: ${stack} waiting — paste them in order with the paste-next shortcut. Click to stop.`
+              : "Paste stack: collect copies, then paste them one by one"
+          }
+          size="sm"
+          active={stack !== null}
+          onClick={() => run(ipc.clipboardStack(stack === null))}
+        />
+        <IconButton
           icon={ScanText}
           label="Grab text from the screen (draw a box around it)"
           size="sm"
@@ -214,6 +257,12 @@ function CopiedView() {
         )}
       </div>
       {status && <p className="clips-status">{status}</p>}
+      {stack !== null && (
+        <p className="clips-status">
+          Paste stack: {stack === 0 ? "copy things to add them" : `${stack} waiting`} · paste the next one
+          with {pasteKeys || "the paste-next shortcut"}
+        </p>
+      )}
       {paused && <p className="clips-status">Paused — new copies aren't kept.</p>}
       {qr && (
         <div className="clips-qr" role="dialog" aria-label="QR code">
@@ -243,7 +292,70 @@ function CopiedView() {
           {recent.map(row)}
         </ul>
       )}
+      {previewClip && !qr && <ClipPreview clip={previewClip} />}
     </div>
+  );
+}
+
+const PREVIEW_CHARS = 1500;
+
+/** A bigger look at the entry under the pointer. Shown beside the list; never takes clicks. */
+function ClipPreview({ clip }: { clip: Clip }) {
+  const [text, setText] = useState<string | null>(null);
+  const cache = useRef(new Map<string, string>());
+  const wantsText = clip.kind === "text" && clip.textKind !== "color";
+
+  useEffect(() => {
+    if (!wantsText) return;
+    const cached = cache.current.get(clip.id);
+    if (cached !== undefined) {
+      setText(cached);
+      return;
+    }
+    setText(null);
+    let live = true;
+    ipc.clipboardText(clip.id).then(
+      (full) => {
+        const shown = full.length > PREVIEW_CHARS ? `${full.slice(0, PREVIEW_CHARS)}…` : full;
+        cache.current.set(clip.id, shown);
+        if (live) setText(shown);
+      },
+      () => live && setText(clip.preview),
+    );
+    return () => {
+      live = false;
+    };
+  }, [clip.id, clip.preview, wantsText]);
+
+  const mono = clip.textKind === "json";
+  return (
+    <aside className="clip-preview" aria-live="polite" aria-label="Preview">
+      {clip.kind === "image" && clip.image ? (
+        <img className="clip-preview__image" src={convertFileSrc(clip.image)} alt="" />
+      ) : clip.textKind === "color" ? (
+        <div className="clip-preview__color">
+          <span className="clip-preview__swatch" style={{ background: clip.preview.trim() }} />
+          <code>{clip.preview.trim()}</code>
+        </div>
+      ) : clip.kind === "files" ? (
+        <ul className="clip-preview__files">
+          {clip.files.slice(0, 12).map((f) => (
+            <li key={f} title={f}>
+              <FileText size={13} aria-hidden /> {f.split(/[\\/]/).pop()}
+            </li>
+          ))}
+          {clip.files.length > 12 && <li>and {clip.files.length - 12} more</li>}
+        </ul>
+      ) : (
+        <pre className={`clip-preview__text${mono ? " clip-preview__text--mono" : ""}`}>
+          {text ?? clip.preview}
+        </pre>
+      )}
+      <p className="clip-preview__meta">
+        {clip.kind === "text" ? `${clip.length.toLocaleString()} characters` : clipTitle(clip)}
+        {clip.app ? ` · ${clip.app}` : ""}
+      </p>
+    </aside>
   );
 }
 
@@ -251,6 +363,8 @@ function ClipRow({
   clip,
   now,
   copied,
+  onHover,
+  onLeave,
   onCopy,
   onPin,
   onDelete,
@@ -260,10 +374,13 @@ function ClipRow({
   onNote,
   onShelf,
   onQr,
+  onSmart,
 }: {
   clip: Clip;
   now: number;
   copied: boolean;
+  onHover: () => void;
+  onLeave: () => void;
   onCopy: (formatted?: boolean) => void;
   onPin: () => void;
   onDelete: () => void;
@@ -273,6 +390,7 @@ function ClipRow({
   onNote: () => void;
   onShelf: () => void;
   onQr: () => void;
+  onSmart: () => void;
 }) {
   const title = clipTitle(clip);
   const task = taskTitle(clip);
@@ -286,6 +404,10 @@ function ClipRow({
         aria-label={`Copy ${clip.kind === "text" ? title.slice(0, 80) : title}`}
         title="Copy"
         onClick={() => onCopy()}
+        onMouseEnter={onHover}
+        onMouseLeave={onLeave}
+        onFocus={onHover}
+        onBlur={onLeave}
       >
         {clip.kind === "image" && clip.image ? (
           <img className="clip__thumb" src={convertFileSrc(clip.image)} alt="" />
@@ -314,6 +436,16 @@ function ClipRow({
         </span>
       </button>
       <div className="clip__actions">
+        {clip.smart && (
+          <IconButton
+            icon={
+              clip.smart.kind === "address" ? MapPin : clip.smart.kind === "date" ? CalendarPlus : Package
+            }
+            label={clip.smart.label}
+            size="sm"
+            onClick={onSmart}
+          />
+        )}
         {clip.textKind === "url" && (
           <>
             <IconButton icon={ExternalLink} label="Open link" size="sm" onClick={onOpen} />

@@ -5,9 +5,22 @@ pub mod convert;
 #[cfg(windows)]
 mod downloads;
 #[cfg(windows)]
-mod recent;
+pub(crate) mod recent;
 #[cfg(windows)]
-mod recorder;
+pub(crate) mod recorder;
+pub mod screenrec;
+
+/// The screen recording now, for the bubble's timer.
+#[derive(Debug, Clone, Default, serde::Serialize, ts_rs::TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct ScreenRecState {
+    /// When it started (Unix ms); none when not recording.
+    #[ts(optional, type = "number")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub started_at: Option<i64>,
+    pub gif: bool,
+}
 pub mod service;
 
 use std::path::{Path, PathBuf};
@@ -83,6 +96,66 @@ pub fn final_name(file_name: &str) -> Option<String> {
     Some(base.to_owned())
 }
 
+/// A finished download (a file in the Downloads folder).
+#[derive(Debug, Clone, serde::Serialize, ts_rs::TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct RecentDownload {
+    pub name: String,
+    pub path: String,
+    #[ts(type = "number")]
+    pub bytes: u64,
+    /// When it finished (last written), Unix ms.
+    #[ts(type = "number")]
+    pub at: i64,
+}
+
+/// Files in `dir` finished in the last `hours` (no partial downloads), newest first.
+pub fn recent_downloads(
+    dir: &std::path::Path,
+    now: std::time::SystemTime,
+    hours: u64,
+    max: usize,
+) -> Vec<RecentDownload> {
+    let window = std::time::Duration::from_secs(hours * 3600);
+    let mut out: Vec<RecentDownload> = std::fs::read_dir(dir)
+        .map(|entries| {
+            entries
+                .flatten()
+                .filter_map(|e| {
+                    let name = e.file_name().to_string_lossy().into_owned();
+                    if final_name(&name).is_some()
+                        || name.eq_ignore_ascii_case("desktop.ini")
+                        || name.starts_with('.')
+                    {
+                        return None;
+                    }
+                    let meta = e.metadata().ok()?;
+                    if !meta.is_file() {
+                        return None;
+                    }
+                    let modified = meta.modified().ok()?;
+                    if now.duration_since(modified).is_ok_and(|age| age > window) {
+                        return None;
+                    }
+                    let at = modified
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map_or(0, |d| d.as_millis() as i64);
+                    Some(RecentDownload {
+                        name,
+                        path: e.path().display().to_string(),
+                        bytes: meta.len(),
+                        at,
+                    })
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    out.sort_by_key(|d| std::cmp::Reverse(d.at));
+    out.truncate(max);
+    out
+}
+
 /// `dir/name` if free, else `dir/name (2)` and so on.
 pub fn unique_path(path: PathBuf) -> PathBuf {
     let dir = path.parent().map(Path::to_path_buf).unwrap_or_default();
@@ -110,6 +183,20 @@ pub fn recording_name(now: chrono::DateTime<chrono::Local>, ext: &str) -> String
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn lists_finished_downloads_newest_first() {
+        let dir = std::env::temp_dir().join(format!("overline-dl-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("report.pdf"), b"12345").unwrap();
+        std::fs::write(dir.join("movie.mp4.crdownload"), b"x").unwrap();
+        std::fs::write(dir.join("desktop.ini"), b"x").unwrap();
+        let list = recent_downloads(&dir, std::time::SystemTime::now(), 24, 10);
+        let _ = std::fs::remove_dir_all(&dir);
+        assert_eq!(list.len(), 1);
+        assert_eq!(list[0].name, "report.pdf");
+        assert_eq!(list[0].bytes, 5);
+    }
 
     #[test]
     fn recognizes_downloads_in_progress() {

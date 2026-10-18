@@ -23,6 +23,7 @@ import {
   CalendarDays,
   X,
   type LucideIcon,
+  Wallpaper,
 } from "lucide-react";
 import { useEffect, useLayoutEffect, useState, type ReactNode } from "react";
 
@@ -51,6 +52,7 @@ import { pageFromId, pageLead, PAGES, searchSettings, settingAnchor, type PageId
 import { Section } from "./Section";
 import { ShortcutsSection } from "./ShortcutsSection";
 import { VaultSection } from "./VaultSection";
+import { WallpaperSection } from "./WallpaperSection";
 import "./settings.css";
 
 const ICONS: Record<PageId, LucideIcon> = {
@@ -69,6 +71,7 @@ const ICONS: Record<PageId, LucideIcon> = {
   games: Gamepad2,
   ai: Bot,
   vault: KeyRound,
+  wallpaper: Wallpaper,
   developer: Code2,
   desk: AppWindow,
   privacy: Shield,
@@ -91,6 +94,7 @@ const CONTENT: Record<PageId, () => ReactNode> = {
   games: () => <GamesSection />,
   ai: () => <AiSection />,
   vault: () => <VaultSection />,
+  wallpaper: () => <WallpaperSection />,
   developer: () => <DeveloperSection />,
   desk: () => <DeskSection />,
   privacy: () => <PrivacySection />,

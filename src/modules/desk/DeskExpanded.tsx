@@ -1,17 +1,18 @@
-// Desk: Windows | Routines.
-import { MonitorPlay, Pin, PinOff, Play, Settings2 } from "lucide-react";
+// Desk: Windows | Arrange | Routines.
+import { MonitorPlay, Pin, PinOff, PictureInPicture2, Play, Settings2 } from "lucide-react";
 import { useState } from "react";
 
 import { ipc, isIpcError } from "../../core/ipc";
 import { Button, EmptyState, IconButton, ModuleContainer, SegmentedControl } from "../../design/components";
 import { useSettings } from "../../settings";
 import { usePolled } from "../devtools/usePolled";
+import { Arrange } from "./Arrange";
 import { showMini } from "./mini";
 // The list rows share the Clipboard module's look (styles only).
 import "../clipboard/clipboard.css";
 import "./desk.css";
 
-type Tab = "windows" | "routines";
+type Tab = "windows" | "arrange" | "routines";
 
 function message(error: unknown) {
   return isIpcError(error) ? error.message.replace(/^invalid input: /, "") : "That didn't work.";
@@ -28,13 +29,14 @@ export default function DeskExpanded() {
           value={tab}
           options={[
             { value: "windows", label: "Windows" },
+            { value: "arrange", label: "Arrange" },
             { value: "routines", label: "Routines" },
           ]}
           onChange={setTab}
         />
       }
     >
-      {tab === "windows" ? <Windows /> : <Routines />}
+      {tab === "windows" ? <Windows /> : tab === "arrange" ? <Arrange /> : <Routines />}
     </ModuleContainer>
   );
 }
@@ -105,6 +107,12 @@ function Windows() {
                   label={`Watch ${w.title} live in the notch`}
                   size="sm"
                   onClick={() => showMini(w)}
+                />
+                <IconButton
+                  icon={PictureInPicture2}
+                  label={`Picture-in-picture: ${w.title}`}
+                  size="sm"
+                  onClick={() => run(ipc.pipOpen(w.id))}
                 />
               </div>
             </li>

@@ -9,20 +9,37 @@ use std::{
 use crate::error::{AppError, AppResult};
 
 const TIMEOUT: Duration = Duration::from_secs(90);
+/// Research reads several pages: give it longer.
+const WEB_TIMEOUT: Duration = Duration::from_secs(300);
 
 pub fn answer(system: &str, input: &str, workdir: &std::path::Path) -> AppResult<String> {
+    run(system, input, workdir, None, TIMEOUT)
+}
+
+/// Like `answer`, but Claude may search and read the web (and nothing else).
+pub fn answer_with_web(system: &str, input: &str, workdir: &std::path::Path) -> AppResult<String> {
+    run(system, input, workdir, Some("WebSearch,WebFetch"), WEB_TIMEOUT)
+}
+
+fn run(
+    system: &str,
+    input: &str,
+    workdir: &std::path::Path,
+    tools: Option<&str>,
+    timeout: Duration,
+) -> AppResult<String> {
     let exe = super::service::claude_exe().ok_or_else(|| {
         AppError::InvalidInput("Claude Code isn't installed on this PC (claude.ai/code)".into())
     })?;
     let _ = std::fs::create_dir_all(workdir);
     let mut command = Command::new(exe);
+    command.args(["-p", "--output-format", "text", "--tools", tools.unwrap_or("")]);
+    // Print mode can't ask, so the tools it may use are allowed up front.
+    if let Some(tools) = tools {
+        command.args(["--allowedTools", tools]);
+    }
     command
         .args([
-            "-p",
-            "--output-format",
-            "text",
-            "--tools",
-            "",
             "--setting-sources",
             "",
             "--strict-mcp-config",
@@ -66,7 +83,7 @@ pub fn answer(system: &str, input: &str, workdir: &std::path::Path) -> AppResult
             }
             return Ok(text.trim().to_owned());
         }
-        if started.elapsed() > TIMEOUT {
+        if started.elapsed() > timeout {
             let _ = child.kill();
             return Err(AppError::InvalidInput("Claude took too long — try again".into()));
         }

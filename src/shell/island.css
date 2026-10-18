@@ -8,9 +8,15 @@
   pointer-events: none;
 }
 
+/* On the bottom edge the island stands on the taskbar and the dock goes above it. */
+.island-frame[data-edge="bottom"] {
+  flex-direction: column-reverse;
+}
+
 .island {
   position: relative;
   flex: none;
+  transition: opacity 0.18s ease;
   overflow: hidden;
   background: var(--island-bg, var(--background));
   box-shadow: var(--shadow-island);
@@ -290,4 +296,103 @@
 
 .island[data-music="on"][data-music-noborder]::before {
   content: none;
+}
+
+/* A widget pinned beside the resting bubble (Settings → Dock & modules). */
+.mini-widget {
+  flex: none;
+  max-width: 190px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--text-primary);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+/* Rearranging the dock: icons wiggle; the dragged one lifts. */
+.dock__item {
+  display: inline-flex;
+  touch-action: none;
+}
+
+.dock--editing .dock__item {
+  animation: dock-wiggle 0.28s ease-in-out infinite alternate;
+  cursor: grab;
+}
+
+.dock--editing .dock__item:nth-child(even) {
+  animation-delay: -0.14s;
+}
+
+.dock__item--dragging {
+  z-index: 1;
+  scale: 1.12;
+  cursor: grabbing;
+}
+
+@keyframes dock-wiggle {
+  from {
+    rotate: -3deg;
+  }
+  to {
+    rotate: 3deg;
+  }
+}
+
+.dock-edit {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.dock-edit__select {
+  height: 26px;
+  max-width: 120px;
+  padding: 0 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--island-bg, #000);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--text-xs);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dock--editing .dock__item {
+    animation: none;
+  }
+}
+
+/* Just plugged in: a soft green glow that fades in and out (control/index.ts). */
+[data-charging] .island {
+  animation: island-charging 4s ease-in-out;
+}
+
+@keyframes island-charging {
+  0%,
+  100% {
+    box-shadow: var(--shadow-island);
+  }
+  25%,
+  70% {
+    box-shadow:
+      var(--shadow-island),
+      0 0 18px 3px color-mix(in srgb, var(--success) 70%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-charging] .island {
+    animation: none;
+    box-shadow:
+      var(--shadow-island),
+      0 0 12px 2px color-mix(in srgb, var(--success) 60%, transparent);
+  }
+}
+
+/* Fade while typing: you're writing just under the resting bubble. */
+.island[data-faded] {
+  opacity: 0.22;
+  pointer-events: none;
 }

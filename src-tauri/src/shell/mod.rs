@@ -2,7 +2,11 @@
 //! (architecture.md §3–4). The frontend decides *what size* the island needs; this
 //! module decides *where* that lands on the display.
 
+pub(crate) mod aside;
+pub(crate) mod blur;
+pub(crate) mod fade;
 pub mod islands;
+pub(crate) mod lockscreen;
 mod placement;
 
 use std::{collections::HashMap, sync::Mutex};
@@ -69,8 +73,7 @@ pub fn place(window: &WebviewWindow, (width, height): (f64, f64)) -> AppResult<(
         width: area.size.width,
         height: area.size.height,
     };
-    let frame = top_center_frame(work, monitor.scale_factor(), width, height);
-    let (offset_x, offset_y) = {
+    let (offset_x, offset_y, bottom) = {
         let settings = window
             .app_handle()
             .state::<AppState>()
@@ -79,13 +82,42 @@ pub fn place(window: &WebviewWindow, (width, height): (f64, f64)) -> AppResult<(
             .unwrap_or_else(|e| e.into_inner())
             .appearance
             .clone();
-        (settings.offset_x, settings.offset_y)
+        (
+            if let Some(dragging) = *DRAG_OFFSET.lock().unwrap_or_else(|e| e.into_inner()) {
+                dragging
+            } else if aside::is_aside(window.label()) {
+                aside::aside_offset(f64::from(work.width) / monitor.scale_factor(), width)
+            } else {
+                settings.offset_x
+            },
+            settings.offset_y,
+            settings.edge == crate::settings::ScreenEdge::Bottom,
+        )
     };
-    let position = nudge(frame, work, monitor.scale_factor(), offset_x, offset_y);
+    let frame = if bottom {
+        placement::bottom_center_frame(work, monitor.scale_factor(), width, height)
+    } else {
+        top_center_frame(work, monitor.scale_factor(), width, height)
+    };
+    let position = nudge(frame, work, monitor.scale_factor(), offset_x, offset_y, bottom);
     let size = frame.1;
     window.set_size(size)?;
     window.set_position(position)?;
     Ok(())
+}
+
+/// While you Alt+drag the notch sideways: the offset to show (not saved until you let go).
+static DRAG_OFFSET: Mutex<Option<i32>> = Mutex::new(None);
+
+/// Show the notch at `offset_x` while it's being dragged (or back to the saved offset with
+/// `None`). Placement keeps it on the screen.
+pub fn preview_offset(window: &WebviewWindow, offset_x: Option<i32>) -> AppResult<()> {
+    *DRAG_OFFSET.lock().unwrap_or_else(|e| e.into_inner()) = offset_x.map(|x| x.clamp(-4000, 4000));
+    let size = window
+        .app_handle()
+        .state::<ShellState>()
+        .window_size(window.label());
+    place(window, size)
 }
 
 /// Show the island and keep it out of Alt+Tab. Use this instead of `window.show()`.
@@ -199,6 +231,20 @@ enum ShortcutAction {
     Pin,
     /// Quick capture (default Ctrl+Alt+Space).
     Capture,
+    /// The command palette (default Ctrl+Alt+K).
+    Palette,
+    /// A quick note (default Ctrl+Alt+J): the palette, ready for "note …".
+    Note,
+    /// Paste the next item of the paste stack (default Ctrl+Alt+Shift+V).
+    PasteNext,
+    /// The window switcher (default Ctrl+Alt+W).
+    Switcher,
+    /// Cover every screen with a blur (default Ctrl+Alt+B).
+    Blur,
+    /// Explain what's on screen (default Ctrl+Alt+E).
+    Explain,
+    /// Rewrite the selected text (default Ctrl+Alt+R).
+    Rewrite,
 }
 
 /// The shortcuts registered now, and why any of the user's choices failed.
@@ -236,6 +282,13 @@ pub fn apply_shortcuts(app: &AppHandle, keys: &crate::settings::ShortcutSettings
         ("grab", &keys.grab, ShortcutAction::Grab),
         ("pin", &keys.pin, ShortcutAction::Pin),
         ("capture", &keys.capture, ShortcutAction::Capture),
+        ("palette", &keys.palette, ShortcutAction::Palette),
+        ("note", &keys.note, ShortcutAction::Note),
+        ("pasteNext", &keys.paste_next, ShortcutAction::PasteNext),
+        ("switcher", &keys.switcher, ShortcutAction::Switcher),
+        ("blur", &keys.blur, ShortcutAction::Blur),
+        ("explain", &keys.explain, ShortcutAction::Explain),
+        ("rewrite", &keys.rewrite, ShortcutAction::Rewrite),
     ] {
         if text.trim().is_empty() {
             continue;
@@ -301,6 +354,27 @@ pub fn shortcut_plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
                 std::thread::spawn(move || desk.toggle_front_on_top());
                 return;
             }
+            if action == ShortcutAction::Blur {
+                let app = app.clone();
+                std::thread::spawn(move || {
+                    if let Err(error) = blur::toggle(&app) {
+                        tracing::warn!(%error, "could not cover the screens");
+                    }
+                });
+                return;
+            }
+            if action == ShortcutAction::PasteNext {
+                let clipboard = app
+                    .state::<crate::clipboard::service::ClipboardService>()
+                    .inner()
+                    .clone();
+                std::thread::spawn(move || {
+                    if let Err(error) = clipboard.paste_next() {
+                        tracing::info!(kind = error.kind(), "nothing pasted from the stack");
+                    }
+                });
+                return;
+            }
             if action == ShortcutAction::Grab {
                 let grab = app.state::<crate::grab::service::GrabService>().inner().clone();
                 tauri::async_runtime::spawn(async move {
@@ -310,12 +384,41 @@ pub fn shortcut_plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
                 });
                 return;
             }
+            #[cfg(windows)]
+            if action == ShortcutAction::Rewrite {
+                let (hwnd, app_name) = front_window();
+                let app = app.clone();
+                std::thread::spawn(move || {
+                    let label = match crate::ask::rewrite::capture(hwnd, app_name) {
+                        Ok(_) => "rewrite",
+                        Err(error) => {
+                            tracing::info!(kind = error.kind(), "nothing to rewrite");
+                            "rewrite:none"
+                        }
+                    };
+                    if let Some(window) = islands::under_cursor(&app) {
+                        let _ = show_island(&window);
+                        let _ = window.set_focus();
+                        app.state::<AppState>().bus.emit(
+                            "shell",
+                            AppEvent::ShellOpenModuleRequested {
+                                label: window.label().to_owned(),
+                                module: label.into(),
+                            },
+                        );
+                    }
+                });
+                return;
+            }
             // The island on the screen the pointer is on.
             let Some(window) = islands::under_cursor(app) else {
                 return;
             };
             #[cfg(windows)]
-            if action == ShortcutAction::Ask {
+            if matches!(
+                action,
+                ShortcutAction::Ask | ShortcutAction::Explain | ShortcutAction::Palette
+            ) {
                 let (hwnd, app_name) = front_window();
                 app.state::<crate::ask::service::AskService>()
                     .set_target(hwnd, app_name);
@@ -336,9 +439,36 @@ pub fn shortcut_plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
                     label,
                     module: "capture".into(),
                 },
-                ShortcutAction::Toggle | ShortcutAction::Grab | ShortcutAction::Pin => {
-                    AppEvent::ShellToggleRequested { label }
+                ShortcutAction::Palette => AppEvent::ShellOpenModuleRequested {
+                    label,
+                    module: "palette".into(),
+                },
+                // The palette, with "note " already typed.
+                ShortcutAction::Note => AppEvent::ShellOpenModuleRequested {
+                    label,
+                    module: "palette:note ".into(),
+                },
+                ShortcutAction::Switcher => AppEvent::ShellOpenModuleRequested {
+                    label,
+                    module: "switcher".into(),
+                },
+                // Ask opens on the answer to "what's on my screen?".
+                ShortcutAction::Explain => {
+                    let ask = app.state::<crate::ask::service::AskService>().inner().clone();
+                    if let Err(error) = ask.explain_screen() {
+                        tracing::info!(kind = error.kind(), "could not explain the screen");
+                    }
+                    AppEvent::ShellOpenModuleRequested {
+                        label,
+                        module: "ask".into(),
+                    }
                 }
+                ShortcutAction::Toggle
+                | ShortcutAction::Rewrite
+                | ShortcutAction::Blur
+                | ShortcutAction::Grab
+                | ShortcutAction::Pin
+                | ShortcutAction::PasteNext => AppEvent::ShellToggleRequested { label },
             };
             app.state::<AppState>().bus.emit("shell", event);
         })
@@ -364,6 +494,7 @@ pub fn init(app: &AppHandle) -> AppResult<()> {
     }
     islands::sync(app);
     watch_display_setting(app);
+    fade::start(app);
     Ok(())
 }
 
@@ -414,9 +545,15 @@ fn watch_display_setting(app: &AppHandle) {
                     if let AppEvent::SettingsChanged(settings) = &envelope.event {
                         if settings.display != last.display {
                             islands::sync(&app);
-                        } else if (settings.appearance.offset_x, settings.appearance.offset_y)
-                            != (last.appearance.offset_x, last.appearance.offset_y)
-                        {
+                        } else if (
+                            settings.appearance.offset_x,
+                            settings.appearance.offset_y,
+                            settings.appearance.edge,
+                        ) != (
+                            last.appearance.offset_x,
+                            last.appearance.offset_y,
+                            last.appearance.edge,
+                        ) {
                             for window in islands::all(&app) {
                                 let size = app.state::<ShellState>().window_size(window.label());
                                 let _ = place(&window, size);
@@ -424,6 +561,19 @@ fn watch_display_setting(app: &AppHandle) {
                         }
                         if settings.shortcuts != last.shortcuts {
                             apply_shortcuts(&app, &settings.shortcuts);
+                        }
+                        if (
+                            &settings.appearance.slide_aside,
+                            settings.appearance.slide_aside_browsers,
+                        ) != (&last.appearance.slide_aside, last.appearance.slide_aside_browsers)
+                        {
+                            let app = app.clone();
+                            std::thread::spawn(move || aside::refresh(&app));
+                        }
+                        if settings.power.wake_at != last.power.wake_at
+                            || settings.power.days != last.power.days
+                        {
+                            apply_wake(&app, &settings.power);
                         }
                         last = settings.clone();
                     }
@@ -433,6 +583,22 @@ fn watch_display_setting(app: &AppHandle) {
             }
         }
     });
+}
+
+/// Create or remove the power schedule's wake task (off the async runtime).
+fn apply_wake(app: &AppHandle, schedule: &crate::powerplan::PowerSchedule) {
+    #[cfg(windows)]
+    {
+        let schedule = schedule.clone();
+        let temp = app.path().temp_dir().unwrap_or_else(|_| std::env::temp_dir());
+        std::thread::spawn(move || {
+            if let Err(error) = crate::powerplan::apply_wake(&schedule, &temp) {
+                tracing::warn!(kind = error.kind(), "could not set the wake schedule");
+            }
+        });
+    }
+    #[cfg(not(windows))]
+    let _ = (app, schedule);
 }
 
 /// While a fullscreen app is in front the island hides, popping in only for notifications.
@@ -646,6 +812,8 @@ fn watch_front_window(app: &AppHandle) {
                 refresh_fullscreen(&app);
                 // Switching virtual desktops changes the front window too.
                 crate::system::service::desktops_maybe_changed(&app);
+                front_app_maybe_changed(&app);
+                aside::refresh(&app);
             });
         } else {
             PENDING.store(false, Ordering::SeqCst);
@@ -664,6 +832,40 @@ fn watch_front_window(app: &AppHandle) {
             }
         }
     });
+}
+
+/// Tell the islands when the program in front changes (dock profiles follow it). Only the
+/// program's name, never its window title.
+#[cfg(windows)]
+fn front_app_maybe_changed(app: &AppHandle) {
+    use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowThreadProcessId};
+    static LAST: Mutex<String> = Mutex::new(String::new());
+    // SAFETY: plain queries on the foreground window.
+    let pid = unsafe {
+        let mut pid = 0;
+        GetWindowThreadProcessId(GetForegroundWindow(), Some(&mut pid));
+        pid
+    };
+    if pid == 0 || pid == std::process::id() {
+        return;
+    }
+    let Some(path) = crate::clipboard::win::exe_of(pid) else {
+        return;
+    };
+    let exe = std::path::Path::new(&path)
+        .file_stem()
+        .map(|s| s.to_string_lossy().to_lowercase())
+        .unwrap_or_default();
+    let mut last = LAST.lock().unwrap_or_else(|e| e.into_inner());
+    if exe.is_empty() || *last == exe {
+        return;
+    }
+    crate::habits::seen(app, &exe, &path);
+    *last = exe.clone();
+    drop(last);
+    app.state::<AppState>()
+        .bus
+        .emit("shell", AppEvent::FrontAppChanged { exe });
 }
 
 /// Whether the front window fills each island's screen (a video, game, or F11 browser).

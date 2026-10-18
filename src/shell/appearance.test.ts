@@ -13,8 +13,14 @@ const LOOK: AppearanceSettings = {
   roundness: 100,
   accent: "",
   accentFromMusic: false,
+  accentFromWallpaper: false,
   offsetX: 0,
   offsetY: 0,
+  edge: "top",
+  slideAside: [],
+  slideAsideBrowsers: false,
+  fadeWhileTyping: false,
+  lockscreenInfo: false,
 };
 
 describe("appearance", () => {

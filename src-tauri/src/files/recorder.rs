@@ -17,9 +17,9 @@ use windows::{
     Win32::{
         Media::{
             Audio::{
-                eConsole, eRender, IAudioCaptureClient, IAudioClient, IMMDeviceEnumerator,
-                MMDeviceEnumerator, AUDCLNT_BUFFERFLAGS_SILENT, AUDCLNT_SHAREMODE_SHARED,
-                AUDCLNT_STREAMFLAGS_LOOPBACK, WAVEFORMATEX, WAVEFORMATEXTENSIBLE,
+                eCapture, eCommunications, eConsole, eRender, IAudioCaptureClient, IAudioClient,
+                IMMDeviceEnumerator, MMDeviceEnumerator, AUDCLNT_BUFFERFLAGS_SILENT,
+                AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_LOOPBACK, WAVEFORMATEX, WAVEFORMATEXTENSIBLE,
             },
             MediaFoundation::{
                 IMFSample, MFAudioFormat_MP3, MFAudioFormat_PCM, MFCreateMediaType,
@@ -76,7 +76,7 @@ pub fn start(wav: PathBuf) -> Recording {
     let thread = std::thread::Builder::new()
         .name("recorder".into())
         .spawn(move || {
-            let format = capture(&wav, &flag)?;
+            let format = capture(&wav, &flag, false)?;
             let mp3 = wav.with_extension("mp3");
             if MP3_RATES.contains(&format.rate) && format.channels <= 2 {
                 match encode_mp3(&wav, &mp3, format) {
@@ -92,6 +92,18 @@ pub fn start(wav: PathBuf) -> Recording {
             }
             Ok(wav)
         })
+        .ok();
+    Recording { stop, thread }
+}
+
+/// Record to a WAV only (no MP3): the microphone (`mic`) or what the PC plays. For meeting
+/// notes, which mixes the two afterwards.
+pub fn start_wav(wav: PathBuf, mic: bool) -> Recording {
+    let stop = Arc::new(AtomicBool::new(false));
+    let flag = stop.clone();
+    let thread = std::thread::Builder::new()
+        .name(if mic { "mic-recorder" } else { "pc-recorder" }.into())
+        .spawn(move || capture(&wav, &flag, mic).map(|_| wav))
         .ok();
     Recording { stop, thread }
 }
@@ -162,7 +174,7 @@ fn to_i16(frame: &[u8], float: bool, bits: u16, take: usize) -> impl Iterator<It
     })
 }
 
-fn capture(wav: &Path, stop: &AtomicBool) -> AppResult<Format> {
+fn capture(wav: &Path, stop: &AtomicBool, mic: bool) -> AppResult<Format> {
     let platform = |e: windows::core::Error| AppError::Platform(e.to_string());
     // SAFETY: COM on this thread; the mix format is freed with CoTaskMemFree; buffers from
     // GetBuffer are read only for the frames reported and released right after.
@@ -170,9 +182,21 @@ fn capture(wav: &Path, stop: &AtomicBool) -> AppResult<Format> {
         let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
         let enumerator: IMMDeviceEnumerator =
             CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL).map_err(platform)?;
-        let device = enumerator
-            .GetDefaultAudioEndpoint(eRender, eConsole)
-            .map_err(platform)?;
+        let device = if mic {
+            enumerator.GetDefaultAudioEndpoint(eCapture, eCommunications)
+        } else {
+            enumerator.GetDefaultAudioEndpoint(eRender, eConsole)
+        }
+        .map_err(|_| {
+            AppError::InvalidInput(
+                if mic {
+                    "No microphone found"
+                } else {
+                    "No speakers found"
+                }
+                .into(),
+            )
+        })?;
         let client: IAudioClient = device.Activate(CLSCTX_ALL, None).map_err(platform)?;
         let mix = client.GetMixFormat().map_err(platform)?;
         let wf: WAVEFORMATEX = *mix;
@@ -199,7 +223,7 @@ fn capture(wav: &Path, stop: &AtomicBool) -> AppResult<Format> {
             client
                 .Initialize(
                     AUDCLNT_SHAREMODE_SHARED,
-                    AUDCLNT_STREAMFLAGS_LOOPBACK,
+                    if mic { 0 } else { AUDCLNT_STREAMFLAGS_LOOPBACK },
                     10_000_000,
                     0,
                     mix,

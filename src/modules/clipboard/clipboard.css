@@ -447,3 +447,144 @@
   font-size: var(--text-xs);
   color: var(--text-muted);
 }
+
+/* Hover preview: a bigger look at the entry under the pointer, over the right of the list.
+   It never takes clicks, and moving to a row's buttons hides it. */
+.clips {
+  position: relative;
+}
+
+.clip-preview {
+  position: absolute;
+  top: 40px;
+  right: 4px;
+  width: min(48%, 320px);
+  max-height: calc(100% - 48px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: 14px;
+  background: rgba(22, 22, 26, 0.97);
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+  z-index: 5;
+  animation: clip-preview-in 160ms ease-out;
+}
+
+@keyframes clip-preview-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+}
+
+.clip-preview__image {
+  max-width: 100%;
+  max-height: 210px;
+  object-fit: contain;
+  border-radius: 8px;
+  align-self: center;
+}
+
+.clip-preview__text {
+  margin: 0;
+  min-height: 0;
+  overflow: hidden;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font: inherit;
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  color: var(--text-primary);
+  mask-image: linear-gradient(180deg, #000 80%, transparent);
+}
+
+.clip-preview__text--mono {
+  font-family: "Cascadia Mono", Consolas, monospace;
+  font-size: var(--text-xs);
+}
+
+.clip-preview__color {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.clip-preview__swatch {
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+
+.clip-preview__files {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--text-sm);
+  overflow: hidden;
+}
+
+.clip-preview__files li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.clips p.clip-preview__meta {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clip-preview {
+    animation: none;
+  }
+}
+
+/* Finished downloads: quieter than the in-progress ones. */
+.downloads--done {
+  background: var(--surface);
+}
+
+.downloads__head {
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.downloads__more {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-secondary);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.download--done {
+  align-items: center;
+  cursor: grab;
+}
+
+.download__open {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}

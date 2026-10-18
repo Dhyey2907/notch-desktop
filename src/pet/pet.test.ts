@@ -34,6 +34,15 @@ const SETTINGS: PetSettings = {
   xp: 0,
   treats: 0,
   buddyOut: false,
+  play: true,
+  hunger: true,
+  fullness: 80,
+  friends: true,
+  hat: "",
+  streakDays: 0,
+  lastPlayDay: "",
+  fetchesToday: 0,
+  fetchDay: "",
 };
 
 describe("where the one pet is", () => {

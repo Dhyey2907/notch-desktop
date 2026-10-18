@@ -3,6 +3,9 @@
 import { AppWindow } from "lucide-react";
 import { lazy } from "react";
 
+import { ipc } from "../../core/ipc";
+import { useSettings } from "../../settings";
+import { habitRoutine, habitText } from "./habit";
 import type { ModuleContext, NotchModule } from "../types";
 
 function init({ events, activities }: ModuleContext) {
@@ -31,9 +34,69 @@ function init({ events, activities }: ModuleContext) {
       body: failed ? `${done} done, ${failed} didn't work` : `${done} ${done === 1 ? "step" : "steps"} done`,
     });
   });
+  // Apps that keep starting together: offer to open them for you.
+  const offHabit = events.on("HabitFound", ({ event }) => {
+    const suggestion = event.payload;
+    activities.push({
+      moduleId: "desk",
+      priority: "normal",
+      tone: "neutral",
+      dedupKey: "habit",
+      countRepeats: false,
+      persistent: true,
+      title: "Make it a routine?",
+      body: habitText(suggestion),
+      actions: [
+        {
+          id: "no",
+          label: "No thanks",
+          variant: "secondary",
+          run: () => void ipc.habitDismiss(suggestion.key).catch(() => {}),
+        },
+        {
+          id: "make",
+          label: "Make routine",
+          variant: "primary",
+          run: () =>
+            void useSettings.getState().update((st) => ({
+              ...st,
+              desk: {
+                ...st.desk,
+                routines: [
+                  ...st.desk.routines,
+                  habitRoutine(suggestion, crypto.randomUUID(), st.day.workDays),
+                ],
+              },
+            })),
+        },
+      ],
+    });
+  });
+  // After a restart: offer to reopen what was open last time (Rust answers only once per run).
+  ipc.workspaceResumeOffer().then(
+    (apps) => {
+      if (apps.length === 0) return;
+      const names = apps.slice(0, 4).join(", ") + (apps.length > 4 ? ` and ${apps.length - 4} more` : "");
+      activities.push({
+        moduleId: "desk",
+        priority: "normal",
+        tone: "neutral",
+        dedupKey: "resume-session",
+        persistent: true,
+        title: `Reopen ${apps.length} ${apps.length === 1 ? "app" : "apps"} from last time?`,
+        body: names,
+        actions: [
+          { id: "reopen", label: "Reopen", run: () => void ipc.workspaceRestore("__last").catch(() => {}) },
+          { id: "dismiss", label: "Not now", run: () => {} },
+        ],
+      });
+    },
+    () => {},
+  );
   return () => {
     offPinned();
     offRan();
+    offHabit();
   };
 }
 

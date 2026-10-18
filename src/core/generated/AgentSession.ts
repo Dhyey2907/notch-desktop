@@ -14,4 +14,8 @@ project: string, state: AgentState,
 /**
  * Tool currently running, e.g. "Bash" or "Edit".
  */
-tool?: string, updatedAt: string, };
+tool?: string, updatedAt: string, 
+/**
+ * The agent process, when known (to bring its terminal forward).
+ */
+pid?: number, };

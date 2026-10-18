@@ -403,3 +403,83 @@ unsafe fn set(format: u32, bytes: &[u8]) -> AppResult<()> {
     }
     Ok(())
 }
+
+/// Press Ctrl+V in the app in front, once the keys of the shortcut that asked for it are let
+/// go (a held Alt or Shift would turn it into another shortcut).
+pub fn press_paste() {
+    press_ctrl(windows::Win32::UI::Input::KeyboardAndMouse::VK_V);
+}
+
+/// Press Ctrl+C in the app in front (to copy what's selected there).
+pub fn press_copy() {
+    press_ctrl(windows::Win32::UI::Input::KeyboardAndMouse::VK_C);
+}
+
+/// The clipboard's text now, if it holds text.
+pub fn read_text() -> Option<String> {
+    use windows::Win32::{
+        Foundation::HGLOBAL,
+        System::{
+            DataExchange::{CloseClipboard, GetClipboardData},
+            Memory::{GlobalLock, GlobalSize, GlobalUnlock},
+            Ole::CF_UNICODETEXT,
+        },
+    };
+    open(HWND::default()).ok()?;
+    // SAFETY: the clipboard is open; the handle is only read while locked, then closed.
+    let text = unsafe {
+        let text = GetClipboardData(u32::from(CF_UNICODETEXT.0)).ok().and_then(|h| {
+            let global = HGLOBAL(h.0);
+            let ptr = GlobalLock(global).cast::<u16>();
+            if ptr.is_null() {
+                return None;
+            }
+            let units = GlobalSize(global) / 2;
+            let slice = std::slice::from_raw_parts(ptr, units);
+            let len = slice.iter().position(|&c| c == 0).unwrap_or(slice.len());
+            let out = String::from_utf16_lossy(&slice[..len]);
+            let _ = GlobalUnlock(global);
+            Some(out)
+        });
+        let _ = CloseClipboard();
+        text
+    };
+    text
+}
+
+fn press_ctrl(letter: windows::Win32::UI::Input::KeyboardAndMouse::VIRTUAL_KEY) {
+    use windows::Win32::UI::Input::KeyboardAndMouse::{
+        GetAsyncKeyState, SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYBD_EVENT_FLAGS,
+        KEYEVENTF_KEYUP, VIRTUAL_KEY, VK_CONTROL, VK_LWIN, VK_MENU, VK_SHIFT,
+    };
+    let held = || {
+        [VK_MENU, VK_SHIFT, VK_CONTROL, VK_LWIN]
+            .iter()
+            // SAFETY: reads the asynchronous key state; no pointers involved.
+            .any(|k| unsafe { GetAsyncKeyState(i32::from(k.0)) } as u16 & 0x8000 != 0)
+    };
+    let waited = std::time::Instant::now();
+    while held() && waited.elapsed() < std::time::Duration::from_millis(1500) {
+        std::thread::sleep(std::time::Duration::from_millis(15));
+    }
+    let key = |vk: VIRTUAL_KEY, up: bool| INPUT {
+        r#type: INPUT_KEYBOARD,
+        Anonymous: INPUT_0 {
+            ki: KEYBDINPUT {
+                wVk: vk,
+                wScan: 0,
+                dwFlags: if up { KEYEVENTF_KEYUP } else { KEYBD_EVENT_FLAGS(0) },
+                time: 0,
+                dwExtraInfo: 0,
+            },
+        },
+    };
+    let presses = [
+        key(VK_CONTROL, false),
+        key(letter, false),
+        key(letter, true),
+        key(VK_CONTROL, true),
+    ];
+    // SAFETY: sends a fixed, fully initialised sequence of key events.
+    unsafe { SendInput(&presses, std::mem::size_of::<INPUT>() as i32) };
+}

@@ -36,4 +36,6 @@ export interface NotchModule {
   devOnly?: boolean;
   /** Cannot be disabled in Settings (e.g. Home, which hosts first-run and guidance). */
   alwaysOn?: boolean;
+  /** Never in the dock or the dock settings; opened another way (the command palette). */
+  dockless?: boolean;
 }

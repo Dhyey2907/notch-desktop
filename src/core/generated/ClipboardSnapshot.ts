@@ -9,4 +9,8 @@ pinned: Array<Clip>,
 /**
  * Most recently copied first.
  */
-recent: Array<Clip>, };
+recent: Array<Clip>, 
+/**
+ * Copies waiting in the paste stack (none while it's off).
+ */
+stack?: number, };

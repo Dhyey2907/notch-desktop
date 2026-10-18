@@ -2,9 +2,13 @@
 //! routines — one click (or a schedule) opens apps, sites and folders, closes clutter and can
 //! start a focus session.
 
+pub mod pip;
+pub mod place;
 pub mod service;
+pub mod sticky;
 #[cfg(windows)]
-mod win;
+pub(crate) mod win;
+pub mod workspace;
 
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;

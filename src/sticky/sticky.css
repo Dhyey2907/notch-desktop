@@ -1,0 +1,127 @@
+/* Sticky notes on the desktop. */
+html.sticky-window,
+html.sticky-window body {
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+}
+
+.sticky {
+  --paper: #fff3a8;
+  --ink: #3a3200;
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  color: var(--ink);
+  font:
+    14px/1.45 "Segoe UI",
+    system-ui,
+    sans-serif;
+}
+
+.sticky--pink {
+  --paper: #ffd1e1;
+  --ink: #4a1027;
+}
+
+.sticky--blue {
+  --paper: #cfe6ff;
+  --ink: #0d2c4d;
+}
+
+.sticky--green {
+  --paper: #d4f5d0;
+  --ink: #163d12;
+}
+
+.sticky--gray {
+  --paper: #e9e9e9;
+  --ink: #222;
+}
+
+.sticky__bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 26px;
+  padding: 0 6px;
+  background: color-mix(in srgb, var(--ink) 8%, var(--paper));
+  cursor: grab;
+}
+
+.sticky__colors {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.sticky:hover .sticky__colors {
+  opacity: 1;
+}
+
+.sticky__dot {
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--ink) 30%, transparent);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.sticky__dot[aria-checked="true"] {
+  outline: 2px solid color-mix(in srgb, var(--ink) 55%, transparent);
+  outline-offset: 1px;
+}
+
+.sticky__dot--yellow {
+  background: #fff3a8;
+}
+
+.sticky__dot--pink {
+  background: #ffd1e1;
+}
+
+.sticky__dot--blue {
+  background: #cfe6ff;
+}
+
+.sticky__dot--green {
+  background: #d4f5d0;
+}
+
+.sticky__dot--gray {
+  background: #e9e9e9;
+}
+
+.sticky__close {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.sticky__close:hover {
+  background: color-mix(in srgb, var(--ink) 12%, transparent);
+}
+
+.sticky__text {
+  flex: 1;
+  min-height: 0;
+  padding: 8px 10px;
+  border: 0;
+  outline: none;
+  resize: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}

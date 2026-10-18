@@ -15,6 +15,7 @@ pub mod limits;
 pub mod process;
 pub mod relay;
 pub mod service;
+pub mod sessions;
 pub mod transcripts;
 pub mod usage;
 

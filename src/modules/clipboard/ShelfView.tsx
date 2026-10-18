@@ -2,9 +2,24 @@
 // any app, or copy them and paste. The shelf only remembers where files are, so moved or
 // deleted ones show as missing. Images can be converted or shrunk, PDFs merged; downloads in
 // progress show on top, and the recorder saves what the PC plays here too.
-import { Circle, Copy, Files, FolderOpen, GripVertical, Smartphone, Square, Wand2, X } from "lucide-react";
-import { useState } from "react";
+import {
+  Circle,
+  Clapperboard,
+  Film,
+  Copy,
+  Files,
+  FolderOpen,
+  GripVertical,
+  Pin,
+  PinOff,
+  Smartphone,
+  Square,
+  Wand2,
+  X,
+} from "lucide-react";
+import { useEffect, useState } from "react";
 
+import type { RecentDownload } from "../../core/generated/RecentDownload";
 import type { ShelfItem } from "../../core/generated/ShelfItem";
 import { ipc, isIpcError } from "../../core/ipc";
 import { Button, ConfirmButton, EmptyState, IconButton } from "../../design/components";
@@ -22,9 +37,68 @@ function message(error: unknown) {
     : "Something went wrong. Try again.";
 }
 
+/** Downloads finished in the last day: open, show in the folder, or drag into an app. */
+function FinishedDownloads() {
+  const busy = useShelf((s) => s.downloads.length);
+  const [list, setList] = useState<RecentDownload[]>([]);
+  const [open, setOpen] = useState(false);
+  // Read again whenever a download finishes (the in-progress count changes).
+  useEffect(() => {
+    let live = true;
+    ipc.filesRecentDownloads().then(
+      (l) => live && setList(l),
+      () => {},
+    );
+    return () => {
+      live = false;
+    };
+  }, [busy]);
+  if (list.length === 0) return null;
+  const shown = open ? list : list.slice(0, 3);
+  return (
+    <div className="downloads downloads--done" aria-label="Recent downloads">
+      <p className="downloads__head">
+        Downloaded today
+        {list.length > 3 && (
+          <button type="button" className="downloads__more" onClick={() => setOpen(!open)}>
+            {open ? "Less" : `All ${list.length}`}
+          </button>
+        )}
+      </p>
+      {shown.map((d) => (
+        <div
+          key={d.path}
+          className="download download--done"
+          draggable
+          onDragStart={(e) => {
+            e.preventDefault();
+            void ipc.filesDrag([d.path]).catch(() => {});
+          }}
+        >
+          <button
+            type="button"
+            className="download__name download__open"
+            title={`Open ${d.name}`}
+            onClick={() => void ipc.filesOpen(d.path).catch(() => {})}
+          >
+            {d.name}
+          </button>
+          <span className="download__meta">{formatSize(d.bytes)}</span>
+          <IconButton
+            icon={FolderOpen}
+            label="Show in folder"
+            size="sm"
+            onClick={() => void ipc.filesReveal(d.path).catch(() => {})}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function Downloads() {
   const downloads = useShelf((s) => s.downloads);
-  if (downloads.length === 0) return null;
+  if (downloads.length === 0) return <FinishedDownloads />;
   return (
     <div className="downloads" role="status" aria-label="Downloads in progress">
       {downloads.map((d) => (
@@ -77,6 +151,54 @@ function RecordButton({ onStatus }: { onStatus: (text: string | null) => void })
   );
 }
 
+/** Record the screen under the pointer: MP4, or a short GIF. */
+function ScreenRecButtons({ onStatus }: { onStatus: (text: string | null) => void }) {
+  const rec = useShelf((s) => s.screenRec);
+  const recording = rec.startedAt != null;
+  const start = (gif: boolean) =>
+    void ipc.screenrecStart(gif).then(
+      () =>
+        onStatus(
+          gif
+            ? "Recording a GIF of this screen (up to 30 s). Press stop to save it here."
+            : "Recording this screen. Press stop to save it here.",
+        ),
+      (e) => onStatus(message(e)),
+    );
+  if (recording)
+    return (
+      <IconButton
+        icon={Square}
+        label={rec.gif ? "Stop and save the GIF" : "Stop and save the screen recording"}
+        size="sm"
+        active
+        onClick={() => {
+          onStatus("Saving…");
+          void ipc.screenrecStop().then(
+            () => onStatus(null),
+            (e) => onStatus(message(e)),
+          );
+        }}
+      />
+    );
+  return (
+    <>
+      <IconButton
+        icon={Clapperboard}
+        label="Record the screen (MP4)"
+        size="sm"
+        onClick={() => start(false)}
+      />
+      <IconButton
+        icon={Film}
+        label="Record a short GIF of the screen"
+        size="sm"
+        onClick={() => start(true)}
+      />
+    </>
+  );
+}
+
 export function ShelfView() {
   const items = useShelf((s) => s.snapshot?.items ?? []);
   const dropHover = useShelf((s) => s.dropHover);
@@ -126,6 +248,7 @@ export function ShelfView() {
                     <Smartphone size={14} aria-hidden /> Receive from phone
                   </Button>
                   <RecordButton onStatus={setStatus} />
+                  <ScreenRecButtons onStatus={setStatus} />
                 </span>
               )
             }
@@ -155,6 +278,7 @@ export function ShelfView() {
           />
         )}
         <RecordButton onStatus={setStatus} />
+        <ScreenRecButtons onStatus={setStatus} />
         <IconButton
           icon={Smartphone}
           label={
@@ -256,6 +380,13 @@ function ShelfRow({
               />
             </>
           )}
+          <IconButton
+            icon={item.pinned ? PinOff : Pin}
+            label={item.pinned ? `Let ${item.name} go with the clean-up` : `Keep ${item.name} on the shelf`}
+            size="sm"
+            active={item.pinned}
+            onClick={() => run(ipc.shelfPin(item.id, !item.pinned))}
+          />
           <IconButton
             icon={X}
             label={`Remove ${item.name} from the shelf`}

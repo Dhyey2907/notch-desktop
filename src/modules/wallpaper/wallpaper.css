@@ -1,0 +1,174 @@
+/* The wallpaper picker: a row of tall rounded cards; the one under the pointer opens wide. */
+.walls {
+  position: relative;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.walls__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 28px;
+}
+
+.walls__status {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.walls__strip {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 2px 2px 6px;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+}
+
+.wall {
+  position: relative;
+  flex: 0 0 64px;
+  min-height: 0;
+  border-radius: 16px;
+  overflow: hidden;
+  transition:
+    flex-basis 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 200ms ease;
+}
+
+/* The card under the pointer (or focused) opens to a landscape preview. */
+.wall:hover,
+.wall:focus-within {
+  flex-basis: 236px;
+}
+
+.wall__pick {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+}
+
+.wall__pick:focus-visible {
+  outline: 2px solid var(--info);
+  outline-offset: -2px;
+  border-radius: 16px;
+}
+
+.wall__pick img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: filter 200ms ease;
+}
+
+.wall:not(:hover) .wall__pick img {
+  filter: saturate(0.85) brightness(0.9);
+}
+
+.wall--current {
+  box-shadow: 0 0 0 2px var(--info);
+}
+
+.wall--busy .wall__pick img {
+  filter: brightness(0.6);
+}
+
+.wall__loading {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    110deg,
+    rgba(255, 255, 255, 0.04) 30%,
+    rgba(255, 255, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0.04) 70%
+  );
+  background-size: 200% 100%;
+  animation: wall-shimmer 1.4s linear infinite;
+}
+
+@keyframes wall-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.wall__check {
+  position: absolute;
+  left: 7px;
+  bottom: 7px;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--info);
+  color: #fff;
+  pointer-events: none;
+}
+
+.wall__remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.62);
+  color: #fff;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.wall:hover .wall__remove,
+.wall__remove:focus-visible {
+  opacity: 1;
+}
+
+.walls__drop {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border: 2px dashed var(--info);
+  border-radius: 16px;
+  background: rgba(10, 10, 14, 0.82);
+  color: var(--text-primary);
+  font-weight: 600;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wall,
+  .wall__pick img,
+  .walls__strip {
+    transition: none;
+    scroll-behavior: auto;
+  }
+  .wall__loading {
+    animation: none;
+  }
+}

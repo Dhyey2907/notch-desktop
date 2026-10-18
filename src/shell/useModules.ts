@@ -7,6 +7,7 @@ import { MODULES } from "../modules/registry";
 import type { ModuleContext, NotchModule } from "../modules/types";
 import { useSettings } from "../settings";
 import { moduleSettings } from "../settings/settingsStore";
+import { activeDock } from "./dockProfiles";
 import { createModuleStore } from "./moduleStore";
 
 /** App-wide module navigation store. */
@@ -28,26 +29,39 @@ export function dockOrder<T extends { id: string }>(modules: readonly T[], order
     .map(({ m }) => m);
 }
 
-/** Modules the user has enabled, in dock order. */
+/** Modules the user has enabled, in dock order (the active dock profile's). */
 export function useEnabledModules(): readonly NotchModule[] {
   const settings = useSettings((s) => s.settings);
   return useMemo(
     () =>
       dockOrder(
         MODULES.filter((m) => isModuleEnabled(m, settings)),
-        settings?.dock.order ?? [],
+        settings ? activeDock(settings.dock).order : [],
       ),
     [settings],
   );
 }
 
+/** Save a new dock order: to the profile in use, or the main dock. */
+export async function saveDockOrder(order: string[]) {
+  await useSettings.getState().update((s) => {
+    const active = s.dock.profiles.find((p) => p.id === s.dock.active);
+    if (!active) return { ...s, dock: { ...s.dock, order } };
+    return {
+      ...s,
+      dock: { ...s.dock, profiles: s.dock.profiles.map((p) => (p.id === active.id ? { ...p, order } : p)) },
+    };
+  });
+}
+
 /** Enabled modules shown in the dock (some can be hidden from it but stay on). */
 export function useDockModules(): readonly NotchModule[] {
   const enabled = useEnabledModules();
-  const hidden = useSettings((s) => s.settings?.dock.hidden);
+  const hidden = useSettings((s) => (s.settings ? activeDock(s.settings.dock).hidden : undefined));
   return useMemo(() => {
-    const shown = enabled.filter((m) => !hidden?.includes(m.id));
-    return shown.length > 0 ? shown : enabled;
+    const dockable = enabled.filter((m) => !m.dockless);
+    const shown = dockable.filter((m) => !hidden?.includes(m.id));
+    return shown.length > 0 ? shown : dockable;
   }, [enabled, hidden]);
 }
 

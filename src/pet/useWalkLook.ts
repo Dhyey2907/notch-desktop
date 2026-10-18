@@ -7,8 +7,9 @@ import { useEffect, useRef } from "react";
 import { isLeadIsland } from "../core/window";
 import { useSettings } from "../settings";
 import { inQuietHours } from "../shell/behavior";
-import { lineFor, maySpeak, type BuddyEvent } from "./lines";
-import type { Face, Prop } from "./petState";
+import { lineFor, maySpeak, type LineEvent } from "./lines";
+import { COLLAR_STREAK, currentStreak, FETCH_FILLS, feed, fetched, hungerOf, played } from "./petLife";
+import type { Face, Outfit, Prop } from "./petState";
 import { lovePet, usePetLive } from "./petStore";
 import { usePetLook } from "./usePetLook";
 
@@ -19,10 +20,35 @@ export const WALK_LOOK_EVENT = "pet-walk-look";
 export const WALK_HELLO_EVENT = "pet-walk-hello";
 /** Walking pet → island: you clicked it (a treat). */
 export const WALK_TREAT_EVENT = "pet-walk-treat";
+/** Island → walking pet: play fetch, cheer, wake up, or do a trick. */
+export const WALK_PLAY_EVENT = "pet-walk-play";
+/** Walking pet → island: something happened while you played with it. */
+export const WALK_DID_EVENT = "pet-walk-did";
+
+export interface WalkPlay {
+  kind: "fetch" | "celebrate" | "wake" | "trick";
+  trick?: "backflip" | "juggle";
+}
+
+export interface WalkDid {
+  what: "pat" | "fetched" | "dropped" | "dizzy" | "pounce" | "friend";
+}
+
+/** Ask the walking pet to play (it ignores this while it isn't out). */
+export function playOnWalker(play: WalkPlay) {
+  void emitTo(WALK_WINDOW, WALK_PLAY_EVENT, play).catch(() => {});
+}
 
 export interface WalkLook {
   face: Face;
   prop: Prop;
+  outfit?: Outfit;
+  /** A hat it unlocked ("" = none). */
+  hat?: string;
+  /** A week of play: a collar tag. */
+  collar?: boolean;
+  /** Too hungry to walk properly. */
+  sulky?: boolean;
   /** What it's saying (shown in the cloud for `holdMs`, or a few seconds, after `at`). */
   line: { text: string; at: number; holdMs?: number } | null;
 }
@@ -49,9 +75,16 @@ export function useWalkLook() {
   const lastProp = useRef<Prop | null>(null);
   const face = look?.face;
   const prop = look?.prop;
+  const outfit = look?.outfit;
+  const hat = useSettings((s) => s.settings?.pet.hat ?? "");
+  const collar = useSettings((s) => {
+    const p = s.settings?.pet;
+    return !!p && currentStreak(p.streakDays, p.lastPlayDay, new Date()) >= COLLAR_STREAK;
+  });
+  const sulky = useSettings((s) => !!s.settings?.pet.hunger && hungerOf(s.settings.pet.fullness) === "sulky");
 
   /** `timed`: the message you asked for every few minutes, which doesn't wait for a quiet spell. */
-  const say = (event: BuddyEvent, timed = false) => {
+  const say = (event: LineEvent, timed = false) => {
     const s = useSettings.getState().settings;
     if (!s?.pet.talk) return;
     const now = Date.now();
@@ -71,10 +104,14 @@ export function useWalkLook() {
     latest.current = {
       face,
       prop,
+      outfit,
+      hat,
+      collar,
+      sulky,
       line: lineText ? { text: lineText, at: lineAt, holdMs: lineHold } : null,
     };
     if (walking) void emitTo(WALK_WINDOW, WALK_LOOK_EVENT, latest.current).catch(() => {});
-  }, [lead, face, prop, walking, lineText, lineAt, lineHold]);
+  }, [lead, face, prop, outfit, hat, collar, sulky, walking, lineText, lineAt, lineHold]);
 
   // Treats: you clicked the pet on the taskbar.
   useEffect(() => {
@@ -91,7 +128,13 @@ export function useWalkLook() {
         unsaved = 0;
         void useSettings.getState().update((s) => ({
           ...s,
-          pet: { ...s.pet, treats: s.pet.treats + add, xp: s.pet.xp + add },
+          pet: {
+            ...s.pet,
+            treats: s.pet.treats + add,
+            xp: s.pet.xp + add,
+            fullness: feed(s.pet.fullness, add * 12),
+            ...played(s.pet.streakDays, s.pet.lastPlayDay, new Date()),
+          },
         }));
       }, SAVE_TREATS_AFTER_MS);
     });
@@ -99,6 +142,35 @@ export function useWalkLook() {
       window.clearTimeout(saveTimer);
       void off.then((f) => f());
     };
+  }, [lead]);
+
+  // Playing with it on the taskbar: petting, fetch, a drop, a dizzy spell, a pounce, a friend.
+  useEffect(() => {
+    if (!lead) return;
+    const off = listen<WalkDid>(WALK_DID_EVENT, ({ payload }) => {
+      const { what } = payload;
+      if (what === "pat") lovePet();
+      say(what);
+      if (what !== "pat" && what !== "fetched") return;
+      void useSettings.getState().update((s) => {
+        const now = new Date();
+        const streak = played(s.pet.streakDays, s.pet.lastPlayDay, now);
+        if (what === "pat") return { ...s, pet: { ...s.pet, pats: s.pet.pats + 1, ...streak } };
+        const f = fetched(s.pet.fetchesToday, s.pet.fetchDay, now);
+        return {
+          ...s,
+          pet: {
+            ...s.pet,
+            ...streak,
+            fetchesToday: f.fetchesToday,
+            fetchDay: f.fetchDay,
+            xp: s.pet.xp + f.xp,
+            fullness: feed(s.pet.fullness, FETCH_FILLS),
+          },
+        };
+      });
+    });
+    return () => void off.then((f) => f());
   }, [lead]);
 
   useEffect(() => {

@@ -184,10 +184,34 @@ pub struct AppearanceSettings {
     pub accent: String,
     /// Tint highlights with the playing album's colors instead.
     pub accent_from_music: bool,
+    /// Take the accent from the desktop wallpaper.
+    pub accent_from_wallpaper: bool,
     /// Logical px left (−) or right (+) of center.
     pub offset_x: i32,
-    /// Logical px down from the top edge.
+    /// Logical px down from the top edge (up from the bottom on the bottom edge).
     pub offset_y: u32,
+    /// Which screen edge the notch sits on.
+    pub edge: ScreenEdge,
+    /// Slide out of the way of these apps' tabs and toolbars when they're maximized under the
+    /// notch (exe names, e.g. "chrome.exe").
+    pub slide_aside: Vec<String>,
+    /// Also slide aside for any maximized browser.
+    pub slide_aside_browsers: bool,
+    /// Fade the resting bubble while you type just below it.
+    pub fade_while_typing: bool,
+    /// Draw next meeting, weather, music and unread mail onto the lock-screen picture.
+    pub lockscreen_info: bool,
+}
+
+/// The screen edge the notch sits on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum ScreenEdge {
+    #[default]
+    Top,
+    /// Just above the taskbar.
+    Bottom,
 }
 
 impl Default for AppearanceSettings {
@@ -202,8 +226,14 @@ impl Default for AppearanceSettings {
             roundness: 100,
             accent: String::new(),
             accent_from_music: false,
+            accent_from_wallpaper: false,
             offset_x: 0,
             offset_y: 0,
+            edge: ScreenEdge::Top,
+            slide_aside: Vec::new(),
+            slide_aside_browsers: false,
+            fade_while_typing: false,
+            lockscreen_info: false,
         }
     }
 }
@@ -313,6 +343,20 @@ pub struct ShortcutSettings {
     pub pin: String,
     /// Quick capture: type a task, reminder, note, event or link from anywhere.
     pub capture: String,
+    /// The command palette: run anything by typing.
+    pub palette: String,
+    /// A quick note from anywhere.
+    pub note: String,
+    /// Paste the next item of the paste stack.
+    pub paste_next: String,
+    /// The window switcher: every window as a live view.
+    pub switcher: String,
+    /// Cover every screen with a blur (privacy).
+    pub blur: String,
+    /// Explain what's on screen (the window in front, with its picture).
+    pub explain: String,
+    /// Rewrite the selected text in any app.
+    pub rewrite: String,
 }
 
 impl Default for ShortcutSettings {
@@ -324,6 +368,13 @@ impl Default for ShortcutSettings {
             grab: "Ctrl+Alt+G".into(),
             pin: "Ctrl+Alt+P".into(),
             capture: "Ctrl+Alt+Space".into(),
+            palette: "Ctrl+Alt+K".into(),
+            note: "Ctrl+Alt+J".into(),
+            paste_next: "Ctrl+Alt+Shift+V".into(),
+            switcher: "Ctrl+Alt+W".into(),
+            blur: "Ctrl+Alt+B".into(),
+            explain: "Ctrl+Alt+E".into(),
+            rewrite: "Ctrl+Alt+R".into(),
         }
     }
 }
@@ -350,6 +401,36 @@ pub struct DockSettings {
     #[ts(optional)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub first: Option<String>,
+    /// Other docks (work, gaming, study…), each with its own order and hidden icons.
+    pub profiles: Vec<DockProfile>,
+    /// The profile in use ("" = the main dock above).
+    pub active: String,
+    /// Switch profiles by themselves, from the app in front and the time of day.
+    pub auto: bool,
+    /// A small widget always shown beside the resting bubble (timer, media, meeting…).
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pinned: Option<String>,
+}
+
+/// A dock for one kind of work.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export)]
+pub struct DockProfile {
+    pub id: String,
+    pub name: String,
+    pub order: Vec<String>,
+    pub hidden: Vec<String>,
+    /// Programs (exe names, e.g. "steam") that switch to it while they're in front.
+    pub apps: Vec<String>,
+    /// Hours it's for (minutes after midnight); may wrap past midnight.
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub from_min: Option<u32>,
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub to_min: Option<u32>,
 }
 
 /// Home dashboard tiles and units.
@@ -447,6 +528,8 @@ pub struct HudSettings {
     pub no_charge_alert: bool,
     /// Percent for the unplug reminder (0 = the default, 80).
     pub charge_alert_at: u8,
+    /// Monthly data cap in GB for the usage meter's warnings (0 = no cap).
+    pub data_cap_gb: u32,
 }
 
 /// Clipboard history: pause it, or never keep copies from some apps (by exe name).
@@ -463,6 +546,13 @@ pub struct ClipboardSettings {
     pub no_link_cleaning: bool,
     /// Turn text snippets off (the keyboard hook stops).
     pub no_snippets: bool,
+    /// How long files stay on the shelf unless pinned: "day" (default, also ""), "week" or
+    /// "forever".
+    pub shelf_keep: String,
+    /// Don't copy sign-in codes from phone notifications.
+    pub no_phone_codes: bool,
+    /// Don't put new screenshots (Win+Shift+S, Print Screen) on the shelf.
+    pub no_screenshots: bool,
 }
 
 /// Your day: the workday hours and the morning plan.
@@ -482,6 +572,11 @@ pub struct DaySettings {
     /// The AI day planner may see today's Google Calendar meetings and Classroom deadlines
     /// (titles and times). Off until the user turns it on (Google's Limited Use policy).
     pub share_google: bool,
+    /// The evening review: a card summing up your day, at this time (minutes after midnight).
+    pub review_at: u32,
+    pub no_review: bool,
+    /// No morning briefing card.
+    pub no_briefing: bool,
 }
 
 impl Default for DaySettings {
@@ -493,6 +588,9 @@ impl Default for DaySettings {
             no_auto_plan: false,
             no_workday_bar: false,
             share_google: false,
+            review_at: 21 * 60,
+            no_review: false,
+            no_briefing: false,
         }
     }
 }
@@ -576,6 +674,22 @@ pub struct PetSettings {
     pub treats: u32,
     /// Called out of the notch: it walks the taskbar until it goes back.
     pub buddy_out: bool,
+    /// Play on the taskbar: fetch, chasing the cursor, being picked up and petted.
+    pub play: bool,
+    /// It gets hungry over the day (gently) and treats fill it up.
+    pub hunger: bool,
+    /// 0 (starving) to 100 (full).
+    pub fullness: u32,
+    /// Now and then a friend walks by.
+    pub friends: bool,
+    /// The hat it wears ("" = none); hats unlock with its level.
+    pub hat: String,
+    /// Days in a row you played with it, and the last such day (YYYY-MM-DD).
+    pub streak_days: u32,
+    pub last_play_day: String,
+    /// Fetches today (only the first few give xp), and that day.
+    pub fetches_today: u32,
+    pub fetch_day: String,
     /// No longer used (the pet isn't placed on the desktop any more); kept so older settings load.
     #[ts(optional)]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -615,11 +729,23 @@ impl Default for PetSettings {
             xp: 0,
             treats: 0,
             buddy_out: false,
+            play: true,
+            hunger: true,
+            fullness: 80,
+            friends: true,
+            hat: String::new(),
+            streak_days: 0,
+            last_play_day: String::new(),
+            fetches_today: 0,
+            fetch_day: String::new(),
             buddy_x: None,
             buddy_y: None,
         }
     }
 }
+
+/// Hats the pet can wear ("" = none); they unlock with its level (see src/pet/unlocks.ts).
+pub const PET_HATS: [&str; 6] = ["", "cap", "party", "crown", "wizard", "bow"];
 
 pub const PET_TONES: [&str; 7] = [
     "cheerful",
@@ -689,6 +815,25 @@ pub struct FunSettings {
 #[ts(export)]
 pub struct DeskSettings {
     pub routines: Vec<crate::desk::Routine>,
+    /// Don't learn app habits or offer routines from them.
+    pub no_habit_routines: bool,
+    /// Notes pinned on the desktop.
+    pub stickies: Vec<crate::desk::sticky::Sticky>,
+}
+
+/// Wallpapers: the folder shown under "My folder", the screen(s) a click changes, and the
+/// pictures applied lately.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export)]
+pub struct WallpaperSettings {
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub folder: Option<String>,
+    /// `all` (or empty) for every screen, else a screen id.
+    pub target: String,
+    /// Most recently applied first.
+    pub recent: Vec<String>,
 }
 
 /// Developer tools.
@@ -702,6 +847,8 @@ pub struct DevSettings {
     pub no_server_alerts: bool,
     /// Don't count coding time.
     pub no_coding_tracker: bool,
+    /// Warn when today's estimated Claude Code spend passes 80% / 100% of this (whole USD; 0 = off).
+    pub claude_daily_cap_usd: u32,
 }
 
 /// The password vault in the user's Obsidian vault.
@@ -769,6 +916,9 @@ pub struct Settings {
     pub pet: PetSettings,
     pub ai: AiSettings,
     pub fun: FunSettings,
+    pub wallpaper: WallpaperSettings,
+    /// Sleep and wake times.
+    pub power: crate::powerplan::PowerSchedule,
 }
 
 impl Settings {
@@ -841,6 +991,17 @@ impl Settings {
         if self.vault.clear_secs > 600 || self.vault.folder.as_ref().is_some_and(|f| f.len() > 1000) {
             return Err(AppError::InvalidInput("invalid vault settings".into()));
         }
+        if self.wallpaper.recent.len() > crate::wallpaper::MAX_RECENT
+            || self
+                .wallpaper
+                .recent
+                .iter()
+                .chain(self.wallpaper.folder.iter())
+                .chain(std::iter::once(&self.wallpaper.target))
+                .any(|p| p.chars().count() > crate::wallpaper::MAX_PATH_CHARS)
+        {
+            return Err(AppError::InvalidInput("invalid wallpaper settings".into()));
+        }
         if self.desk.routines.len() > crate::desk::MAX_ROUTINES
             || self
                 .desk
@@ -867,6 +1028,10 @@ impl Settings {
             || !PET_TONES.contains(&pet.tone.as_str())
             || !["quiet", "normal", "chatty"].contains(&pet.chattiness.as_str())
             || pet.born.len() > 10
+            || pet.fullness > 100
+            || !PET_HATS.contains(&pet.hat.as_str())
+            || pet.last_play_day.len() > 10
+            || pet.fetch_day.len() > 10
         {
             return Err(AppError::InvalidInput("invalid pet settings".into()));
         }
@@ -885,6 +1050,7 @@ impl Settings {
             || d.start_min >= d.end_min
             || d.work_days.len() > 7
             || d.work_days.iter().any(|w| !(1..=7).contains(w))
+            || d.review_at >= 24 * 60
         {
             return Err(AppError::InvalidInput("invalid workday".into()));
         }
@@ -907,11 +1073,22 @@ impl Settings {
         if self.hud.charge_alert_at > 100 {
             return Err(AppError::InvalidInput("invalid charge level".into()));
         }
+        if self.desk.stickies.len() > crate::desk::sticky::MAX_STICKIES
+            || !self.desk.stickies.iter().all(crate::desk::sticky::valid)
+        {
+            return Err(AppError::InvalidInput("invalid sticky notes".into()));
+        }
+        if !self.power.valid() {
+            return Err(AppError::InvalidInput("invalid power schedule".into()));
+        }
         let a = &self.appearance;
         if !(40..=100).contains(&a.opacity)
             || a.roundness > 100
-            || !(-800..=800).contains(&a.offset_x)
+            // Presets push to ±4000 and placement clamps to the screen's edges.
+            || !(-4000..=4000).contains(&a.offset_x)
             || a.offset_y > 80
+            || a.slide_aside.len() > 30
+            || a.slide_aside.iter().any(|e| e.is_empty() || e.len() > 80)
             || !(a.accent.is_empty() || valid_hex_color(&a.accent))
         {
             return Err(AppError::InvalidInput("invalid look settings".into()));
@@ -926,9 +1103,23 @@ impl Settings {
             return Err(AppError::InvalidInput("invalid behavior settings".into()));
         }
         let k = &self.shortcuts;
-        if [&k.open, &k.ask, &k.clipboard, &k.grab, &k.pin, &k.capture]
-            .iter()
-            .any(|s| s.len() > 40)
+        if [
+            &k.open,
+            &k.ask,
+            &k.clipboard,
+            &k.grab,
+            &k.pin,
+            &k.capture,
+            &k.palette,
+            &k.note,
+            &k.paste_next,
+            &k.switcher,
+            &k.blur,
+            &k.explain,
+            &k.rewrite,
+        ]
+        .iter()
+        .any(|s| s.len() > 40)
         {
             return Err(AppError::InvalidInput("invalid shortcut".into()));
         }
@@ -943,6 +1134,23 @@ impl Settings {
             || ids.any(|id| !valid_id(id))
         {
             return Err(AppError::InvalidInput("invalid dock or home settings".into()));
+        }
+        let dock = &self.dock;
+        if dock.profiles.len() > 8
+            || !(dock.active.is_empty() || dock.profiles.iter().any(|p| p.id == dock.active))
+            || dock.pinned.as_ref().is_some_and(|p| !valid_id(p))
+            || dock.profiles.iter().any(|p| {
+                !valid_id(&p.id)
+                    || p.name.chars().count() > 30
+                    || p.order.len() + p.hidden.len() > 120
+                    || p.order.iter().chain(&p.hidden).any(|id| !valid_id(id))
+                    || p.apps.len() > 20
+                    || p.apps.iter().any(|a| a.len() > 80)
+                    || p.from_min.is_some_and(|m| m >= 24 * 60)
+                    || p.to_min.is_some_and(|m| m >= 24 * 60)
+            })
+        {
+            return Err(AppError::InvalidInput("invalid dock profiles".into()));
         }
         if self.calendar.reminder_minutes > 120 {
             return Err(AppError::InvalidInput("reminder lead is too long".into()));

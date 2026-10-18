@@ -9,6 +9,9 @@ const DAY = {
   noAutoPlan: false,
   noWorkdayBar: false,
   shareGoogle: false,
+  reviewAt: 1260,
+  noReview: false,
+  noBriefing: false,
 };
 // Thursday 1 October 2026.
 const at = (d: number, h: number, m = 0) => new Date(2026, 9, d, h, m);

@@ -15,4 +15,32 @@ pin: string,
 /**
  * Quick capture: type a task, reminder, note, event or link from anywhere.
  */
-capture: string, };
+capture: string, 
+/**
+ * The command palette: run anything by typing.
+ */
+palette: string, 
+/**
+ * A quick note from anywhere.
+ */
+note: string, 
+/**
+ * Paste the next item of the paste stack.
+ */
+pasteNext: string, 
+/**
+ * The window switcher: every window as a live view.
+ */
+switcher: string, 
+/**
+ * Cover every screen with a blur (privacy).
+ */
+blur: string, 
+/**
+ * Explain what's on screen (the window in front, with its picture).
+ */
+explain: string, 
+/**
+ * Rewrite the selected text in any app.
+ */
+rewrite: string, };

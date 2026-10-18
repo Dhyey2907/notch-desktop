@@ -10,10 +10,12 @@ import { useDay } from "../modules/day/dayStore";
 import { useMedia } from "../modules/media/mediaStore";
 import { brandOf } from "../modules/media/mediaTheme";
 import { useSettings } from "../settings";
+import { hungerOf } from "./petLife";
 import { petLook, type PetLook } from "./petState";
 import { usePetLive } from "./petStore";
 
 const IDLE_CHECK_MS = 60_000;
+const CODING_STATS_MS = 5 * 60_000;
 /** How often to look whether a code editor or terminal is in front. */
 const CODING_CHECK_MS = 8_000;
 const BUSY_MEETINGS = 4;
@@ -35,6 +37,18 @@ export function usePetLook(): (PetLook & { name: string; color: string }) | null
   const [editing, setEditing] = useState<"here" | "elsewhere" | "none">("none");
 
   const [mediaPlace, setMediaPlace] = useState<"here" | "elsewhere" | "unknown">("unknown");
+  const [codingMinutes, setCodingMinutes] = useState(0);
+
+  useEffect(() => {
+    const check = () =>
+      ipc.codingStats().then(
+        (stats) => setCodingMinutes(stats.today.reduce((sum, p) => sum + p.minutes, 0)),
+        () => {},
+      );
+    void check();
+    const id = window.setInterval(() => void check(), CODING_STATS_MS);
+    return () => window.clearInterval(id);
+  }, []);
 
   useEffect(() => {
     const check = () =>
@@ -107,6 +121,8 @@ export function usePetLook(): (PetLook & { name: string; color: string }) | null
     weather,
     battery: power ? { percent: power.percent, plugged: power.plugged } : null,
     busyDay: meetingsToday >= BUSY_MEETINGS || deadlineSoon,
+    codingMinutesToday: codingMinutes,
+    hunger: hungerOf(pet.fullness),
     settings: pet,
   });
   return { ...look, name: pet.name.trim() || "Pet", color: pet.color };

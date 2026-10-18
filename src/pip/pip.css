@@ -1,0 +1,85 @@
+/* Picture-in-picture: the live view fills the window; the bar shows on hover. */
+html.pip-window,
+html.pip-window body {
+  margin: 0;
+  overflow: hidden;
+  background: #000;
+}
+
+.pip {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  color: #fff;
+  font:
+    12px/1.2 system-ui,
+    sans-serif;
+}
+
+/* Windows draws the live view over this box, so the bar keeps its own strip above it. */
+.pip__view {
+  position: absolute;
+  inset: 30px 0 0;
+}
+
+.pip__bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  box-sizing: border-box;
+  padding: 3px 6px;
+  background: #111;
+}
+
+.pip__title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.85;
+}
+
+.pip__bar button {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  cursor: pointer;
+}
+
+.pip__bar button[aria-pressed="true"] {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.pip__crop {
+  position: absolute;
+  inset: 30px 0 0;
+  cursor: crosshair;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.pip__crop-box {
+  position: absolute;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
+}
+
+.pip__crop-hint {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.6);
+}

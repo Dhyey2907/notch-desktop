@@ -4,12 +4,13 @@ import { ArrowDown, ArrowLeft, ArrowUp, Gauge, Timer } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import type { AppTraffic } from "../../core/generated/AppTraffic";
+import type { DataUsage } from "../../core/generated/DataUsage";
 import type { SpeedTest } from "../../core/generated/SpeedTest";
 import { eventBus } from "../../core/eventBus";
 import { ipc, isIpcError } from "../../core/ipc";
-import { Button, IconButton } from "../../design/components";
+import { Button, IconButton, Progress } from "../../design/components";
 import { useMinuteClock } from "../clipboard/useMinuteClock";
-import { formatSpeed, speedTestLine } from "./format";
+import { formatBytes, formatSpeed, speedTestLine } from "./format";
 
 const APPS_EVERY_MS = 2000;
 
@@ -101,6 +102,8 @@ export function NetworkPanel({ onBack }: { onBack: () => void }) {
         </p>
       </div>
 
+      <DataUsed />
+
       <div className="control-card network__apps">
         <div className="control-card__head">
           <span className="control-card__name">Using the internet now</span>
@@ -153,5 +156,48 @@ function Result({
       </span>
       <span className="network__result-value">{busy ? "…" : (value ?? "—")}</span>
     </span>
+  );
+}
+
+/** Data used today and this month (counted while Overline runs), against the cap if one is set. */
+function DataUsed() {
+  const [usage, setUsage] = useState<DataUsage | null>(null);
+  useEffect(() => {
+    let live = true;
+    ipc.controlDataUsage().then(
+      (u) => live && setUsage(u),
+      () => {},
+    );
+    return () => {
+      live = false;
+    };
+  }, []);
+  if (!usage) return null;
+  const month = usage.monthDown + usage.monthUp;
+  const cap = usage.capGb * 1e9;
+  return (
+    <div className="control-card network__usage">
+      <div className="control-card__head">
+        <span className="control-card__name">Data used</span>
+      </div>
+      <p className="network__usage-line">
+        Today <strong>{formatBytes(usage.todayDown + usage.todayUp)}</strong>
+        <span className="control-card__sub network__usage-split">
+          ↓ {formatBytes(usage.todayDown)} · ↑ {formatBytes(usage.todayUp)}
+        </span>
+      </p>
+      <p className="network__usage-line">
+        This month <strong>{formatBytes(month)}</strong>
+        {usage.capGb > 0 && <span className="control-card__sub"> of {usage.capGb} GB</span>}
+      </p>
+      {usage.capGb > 0 && (
+        <Progress
+          value={month}
+          max={cap}
+          label="Data cap used"
+          tone={month >= cap * 0.8 ? "warning" : "neutral"}
+        />
+      )}
+    </div>
   );
 }

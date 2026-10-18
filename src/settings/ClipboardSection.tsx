@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { ipc } from "../core/ipc";
 import { Button, ConfirmButton, IconButton, Surface, Switch, TextField } from "../design/components";
 import { useSettings } from ".";
+import { Row, Select } from "./controls";
 import { exeName } from "./clipboardApps";
 import { pageLead } from "./searchIndex";
 import { Section } from "./Section";
@@ -22,6 +23,9 @@ export function ClipboardSection() {
     blockedApps?: string[];
     noSuggestions?: boolean;
     noLinkCleaning?: boolean;
+    shelfKeep?: string;
+    noPhoneCodes?: boolean;
+    noScreenshots?: boolean;
   }) =>
     void useSettings
       .getState()
@@ -61,6 +65,39 @@ export function ClipboardSection() {
           checked={!clipboard?.noLinkCleaning}
           onChange={(on) => save({ noLinkCleaning: !on })}
         />
+        <div id="setting-copy-sign-in-codes-from-the-phone">
+          <Switch
+            label="Copy sign-in codes from the phone"
+            description="A code in a phone notification (an OTP, a verification code) is copied for you — kept out of clipboard history and cleared after 30 seconds."
+            checked={!clipboard?.noPhoneCodes}
+            onChange={(on) => save({ noPhoneCodes: !on })}
+          />
+        </div>
+        <div id="setting-screenshots-to-the-shelf">
+          <Switch
+            label="Screenshots to the shelf"
+            description="Each new screenshot (Win+Shift+S, Print Screen) lands on the shelf, with Copy text, Mark up and To phone."
+            checked={!clipboard?.noScreenshots}
+            onChange={(on) => save({ noScreenshots: !on })}
+          />
+        </div>
+        <div id="setting-keep-shelf-files">
+          <Row
+            label="Keep shelf files"
+            description="Files you drop on the notch leave the shelf after this (pinned ones stay). The files themselves aren't touched."
+          >
+            <Select
+              label="Keep shelf files"
+              value={clipboard?.shelfKeep || "day"}
+              options={[
+                { value: "day", label: "For a day" },
+                { value: "week", label: "For a week" },
+                { value: "forever", label: "Until I remove them" },
+              ]}
+              onChange={(shelfKeep) => save({ shelfKeep })}
+            />
+          </Row>
+        </div>
       </Surface>
       <SnippetsSetting />
       <p className="settings__note">

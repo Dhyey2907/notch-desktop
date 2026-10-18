@@ -212,6 +212,30 @@ export function PetSection() {
           checked={pet.petting}
           onChange={(petting) => set({ petting })}
         />
+        <div id="setting-play-on-the-taskbar">
+          <Switch
+            label="Play on the taskbar"
+            description={`Double-click ${name} for fetch, rub it to pet it, pick it up and drop it, and it sneaks up on a cursor resting near it.`}
+            checked={pet.play}
+            onChange={(play) => set({ play })}
+          />
+        </div>
+        <div id="setting-gets-hungry">
+          <Switch
+            label="Gets hungry"
+            description={`Slowly, while you're at the PC. Treats and fetch fill it up; very hungry, ${name} sulks and only comes out when you call it.`}
+            checked={pet.hunger}
+            onChange={(hunger) => set({ hunger })}
+          />
+        </div>
+        <div id="setting-friends-visit">
+          <Switch
+            label="Friends visit"
+            description={`Now and then a friend walks by and waves while ${name} is out.`}
+            checked={pet.friends}
+            onChange={(friends) => set({ friends })}
+          />
+        </div>
       </Surface>
 
       <h2 id="setting-where-it-shows" className="settings__subhead">

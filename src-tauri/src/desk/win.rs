@@ -265,6 +265,65 @@ pub fn move_thumbnail(id: isize, area: (i32, i32, i32, i32)) -> AppResult<()> {
     unsafe { DwmUpdateThumbnailProperties(id, &props) }.map_err(|e| AppError::Platform(e.to_string()))
 }
 
+/// Show part of the source (`crop`: left, top, width, height as fractions of the window) inside
+/// `area` (physical pixels in our window), keeping its shape. Returns the source size.
+pub fn crop_thumbnail(
+    id: isize,
+    area: (i32, i32, i32, i32),
+    crop: (f64, f64, f64, f64),
+    opacity: u8,
+) -> AppResult<(i32, i32)> {
+    use windows::Win32::Graphics::Dwm::DWM_TNP_RECTSOURCE;
+    // SAFETY: querying a thumbnail we registered.
+    let (sw, sh) = unsafe { DwmQueryThumbnailSourceSize(id) }
+        .map(|s| (s.cx, s.cy))
+        .map_err(|e| AppError::Platform(e.to_string()))?;
+    let source = crop_rect((sw, sh), crop);
+    let (left, top, right, bottom) = fit(area, (source.2 - source.0, source.3 - source.1));
+    let props = DWM_THUMBNAIL_PROPERTIES {
+        dwFlags: DWM_TNP_RECTDESTINATION
+            | DWM_TNP_RECTSOURCE
+            | DWM_TNP_VISIBLE
+            | DWM_TNP_OPACITY
+            | DWM_TNP_SOURCECLIENTAREAONLY,
+        rcDestination: RECT {
+            left,
+            top,
+            right,
+            bottom,
+        },
+        rcSource: RECT {
+            left: source.0,
+            top: source.1,
+            right: source.2,
+            bottom: source.3,
+        },
+        opacity,
+        fVisible: true.into(),
+        fSourceClientAreaOnly: false.into(),
+    };
+    // SAFETY: updating a thumbnail we registered.
+    unsafe { DwmUpdateThumbnailProperties(id, &props) }.map_err(|e| AppError::Platform(e.to_string()))?;
+    Ok((sw, sh))
+}
+
+/// The pixel rectangle (left, top, right, bottom) of a fractional crop of a `size` window.
+pub fn crop_rect(size: (i32, i32), crop: (f64, f64, f64, f64)) -> (i32, i32, i32, i32) {
+    let c = |v: f64| v.clamp(0.0, 1.0);
+    let (x0, y0) = (c(crop.0), c(crop.1));
+    let (x1, y1) = (
+        c(crop.0 + crop.2).max(x0 + 0.02),
+        c(crop.1 + crop.3).max(y0 + 0.02),
+    );
+    let px = |f: f64, n: i32| (f * f64::from(n)).round() as i32;
+    (
+        px(x0, size.0),
+        px(y0, size.1),
+        px(x1.min(1.0), size.0),
+        px(y1.min(1.0), size.1),
+    )
+}
+
 pub fn drop_thumbnail(id: isize) {
     // SAFETY: unregistering a thumbnail we registered.
     unsafe {

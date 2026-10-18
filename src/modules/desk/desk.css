@@ -63,3 +63,144 @@
   justify-content: flex-end;
   margin-top: auto;
 }
+
+/* Arrange: layouts (mini pictures), the zones on a model screen, then saved workspaces. */
+.arrange {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.arrange__layouts {
+  flex: none;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.arrange__layout {
+  flex: none;
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  padding: 5px 6px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.arrange__layout--on {
+  border-color: var(--active);
+  color: var(--text-primary);
+}
+
+.arrange__mini {
+  position: relative;
+  width: 44px;
+  height: 26px;
+}
+
+.arrange__mini span {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1.5px solid var(--background);
+  border-radius: 3px;
+  background: var(--text-secondary);
+}
+
+.arrange__layout--on .arrange__mini span {
+  background: var(--active);
+}
+
+.arrange__screen {
+  position: relative;
+  flex: none;
+  height: 104px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.arrange__zone {
+  position: absolute;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  padding: 4px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+}
+
+.arrange__zone select,
+.workspaces__name {
+  width: 100%;
+  min-width: 0;
+  height: 26px;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 11px;
+}
+
+.arrange__row {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.arrange__status {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.workspaces {
+  display: grid;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+
+.workspaces__save {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+}
+
+.workspaces__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 4px;
+}
+
+.workspaces__item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.workspaces__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.workspaces__meta {
+  color: var(--text-secondary);
+}

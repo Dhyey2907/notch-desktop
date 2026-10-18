@@ -13,6 +13,24 @@ import type { ReadLaterSnapshot } from "./generated/ReadLaterSnapshot";
 import type { SpeedTest } from "./generated/SpeedTest";
 import type { ClipboardSnapshot } from "./generated/ClipboardSnapshot";
 import type { ShelfSnapshot } from "./generated/ShelfSnapshot";
+import type { WallpaperState } from "./generated/WallpaperState";
+import type { Mixer } from "./generated/Mixer";
+import type { WifiNetwork } from "./generated/WifiNetwork";
+import type { DisplayToggles } from "./generated/DisplayToggles";
+import type { SpotifyNow } from "./generated/SpotifyNow";
+import type { PriceItem } from "./generated/PriceItem";
+import type { RecentDownload } from "./generated/RecentDownload";
+import type { HistoryEntry } from "./generated/HistoryEntry";
+import type { MeetingState } from "./generated/MeetingState";
+import type { PcAnswer } from "./generated/PcAnswer";
+import type { RewriteSession } from "./generated/RewriteSession";
+import type { ScreenRecState } from "./generated/ScreenRecState";
+import type { PowerAction } from "./generated/PowerAction";
+import type { InstalledApp } from "./generated/InstalledApp";
+import type { SystemMonitor } from "./generated/SystemMonitor";
+import type { DiskHealth } from "./generated/DiskHealth";
+import type { DataUsage } from "./generated/DataUsage";
+import type { SessionUsage } from "./generated/SessionUsage";
 import type { AskSnapshot } from "./generated/AskSnapshot";
 import type { BridgeState } from "./generated/BridgeState";
 import type { Dashboard } from "./generated/Dashboard";
@@ -27,6 +45,8 @@ import type { DevServer } from "./generated/DevServer";
 import type { DayPlan } from "./generated/DayPlan";
 import type { DayState } from "./generated/DayState";
 import type { DeskWindow } from "./generated/DeskWindow";
+import type { Workspace } from "./generated/Workspace";
+import type { Zone } from "./generated/Zone";
 import type { GameStatus } from "./generated/GameStatus";
 import type { MailState } from "./generated/MailState";
 import type { Language } from "./generated/Language";
@@ -174,6 +194,8 @@ export const ipc = {
   /** Open a Windows Settings page: nightlight, airplane, wifi, bluetooth, hotspot, battery, radios. */
   controlOpenSettings: (page: string) => invoke<void>("control_open_settings", { page }),
   filesDownloads: () => invoke<DownloadProgress[]>("files_downloads"),
+  /** Downloads finished in the last day, newest first. */
+  filesRecentDownloads: () => invoke<RecentDownload[]>("files_recent_downloads"),
   /** Files opened recently in any app. */
   filesRecent: () => invoke<RecentFile[]>("files_recent"),
   /** Save a copy as PNG/JPG/WebP (it goes on the shelf); returns its path. */
@@ -249,6 +271,22 @@ export const ipc = {
   deskMiniShow: (id: number, left: number, top: number, right: number, bottom: number) =>
     invoke<void>("desk_mini_show", { id, left, top, right, bottom }),
   deskMiniHide: () => invoke<void>("desk_mini_hide"),
+  /** The window switcher's live views (physical pixels in this island). */
+  deskGridShow: (tiles: { id: number; left: number; top: number; right: number; bottom: number }[]) =>
+    invoke<void>("desk_grid_show", { tiles }),
+  deskGridHide: () => invoke<void>("desk_grid_hide"),
+  /** Snap a window into a zone of its screen (fractions of the work area). */
+  deskSnap: (id: number, zone: Zone) => invoke<void>("desk_snap", { id, zone }),
+  workspaceList: () => invoke<Workspace[]>("workspace_list"),
+  /** Show a window live in a small always-on-top picture-in-picture window. */
+  pipOpen: (id: number) => invoke<void>("pip_open", { id }),
+  /** Save every window's place under a name; returns how many windows. */
+  workspaceSave: (name: string) => invoke<number>("workspace_save", { name }),
+  /** Put a workspace back: [windows placed, programs started]. */
+  workspaceRestore: (name: string) => invoke<[number, number]>("workspace_restore", { name }),
+  workspaceDelete: (name: string) => invoke<void>("workspace_delete", { name }),
+  /** After a restart: apps from last session that aren't open (once per run). */
+  workspaceResumeOffer: () => invoke<string[]>("workspace_resume_offer"),
   routineRun: (id: string) => invoke<number>("routine_run", { id }),
   routinePickApp: () => invoke<string | null>("routine_pick_app"),
   routinePickFolder: () => invoke<string | null>("routine_pick_folder"),
@@ -298,6 +336,72 @@ export const ipc = {
   bridgeState: () => invoke<BridgeState | null>("bridge_state"),
   /** Offer files to the phone over Wi-Fi (none: just receive); shows a QR code. */
   bridgeStart: (paths: string[]) => invoke<BridgeState>("bridge_start", { paths }),
+  /** Copy the text in a picture to the clipboard; returns the text. */
+  /** Cover every screen with a blur, or uncover. */
+  blurToggle: () => invoke<void>("blur_toggle"),
+  /** Ask about the window that was in front, with its picture; the answer streams into Ask. */
+  askExplainScreen: () => invoke<string>("ask_explain_screen"),
+  /** Ask about your own files, notes (and Gmail / calendar when allowed for AI). */
+  askPc: (question: string) => invoke<PcAnswer>("ask_pc", { question }),
+  /** Research a topic in the background (a ResearchDone event follows). */
+  researchStart: (topic: string) => invoke<void>("research_start", { topic }),
+  meetingState: () => invoke<MeetingState>("meeting_state"),
+  /** Remember a card the notch showed (private modules keep only the title). */
+  historyAdd: (entry: HistoryEntry) => invoke<void>("history_add", { entry }),
+  /** Cards from the last hours (at most 48), newest first. */
+  historyList: (hours: number) => invoke<HistoryEntry[]>("history_list", { hours }),
+  historyClear: () => invoke<void>("history_clear"),
+  priceList: () => invoke<PriceItem[]>("price_list"),
+  /** Wi-Fi networks nearby (connected, then known, then strongest). */
+  wifiNetworks: () => invoke<WifiNetwork[]>("wifi_networks"),
+  wifiScan: () => invoke<void>("wifi_scan"),
+  /** Join a network this PC already knows. */
+  wifiConnect: (ssid: string) => invoke<void>("wifi_connect", { ssid }),
+  /** Windows' own Wi-Fi list (new networks, passwords). */
+  wifiOpenSettings: () => invoke<void>("wifi_open_settings"),
+  displayToggles: () => invoke<DisplayToggles>("display_toggles"),
+  /** True if flipped here; false if Windows' Night light page was opened instead. */
+  setNightLight: (on: boolean) => invoke<boolean>("set_night_light", { on }),
+  setHdr: (on: boolean) => invoke<void>("set_hdr", { on }),
+  setRefreshRate: (hz: number) => invoke<void>("set_refresh_rate", { hz }),
+  openTouchpadSettings: () => invoke<void>("open_touchpad_settings"),
+  /** The song playing on Spotify, whether it's liked, and what's up next. */
+  spotifyNow: () => invoke<SpotifyNow>("spotify_now"),
+  spotifyLike: (trackId: string, liked: boolean) => invoke<void>("spotify_like", { trackId, liked }),
+  /** Pin a note to the desktop as a sticky. */
+  stickyPin: (noteId: string) => invoke<void>("sticky_pin", { noteId }),
+  /** Don't offer this habit routine again. */
+  habitDismiss: (key: string) => invoke<void>("habit_dismiss", { key }),
+  /** Watch a product page against a target price (checked right away). */
+  priceAdd: (url: string, target: number) => invoke<PriceItem>("price_add", { url, target }),
+  priceCheck: (id: string) => invoke<PriceItem>("price_check", { id }),
+  priceSetTarget: (id: string, target: number) => invoke<void>("price_set_target", { id, target }),
+  priceRemove: (id: string) => invoke<void>("price_remove", { id }),
+  /** Download Whisper and its speech model (~150 MB); progress comes as MeetingChanged. */
+  meetingInstall: () => invoke<void>("meeting_install"),
+  /** Start recording the meeting (mic + the PC's sound). */
+  meetingStart: () => invoke<MeetingState>("meeting_start"),
+  /** Stop; notes come back as a MeetingDone event. */
+  meetingStop: () => invoke<void>("meeting_stop"),
+  meetingCancel: () => invoke<void>("meeting_cancel"),
+  /** The selection waiting to be rewritten (Ctrl+Alt+R). */
+  rewriteSession: () => invoke<RewriteSession | null>("rewrite_session"),
+  /** The AI's version of the selection in a style ("custom" uses the instruction). */
+  rewriteRun: (style: string, custom: string) => invoke<string>("rewrite_run", { style, custom }),
+  /** Paste this where the selection was. */
+  rewriteApply: (text: string) => invoke<void>("rewrite_apply", { text }),
+  /** Record the screen under the pointer: MP4, or a short GIF. */
+  screenrecStart: (gif: boolean) => invoke<ScreenRecState>("screenrec_start", { gif }),
+  /** Stop and save the screen recording (it goes on the shelf); the path, if any. */
+  screenrecStop: () => invoke<string | null>("screenrec_stop"),
+  screenrecState: () => invoke<ScreenRecState>("screenrec_state"),
+  /** Draw these lines onto the lock-screen picture (rate-limited); true if it was updated. */
+  lockscreenUpdate: (lines: string[]) => invoke<boolean>("lockscreen_update", { lines }),
+  /** Put the old lock-screen picture back; false = it was Spotlight, settings were opened. */
+  lockscreenOff: () => invoke<boolean>("lockscreen_off"),
+  screenshotText: (path: string) => invoke<string>("screenshot_text", { path }),
+  /** Open a picture in Paint to mark it up. */
+  screenshotAnnotate: (path: string) => invoke<void>("screenshot_annotate", { path }),
   bridgeStop: () => invoke<void>("bridge_stop"),
   shelfSnapshot: () => invoke<ShelfSnapshot>("shelf_snapshot"),
   /** Park files on the drop shelf; resolves to how many were new. */
@@ -318,6 +422,56 @@ export const ipc = {
   shelfReveal: (id: string) => invoke<void>("shelf_reveal", { id }),
   /** Drag shelf files out of the notch (no ids: all); true if dropped somewhere. */
   shelfDrag: (ids: string[] = []) => invoke<boolean>("shelf_drag", { ids }),
+  /** Keep a shelf file past the clean-up (or let it go again). */
+  shelfPin: (id: string, pinned: boolean) => invoke<void>("shelf_pin", { id, pinned }),
+  /** Paste stack on/off: copies queue up for the paste-next shortcut. */
+  clipboardStack: (on: boolean) => invoke<void>("clipboard_stack", { on }),
+  systemLock: () => invoke<void>("system_lock"),
+  /** Sleep, hibernate, restart (or into BIOS), shut down or sign out. Confirm first. */
+  systemPower: (action: PowerAction) => invoke<void>("system_power", { action }),
+  /** Every Start menu app (cached for an hour). */
+  appsList: () => invoke<InstalledApp[]>("apps_list"),
+  appLaunch: (id: string) => invoke<void>("app_launch", { id }),
+  /** Ask an app's windows to close, like clicking X; returns how many. */
+  appClose: (exe: string) => invoke<number>("app_close", { exe }),
+  /** CPU, memory and GPU load with the top apps (CPU needs two readings a few seconds apart). */
+  systemMonitor: () => invoke<SystemMonitor>("system_monitor"),
+  /** Drive health and free space (cached ten minutes unless `fresh`). */
+  diskHealth: (fresh: boolean) => invoke<DiskHealth>("disk_health", { fresh }),
+  /** Data used today and this month. */
+  controlDataUsage: () => invoke<DataUsage>("control_data_usage"),
+  /** Folders Claude Code has worked in, newest first. */
+  claudeProjects: () => invoke<string[]>("claude_projects"),
+  /** Open a terminal running Claude Code on a task in a project folder. */
+  claudeLaunch: (cwd: string, prompt: string) => invoke<void>("claude_launch", { cwd, prompt }),
+  /** Each app's volume on the default output, and the output devices. */
+  audioMixer: () => invoke<Mixer>("audio_mixer"),
+  audioSetAppVolume: (pid: number, level: number) => invoke<void>("audio_set_app_volume", { pid, level }),
+  audioSetAppMute: (pid: number, muted: boolean) => invoke<void>("audio_set_app_mute", { pid, muted }),
+  /** Send sound to another output device. */
+  audioSetOutput: (id: string) => invoke<void>("audio_set_output", { id }),
+  /** Tokens and estimated cost per Claude session today. */
+  claudeSessionUsage: () => invoke<SessionUsage[]>("claude_session_usage"),
+  /** Bring a Claude session's terminal to the front. */
+  claudeFocusSession: (sessionId: string) => invoke<void>("claude_focus_session", { sessionId }),
+  /** Copy text privately (not kept in history) and clear it after a while. */
+  clipboardCopyPrivate: (text: string, clearSecs: number) =>
+    invoke<void>("clipboard_copy_private", { text, clearSecs }),
+  /** Two colours from the main screen's wallpaper (for "Accent from wallpaper"). */
+  wallpaperAccent: () => invoke<Palette | null>("wallpaper_accent"),
+  wallpaperState: () => invoke<WallpaperState>("wallpaper_state"),
+  /** Save copies of pictures as wallpapers; resolves to how many were new. */
+  wallpaperAdd: (paths: string[]) => invoke<number>("wallpaper_add", { paths }),
+  /** Choose pictures to save; resolves to how many were new. */
+  wallpaperPick: () => invoke<number>("wallpaper_pick"),
+  wallpaperRemove: (path: string) => invoke<void>("wallpaper_remove", { path }),
+  /** Choose the "My folder" folder; false if cancelled. */
+  wallpaperPickFolder: () => invoke<boolean>("wallpaper_pick_folder"),
+  wallpaperSetFolder: (folder: string | null) => invoke<void>("wallpaper_set_folder", { folder }),
+  /** Which screen a click changes: "all" or a screen id. */
+  wallpaperSetTarget: (target: string) => invoke<void>("wallpaper_set_target", { target }),
+  wallpaperClearRecent: () => invoke<void>("wallpaper_clear_recent"),
+  wallpaperApply: (path: string, target: string) => invoke<void>("wallpaper_apply", { path, target }),
   gitGetSnapshot: () => invoke<GitSnapshot>("git_get_snapshot"),
   gitRefresh: () => invoke<void>("git_refresh"),
   /** Folder picker; resolves `null` if cancelled. */

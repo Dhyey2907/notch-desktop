@@ -7,6 +7,7 @@ import { ipc } from "../../core/ipc";
 import { EmptyState, MediaControl, MockBadge, ModuleContainer, Pill } from "../../design/components";
 import { currentPositionMs, formatTime, useMedia } from "./mediaStore";
 import { PlaylistTiles } from "./PlaylistTiles";
+import { SpotifyExtras } from "./SpotifyExtras";
 import { LyricsView } from "./LyricsView";
 import { brandBackground, brandOf, paletteBackground } from "./mediaTheme";
 import { useArtworkPalette } from "./useArtworkPalette";
@@ -164,6 +165,7 @@ function NowPlaying({
               onNext={() => send({ kind: "next" })}
             />
             {failed && <p className="media__note">{media.sourceApp} didn't respond to that. Try again.</p>}
+            {/spotify/i.test(media.sourceApp) && !media.mock && <SpotifyExtras title={media.title} />}
           </div>
         </div>
         <PlaylistTiles />

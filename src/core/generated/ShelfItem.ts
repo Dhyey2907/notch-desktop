@@ -12,4 +12,8 @@ size?: number,
 /**
  * False once the file was moved or deleted.
  */
-exists: boolean, addedAt: string, };
+exists: boolean, addedAt: string, 
+/**
+ * Kept past the clean-up.
+ */
+pinned: boolean, };

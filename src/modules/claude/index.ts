@@ -10,6 +10,8 @@ import type { ModuleContext, NotchModule } from "../types";
 import { approvalActivity } from "./approvals";
 import { ClaudeCompact, ClaudePeek } from "./ClaudeIndicators";
 import { agentName, formatTurn, shouldAnnounceFinish, useClaude } from "./claudeStore";
+import { capStep, newStep, rememberStep, shownStep } from "./spendCap";
+import { useSettings } from "../../settings";
 
 function init({ events, activities }: ModuleContext) {
   // Sessions we've already alerted for while they wait, so one wait = one alert.
@@ -98,8 +100,41 @@ function init({ events, activities }: ModuleContext) {
     if (status) syncWaiting(status);
   };
 
+  // Today's estimated spend against the cap in Settings → Developer.
+  let checking = false;
+  const checkCap = () => {
+    const cap = useSettings.getState().settings?.dev.claudeDailyCapUsd ?? 0;
+    if (cap <= 0 || checking) return;
+    checking = true;
+    ipc
+      .claudeSessionUsage()
+      .then((usage) => {
+        const spent = usage.reduce((a, u) => a + u.costUsd, 0);
+        const today = new Date().toLocaleDateString("en-CA");
+        const step = capStep(spent, cap);
+        if (!newStep(step, shownStep(today))) return;
+        rememberStep(today, step);
+        activities.push({
+          moduleId: "claude",
+          priority: step === 100 ? "high" : "normal",
+          tone: step === 100 ? "danger" : "warning",
+          dedupKey: "claude-spend-cap",
+          title: step === 100 ? "Claude spend cap passed" : "80% of your Claude cap",
+          body: `About ${spent.toFixed(2)} today at API prices, against your ${cap} cap.`,
+        });
+      })
+      .catch(() => {})
+      .finally(() => {
+        checking = false;
+      });
+  };
+
   const offStatus = events.on("ClaudeStatusChanged", ({ event }) => apply(event.payload));
-  const offUsage = events.on("ClaudeUsageChanged", () => useClaude.getState().bumpUsage());
+  const offUsage = events.on("ClaudeUsageChanged", () => {
+    useClaude.getState().bumpUsage();
+    checkCap();
+  });
+  checkCap();
   const offApprovals = events.on("ApprovalsChanged", ({ event }) => applyApprovals(event.payload));
   ipc
     .claudeStatus()

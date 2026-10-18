@@ -13,14 +13,19 @@ import { CARD_TIME_SCALE, inQuietHours } from "./behavior";
 import { ISLAND_SIZE } from "./geometry";
 import { playAlert } from "./alertSound";
 import { useIsland } from "./useIsland";
+import { useWallpaperColor } from "./useWallpaperAccent";
 
 /** Apply the look to this island window. */
 export function useLook() {
   const look = useSettings((s) => s.settings?.appearance);
+  const wallpaperAccent = useWallpaperColor((s) => s.accent);
   useEffect(() => {
     if (!look) return;
     const root = document.documentElement;
-    applyAppearance(look, root);
+    applyAppearance(
+      look.accentFromWallpaper && wallpaperAccent ? { ...look, accent: wallpaperAccent } : look,
+      root,
+    );
     const scale = SIZE_SCALE[look.size];
     root.style.setProperty("zoom", String(scale));
     setUiScale(scale);
@@ -30,7 +35,7 @@ export function useLook() {
     const island = useIsland.getState();
     if (island.mode === "collapsed") void island.request("collapsed", resting).then(() => island.refit());
     else void island.refit();
-  }, [look]);
+  }, [look, wallpaperAccent]);
 }
 
 /** Card timing follows Settings → Behavior. */

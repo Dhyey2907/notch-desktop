@@ -69,12 +69,13 @@ export function createIslandStore(resizeWindow: ResizeWindow, initialMode: Islan
       const current = get();
       if (mode === current.mode && sameSize(current.size, size)) return;
       const requestId = ++latestRequest;
-      await resizeTo(
-        unionSize(
-          windowSizeFor(current.mode, current.size, current.dockWidth),
-          windowSizeFor(mode, size, current.dockWidth),
-        ),
+      // Never shrink here, only grow: the island may still be animating down from something
+      // bigger (the bubble refits while it collapses). `settle` trims once it lands.
+      const target = unionSize(
+        windowSizeFor(current.mode, current.size, current.dockWidth),
+        windowSizeFor(mode, size, current.dockWidth),
       );
+      await resizeTo(windowSize ? unionSize(windowSize, target) : target);
       // A newer request arrived while we were resizing; let it win.
       if (requestId !== latestRequest) return;
       set({ mode, size });

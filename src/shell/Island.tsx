@@ -11,6 +11,12 @@ import { windowLabel } from "../core/window";
 import { contentEnter, INSTANT, ISLAND_SPRING, SERIOUS_SPRING } from "../design/motion";
 import { useReduceMotion } from "../design/useReduceMotion";
 import { findModule } from "../modules/registry";
+import { usePalette } from "../modules/palette/paletteStore";
+import { useDockProfiles } from "./useDockProfiles";
+import { useEveningReview } from "../modules/day/useEveningReview";
+import { useMorningBriefing } from "../modules/day/useMorningBriefing";
+import { useWallpaperAccent } from "./useWallpaperAccent";
+import { PinnedWidget } from "./MiniWidget";
 import { Dock } from "./Dock";
 import { Pet } from "../focus/Pet";
 import { usePetOut, usePetWalkLink } from "../pet/usePetPlace";
@@ -29,6 +35,9 @@ import { HOVER_CLOSE_MS, hideOverFullscreen, OPEN_DELAY_MS, PEEK_DELAY_MS, SWIPE
 import { BubbleClock } from "./BubbleClock";
 import { WorkdayLine } from "./WorkdayLine";
 import { useAlertSound, useCardTime, useLook, useQuietHours } from "./useNotchPrefs";
+import { useHistoryLogger } from "../activity/useHistoryLogger";
+import { useLockScreenInfo } from "./useLockScreenInfo";
+import { useNotchDrag, useNotchFade } from "./useNotchMove";
 import {
   activityIslandSize,
   GAME_HUD_SIZE,
@@ -96,6 +105,9 @@ export function Island() {
   useAmbient();
   const showPet = useSettings((s) => !s.settings?.focus.hidePet);
   const look = useSettings((s) => s.settings?.appearance);
+  const bottomEdge = look?.edge === "bottom";
+  const notchDrag = useNotchDrag();
+  const faded = useNotchFade();
   const fullscreenBehavior = useSettings((s) => s.settings?.behavior.fullscreen ?? "alerts");
   const islandRef = useRef<HTMLElement>(null);
   useMusicPulse(islandRef);
@@ -107,6 +119,12 @@ export function Island() {
   usePetTalk();
   usePetWalkLink();
   useWalkLook();
+  useDockProfiles();
+  useEveningReview();
+  useHistoryLogger();
+  useMorningBriefing();
+  useLockScreenInfo();
+  useWallpaperAccent();
   const petHome = !usePetOut();
   useLook();
   useCardTime();
@@ -175,8 +193,11 @@ export function Island() {
   useEffect(
     () =>
       eventBus.on("ShellOpenModuleRequested", async ({ event }) => {
-        if (event.payload.label !== windowLabel() || !findModule(event.payload.module)) return;
-        useModuleNav.getState().setActive(event.payload.module);
+        // "palette:note " opens the palette with "note " already typed.
+        const [module, ...rest] = event.payload.module.split(":");
+        if (event.payload.label !== windowLabel() || !findModule(module)) return;
+        if (module === "palette") usePalette.setState({ prefill: rest.join(":"), at: Date.now() });
+        useModuleNav.getState().setActive(module);
         if (useIsland.getState().mode !== "expanded") await useIsland.getState().request("expanded");
         focusActiveDockItem();
       }),
@@ -299,11 +320,16 @@ export function Island() {
   const transition = reduceMotion ? INSTANT : isSerious(shownActivity) ? SERIOUS_SPRING : ISLAND_SPRING[mode];
 
   return (
-    <div className="island-frame" style={{ paddingTop: WINDOW_MARGIN.top }}>
+    <div
+      className="island-frame"
+      data-edge={bottomEdge ? "bottom" : "top"}
+      style={bottomEdge ? { paddingBottom: WINDOW_MARGIN.top } : { paddingTop: WINDOW_MARGIN.top }}
+    >
       <motion.section
         ref={islandRef}
         className="island"
         data-mode={mode}
+        data-faded={faded && mode === "collapsed" ? "" : undefined}
         data-bubble={look?.bubble ?? "pill"}
         aria-label="Overline"
         initial={false}
@@ -319,7 +345,19 @@ export function Island() {
         onWheel={onWheel}
       >
         {(mode === "collapsed" || mode === "peek") && (
-          <button className="island-hit" aria-label="Open Overline" aria-expanded={false} onClick={expand} />
+          <button
+            className="island-hit"
+            aria-label="Open Overline"
+            aria-expanded={false}
+            title="Alt+drag to slide the notch along the edge"
+            onPointerDown={notchDrag.onPointerDown}
+            onPointerMove={notchDrag.onPointerMove}
+            onPointerUp={notchDrag.onPointerUp}
+            onPointerCancel={notchDrag.onPointerCancel}
+            onClick={() => {
+              if (!notchDrag.consumeClick()) expand();
+            }}
+          />
         )}
         <AnimatePresence mode="popLayout" initial={false}>
           <motion.div
@@ -334,6 +372,7 @@ export function Island() {
                 {waiting && (
                   <span className="island-attention" role="img" aria-label="Something is waiting for you" />
                 )}
+                <PinnedWidget />
                 <CompactHost />
                 {showPet && petHome && look?.bubble === "pill" && <Pet />}
                 {look?.bubbleClock && look.bubble === "pill" && <BubbleClock />}

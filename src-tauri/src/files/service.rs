@@ -7,7 +7,7 @@ use std::{
 
 use tauri::{AppHandle, Manager, WebviewWindow};
 
-use super::{convert::ImageTarget, DownloadProgress, RecentFile, RecorderState};
+use super::{convert::ImageTarget, DownloadProgress, RecentFile, RecorderState, ScreenRecState};
 use crate::{
     error::{AppError, AppResult},
     events::AppEvent,
@@ -23,6 +23,8 @@ struct Inner {
     downloads: Vec<DownloadProgress>,
     #[cfg(windows)]
     recording: Option<(super::recorder::Recording, i64)>,
+    /// The screen recording running now, and when it started (ms).
+    screen: Option<(super::screenrec::ScreenRecording, i64)>,
 }
 
 #[derive(Clone)]
@@ -87,6 +89,87 @@ impl FilesService {
     }
 
     /// Run a shelf tool, then put the new file on the shelf.
+    /// The screen recording now: when it started (ms) and whether it's a GIF.
+    pub fn screen_rec(&self) -> ScreenRecState {
+        let inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+        ScreenRecState {
+            started_at: inner.screen.as_ref().map(|(_, at)| *at),
+            gif: inner
+                .screen
+                .as_ref()
+                .is_some_and(|(r, _)| r.kind == super::screenrec::Kind::Gif),
+        }
+    }
+
+    /// Record the screen under the pointer (MP4, or a short GIF).
+    pub fn screen_rec_start(&self, gif: bool) -> AppResult<ScreenRecState> {
+        #[cfg(windows)]
+        {
+            let mut inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+            if inner.screen.is_none() {
+                let dir = self
+                    .app
+                    .path()
+                    .video_dir()
+                    .map_err(|e| AppError::Platform(e.to_string()))?
+                    .join("Overline recordings");
+                std::fs::create_dir_all(&dir)?;
+                let ext = if gif { "gif" } else { "mp4" };
+                let name = super::recording_name(chrono::Local::now(), ext).replacen(
+                    "Recording",
+                    "Screen recording",
+                    1,
+                );
+                let out = crate::bridge::unique_path(&dir, &name);
+                let area = crate::grab::capture::monitor_under_pointer()?;
+                let kind = if gif {
+                    super::screenrec::Kind::Gif
+                } else {
+                    super::screenrec::Kind::Mp4
+                };
+                let started = chrono::Utc::now().timestamp_millis();
+                inner.screen = Some((super::screenrec::start(out, kind, area), started));
+                tracing::info!(gif, "screen recording started");
+                // Stop on its own at the length limit (GIFs are short).
+                let limit = if gif {
+                    super::screenrec::GIF_MAX_LENGTH
+                } else {
+                    super::screenrec::MP4_MAX_LENGTH
+                };
+                let this = self.clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(limit + std::time::Duration::from_millis(300));
+                    if this.screen_rec().started_at == Some(started) {
+                        let _ = this.screen_rec_stop();
+                    }
+                });
+            }
+        }
+        #[cfg(not(windows))]
+        let _ = gif;
+        let state = self.screen_rec();
+        self.emit(AppEvent::ScreenRecChanged(state.clone()));
+        Ok(state)
+    }
+
+    /// Stop the screen recording and save it; it goes on the shelf.
+    pub fn screen_rec_stop(&self) -> AppResult<Option<String>> {
+        let rec = self.inner.lock().unwrap_or_else(|e| e.into_inner()).screen.take();
+        self.emit(AppEvent::ScreenRecChanged(self.screen_rec()));
+        let Some((rec, _)) = rec else { return Ok(None) };
+        let path = rec.finish()?;
+        tracing::info!("screen recording saved");
+        let text = self.made(path.clone())?;
+        self.emit(AppEvent::RecordingSaved {
+            name: path
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default(),
+            path: text.clone(),
+        });
+        Ok(Some(text))
+    }
+
     fn made(&self, path: PathBuf) -> AppResult<String> {
         let text = path.to_string_lossy().into_owned();
         self.app

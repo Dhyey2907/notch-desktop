@@ -1,10 +1,12 @@
 // Files dragged over the notch: open it on the Clipboard module (whose Files tab takes the
-// drop), and put it away again if the drag leaves without dropping.
+// drop), and put it away again if the drag leaves without dropping. An open Wallpaper panel
+// keeps the drop for itself (pictures become saved wallpapers).
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useEffect } from "react";
 
 import { findModule } from "../modules/registry";
+import { dropTakenByOpenModule } from "./dropOwner";
 import { useFileDrag } from "./fileDrag";
 import { useIsland } from "./useIsland";
 import { useModuleNav } from "./useModules";
@@ -22,7 +24,7 @@ export function useFileDrop() {
       return; // tests and non-Tauri previews
     }
     const unlisten = webview.onDragDropEvent(({ payload }) => {
-      if (useFileDrag.getState().draggingOut || !findModule(DROP_MODULE)) return;
+      if (useFileDrag.getState().draggingOut || !findModule(DROP_MODULE) || dropTakenByOpenModule()) return;
       const island = useIsland.getState();
       if (payload.type === "enter") {
         dropped = false;

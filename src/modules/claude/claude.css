@@ -210,3 +210,130 @@
   color: var(--text-primary);
   background: var(--surface-hover);
 }
+
+/* Sessions: each live agent session, its tokens and cost today. */
+.sessions {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.sessions__total {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.sessions__list {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sessions__item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sessions__item:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.sessions__item:disabled {
+  cursor: default;
+}
+
+.sessions__dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.sessions__dot--working {
+  background: var(--info);
+}
+
+.sessions__dot--waiting {
+  background: var(--warning);
+}
+
+.sessions__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sessions__project {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.sessions__meta {
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.sessions__usage {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.sessions__cost {
+  font-weight: 600;
+}
+
+/* Sessions → New task: project, task, Start. */
+.newtask {
+  flex: none;
+  display: grid;
+  grid-template-columns: minmax(90px, 0.35fr) minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.newtask__project,
+.newtask__input {
+  min-width: 0;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--text-xs);
+}
+
+.newtask__note {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}

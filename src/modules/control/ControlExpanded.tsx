@@ -11,7 +11,6 @@ import {
   ExternalLink,
   Gamepad2,
   Headphones,
-  Moon,
   Plane,
   Radio,
   ShieldCheck,
@@ -27,6 +26,11 @@ import { ipc, isIpcError } from "../../core/ipc";
 import { useControl } from "./controlStore";
 import { formatMinutes, formatSpeed } from "./format";
 import { NetworkPanel } from "./NetworkPanel";
+import { DisplayRow } from "./DisplayRow";
+import { PowerPanel } from "./PowerPanel";
+import { WifiPanel } from "./WifiPanel";
+import { SystemPanel } from "./SystemPanel";
+import { SoundPanel } from "./SoundCard";
 import { useSpeed } from "./useSpeed";
 import "./control.css";
 
@@ -103,7 +107,6 @@ function Toggles({
         onClick={() => void flip("hotspot", radios.hotspot)}
       />
       <Toggle icon={Plane} label="Airplane" external onClick={() => open("airplane")} />
-      <Toggle icon={Moon} label="Night light" external onClick={() => open("nightlight")} />
     </div>
   );
 }
@@ -251,6 +254,10 @@ export default function ControlExpanded() {
   const snapshot = useControl((s) => s.snapshot);
   const [error, setError] = useState<string | null>(null);
   const [network, setNetwork] = useState(false);
+  const [sound, setSound] = useState(false);
+  const [power, setPower] = useState(false);
+  const [wifi, setWifi] = useState(false);
+  const [system, setSystem] = useState(false);
   // Fresh readings each time the panel opens (headphones may have just connected).
   useEffect(() => {
     ipc.controlRefresh().then(
@@ -260,9 +267,14 @@ export default function ControlExpanded() {
   }, []);
   if (!snapshot) return <section className="control" aria-label="Control" />;
   if (network) return <NetworkPanel onBack={() => setNetwork(false)} />;
+  if (sound) return <SoundPanel onBack={() => setSound(false)} />;
+  if (power) return <PowerPanel onBack={() => setPower(false)} />;
+  if (wifi) return <WifiPanel onBack={() => setWifi(false)} />;
+  if (system) return <SystemPanel onBack={() => setSystem(false)} />;
   return (
     <section className="control" aria-label="Control">
       <Toggles snapshot={snapshot} onError={setError} />
+      <DisplayRow onError={setError} />
       {error && (
         <p className="control-error" role="alert">
           {error}
@@ -273,6 +285,20 @@ export default function ControlExpanded() {
         <PowerCard snapshot={snapshot} />
       </div>
       <Devices snapshot={snapshot} />
+      <div className="control-more">
+        <button type="button" className="nd-chip" onClick={() => setSound(true)}>
+          Sound · apps &amp; output
+        </button>
+        <button type="button" className="nd-chip" onClick={() => setWifi(true)}>
+          Wi-Fi networks
+        </button>
+        <button type="button" className="nd-chip" onClick={() => setSystem(true)}>
+          System
+        </button>
+        <button type="button" className="nd-chip" onClick={() => setPower(true)}>
+          Power
+        </button>
+      </div>
     </section>
   );
 }

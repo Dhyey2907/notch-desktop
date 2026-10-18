@@ -38,3 +38,21 @@ pub async fn spotify_play_playlist(
 pub fn spotify_set_pinned(playlist_ids: Vec<String>, spotify: State<'_, SpotifyService>) -> AppResult<()> {
     spotify.set_pinned(playlist_ids)
 }
+
+/// The song playing on Spotify, whether it's liked, and what's up next.
+#[tauri::command]
+pub async fn spotify_now(spotify: State<'_, SpotifyService>) -> AppResult<crate::spotify::SpotifyNow> {
+    let spotify = spotify.inner().clone();
+    spotify.now().await
+}
+
+/// Add the song to Liked Songs (or take it out).
+#[tauri::command]
+pub async fn spotify_like(
+    track_id: String,
+    liked: bool,
+    spotify: State<'_, SpotifyService>,
+) -> AppResult<()> {
+    let spotify = spotify.inner().clone();
+    spotify.set_liked(&track_id, liked).await
+}

@@ -355,3 +355,40 @@
     animation: none;
   }
 }
+
+/* Spotify: heart and up next. */
+.spotify-extras {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.spotify-extras__heart,
+.spotify-extras__queue-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: none;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.spotify-extras__heart--on {
+  color: #1ed760;
+  border-color: color-mix(in srgb, #1ed760 50%, transparent);
+}
+
+.spotify-extras__queue {
+  flex-basis: 100%;
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}

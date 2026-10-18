@@ -94,6 +94,8 @@ export interface ActivityInput {
   game?: GameHud;
   /** Render as a live view of another window (Desk). */
   mini?: Mini;
+  /** Never kept in the notch history (e.g. a sign-in code). */
+  private?: boolean;
 }
 
 export interface Activity extends ActivityInput {

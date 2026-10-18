@@ -126,12 +126,37 @@ html.pet-window #root {
   bottom: 0;
   left: 0;
   width: var(--pet-w);
-  animation: petwalk-move 70s linear infinite;
+  /* Moved by the walker's frame loop (petMotion.ts). */
+  will-change: transform;
 }
 
 .petwalk__pet {
-  animation: petwalk-face 70s step-end infinite;
+  position: relative;
+  transform: scaleX(var(--face-dir, 1));
+  transform-origin: 50% 100%;
   filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.45));
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+}
+
+.petwalk__pet[data-mode="held"] {
+  cursor: grabbing;
+}
+
+/* Standing still (a pause, being held, falling): no stepping legs. */
+.petwalk__pet[data-mode="pause"] svg,
+.petwalk__pet[data-mode="still"] svg,
+.petwalk__pet[data-mode="held"] svg,
+.petwalk__pet[data-mode="fall"] svg,
+.petwalk__pet[data-mode="pause"] .petwalk__leg,
+.petwalk__pet[data-mode="still"] .petwalk__leg,
+.petwalk__pet[data-mode="fall"] .petwalk__leg {
+  animation-play-state: paused;
+}
+
+.petwalk__pet[data-mode="run"] .petwalk__leg {
+  animation-duration: 0.16s;
 }
 
 .petwalk__pet svg {
@@ -324,30 +349,6 @@ html.pet-window #root {
   fill: #111;
 }
 
-@keyframes petwalk-move {
-  0%,
-  4% {
-    transform: translateX(4vw);
-  }
-  48%,
-  52% {
-    transform: translateX(calc(96vw - var(--pet-w)));
-  }
-  96%,
-  100% {
-    transform: translateX(4vw);
-  }
-}
-
-@keyframes petwalk-face {
-  0% {
-    transform: scaleX(1);
-  }
-  50% {
-    transform: scaleX(-1);
-  }
-}
-
 @keyframes petwalk-leg {
   from {
     transform: rotate(-22deg);
@@ -369,14 +370,8 @@ html.pet-window #root {
   }
 }
 
-/* Leaving: a jump where it stands, then a quick run off the nearest edge. */
-.petwalk--leaving .petwalk__track {
-  animation: petwalk-leave 1.5s forwards;
-}
-
-.petwalk--leaving .petwalk__pet {
-  animation: none;
-}
+/* Leaving: a jump where it stands, then a quick run off the nearest edge (moved by the
+   frame loop). */
 
 .petwalk--leaving .petwalk__pet svg {
   animation: petwalk-jump 0.55s cubic-bezier(0.3, 0.7, 0.4, 1);
@@ -384,17 +379,6 @@ html.pet-window #root {
 
 .petwalk--leaving .petwalk__leg {
   animation-duration: 0.18s;
-}
-
-@keyframes petwalk-leave {
-  0%,
-  35% {
-    transform: translateX(var(--pet-from));
-    animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.6);
-  }
-  100% {
-    transform: translateX(var(--pet-to));
-  }
 }
 
 @keyframes petwalk-jump {
@@ -413,4 +397,280 @@ html.pet-window #root {
   100% {
     transform: translateY(0) scaleY(1);
   }
+}
+
+/* Play: dancing to the beat, petting, dizziness, pounces, cheers, tricks. */
+.petwalk__pet--beat svg {
+  animation: petwalk-bob 0.18s ease-out;
+}
+
+.petwalk__pet--hop svg {
+  animation: petwalk-hop 0.32s cubic-bezier(0.3, 0.7, 0.4, 1);
+}
+
+@keyframes petwalk-bob {
+  50% {
+    transform: translateY(-2px) scaleY(0.94);
+  }
+}
+
+@keyframes petwalk-hop {
+  50% {
+    transform: translateY(-8px) scaleY(1.05);
+  }
+}
+
+.petwalk__pet--purr svg {
+  animation: petwalk-purr 0.3s ease-in-out infinite;
+}
+
+@keyframes petwalk-purr {
+  50% {
+    transform: rotate(-4deg) scaleY(0.97);
+  }
+}
+
+.petwalk__pet--dizzy svg {
+  animation: petwalk-wobble 0.5s ease-in-out infinite;
+}
+
+.petwalk__dizzy {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: petwalk-spin 0.6s linear infinite;
+}
+
+@keyframes petwalk-wobble {
+  25% {
+    transform: rotate(-9deg);
+  }
+  75% {
+    transform: rotate(9deg);
+  }
+}
+
+@keyframes petwalk-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.petwalk__pet--pounce svg {
+  animation: petwalk-pounce 0.75s cubic-bezier(0.3, 0.7, 0.4, 1);
+}
+
+@keyframes petwalk-pounce {
+  0% {
+    transform: scaleY(1);
+  }
+  25% {
+    transform: scaleY(0.75) translateY(1px);
+  }
+  55% {
+    transform: translate(6px, -16px) rotate(12deg);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+.petwalk__pet--cheer svg,
+.petwalk__pet--wave svg {
+  animation: petwalk-jump 0.55s cubic-bezier(0.3, 0.7, 0.4, 1) 2;
+}
+
+.petwalk__pet--stretch svg {
+  animation: petwalk-stretch 1.9s ease-in-out;
+}
+
+@keyframes petwalk-stretch {
+  20%,
+  60% {
+    transform: scale(1.12, 0.82);
+  }
+  75% {
+    transform: scale(0.92, 1.12);
+  }
+}
+
+.petwalk__pet--flail .petwalk__leg {
+  animation-duration: 0.1s;
+}
+
+.petwalk__pet--flail svg {
+  animation: petwalk-wobble 0.3s ease-in-out infinite;
+}
+
+.petwalk__pet--backflip svg {
+  transform-origin: 50% 60%;
+  animation: petwalk-flip 0.9s cubic-bezier(0.3, 0.7, 0.4, 1);
+}
+
+@keyframes petwalk-flip {
+  0% {
+    transform: none;
+  }
+  20% {
+    transform: scaleY(0.8);
+  }
+  70% {
+    transform: translateY(-26px) rotate(-360deg);
+  }
+  100% {
+    transform: rotate(-360deg);
+  }
+}
+
+.petwalk__purr,
+.petwalk__yawn {
+  position: absolute;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #f5f5f7;
+  font:
+    600 10px/1 "Segoe UI Variable Text",
+    "Segoe UI",
+    system-ui,
+    sans-serif;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 0.7);
+  white-space: nowrap;
+  animation: petwalk-float 1.8s ease-out forwards;
+}
+
+@keyframes petwalk-float {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 4px);
+  }
+  20% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -14px);
+  }
+}
+
+.petwalk__confetti {
+  position: absolute;
+  left: 50%;
+  bottom: 20px;
+  pointer-events: none;
+}
+
+.petwalk__confetti i {
+  position: absolute;
+  width: 4px;
+  height: 7px;
+  border-radius: 1px;
+  background: hsl(calc(var(--i) * 37deg) 90% 62%);
+  animation: petwalk-confetti 1.3s cubic-bezier(0.2, 0.8, 0.4, 1) forwards;
+  --angle: calc(var(--i) * 30deg);
+}
+
+@keyframes petwalk-confetti {
+  from {
+    transform: rotate(var(--angle)) translateY(0) rotate(0);
+    opacity: 1;
+  }
+  to {
+    transform: rotate(var(--angle)) translateY(-46px) rotate(220deg);
+    opacity: 0;
+  }
+}
+
+.petwalk__juggle {
+  position: absolute;
+  left: 50%;
+  bottom: 30px;
+}
+
+.petwalk__juggle i {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  margin-left: -3px;
+  border-radius: 50%;
+  background: #ff7a59;
+  animation: petwalk-juggle 0.8s ease-in-out infinite;
+}
+
+.petwalk__juggle i:nth-child(2) {
+  background: #5b8def;
+  animation-delay: -0.27s;
+}
+
+.petwalk__juggle i:nth-child(3) {
+  background: #ffc83d;
+  animation-delay: -0.53s;
+}
+
+@keyframes petwalk-juggle {
+  0%,
+  100% {
+    transform: translate(-9px, 0);
+  }
+  50% {
+    transform: translate(9px, -18px);
+  }
+}
+
+.petwalk__ball {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #fff 0 18%, #ff5a5a 20%);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.5);
+  will-change: transform;
+}
+
+.petwalk__friend {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: var(--pet-w);
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.45));
+  will-change: transform;
+}
+
+.petwalk__friend svg {
+  animation: petwalk-step 0.5s ease-in-out infinite;
+}
+
+.petwalk__friend .petwalk__leg {
+  stroke: #9fd7ff;
+}
+
+.petwalk__friend--wave svg {
+  animation: petwalk-jump 0.55s cubic-bezier(0.3, 0.7, 0.4, 1) 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .petwalk__pet svg,
+  .petwalk__friend svg,
+  .petwalk__confetti i,
+  .petwalk__juggle i,
+  .petwalk__dizzy,
+  .petwalk__purr,
+  .petwalk__yawn {
+    animation: none;
+  }
+}
+
+/* A file from the shelf to nap on. */
+.pet__bed {
+  position: absolute;
+  left: 50%;
+  bottom: -2px;
+  width: 12px;
+  height: 4px;
+  margin-left: -6px;
+  border-radius: 1px 3px 1px 1px;
+  background: #cfd8e3;
+  box-shadow: inset 0 -1px 0 rgb(0 0 0 / 0.2);
+  z-index: -1;
 }

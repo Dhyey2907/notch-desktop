@@ -5,11 +5,12 @@ import { ClipboardList } from "lucide-react";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { lazy } from "react";
 
-import { ipc } from "../../core/ipc";
+import { ipc, isIpcError } from "../../core/ipc";
 import type { ModuleContext, NotchModule } from "../types";
 import { ClipboardPeek, FilesCompact } from "./ClipboardIndicators";
 import { useClipboard } from "./clipboardStore";
 import { useFileDrag } from "../../shell/fileDrag";
+import { dropTakenByOpenModule } from "../../shell/dropOwner";
 import { formatSize, useShelf } from "./shelfStore";
 import { suggestionCard } from "./suggestions";
 import { useReadLater } from "./readLaterStore";
@@ -23,7 +24,7 @@ function watchDrops(): () => void {
     return () => {};
   }
   const unlisten = webview.onDragDropEvent(({ payload }) => {
-    if (useFileDrag.getState().draggingOut) return;
+    if (useFileDrag.getState().draggingOut || dropTakenByOpenModule()) return;
     const shelf = useShelf.getState();
     if (payload.type === "enter") {
       shelf.setTab("files");
@@ -65,6 +66,45 @@ function init({ events, activities }: ModuleContext) {
       if (!useShelf.getState().snapshot) useShelf.getState().set(snapshot);
     })
     .catch((error) => console.error("failed to read the shelf", error));
+  // A new screenshot (Win+Shift+S, Print Screen) is on the shelf: offer what you'd do next.
+  const offShot = events.on("ScreenshotTaken", ({ event }) => {
+    const { path } = event.payload;
+    const note = (title: string, body?: string, tone: "success" | "warning" = "success") =>
+      activities.push({ moduleId: "clipboard", priority: "normal", tone, countRepeats: false, title, body });
+    activities.push({
+      moduleId: "clipboard",
+      priority: "normal",
+      tone: "neutral",
+      dedupKey: "screenshot",
+      countRepeats: false,
+      title: "Screenshot on the shelf",
+      body: "Copy its text, mark it up, or send it to your phone.",
+      actions: [
+        {
+          id: "text",
+          label: "Copy text",
+          run: () =>
+            void ipc.screenshotText(path).then(
+              (text) =>
+                text.trim()
+                  ? note("Text copied", text.length > 80 ? `${text.slice(0, 80)}…` : text)
+                  : note("No text found in it", undefined, "warning"),
+              (e) => note("Couldn't read it", isIpcError(e) ? e.message : undefined, "warning"),
+            ),
+        },
+        { id: "markup", label: "Mark up", run: () => void ipc.screenshotAnnotate(path).catch(() => {}) },
+        {
+          id: "phone",
+          label: "To phone",
+          run: () =>
+            void ipc.bridgeStart([path]).then(
+              () => note("Scan the code in Clipboard → Files", "Your phone downloads the screenshot."),
+              () => note("Couldn't start sending", undefined, "warning"),
+            ),
+        },
+      ],
+    });
+  });
   const offDrops = watchDrops();
   const offBridge = events.on("BridgeChanged", ({ event }) => useShelf.getState().setBridge(event.payload));
   const offReceived = events.on("BridgeReceived", ({ event }) =>
@@ -103,6 +143,13 @@ function init({ events, activities }: ModuleContext) {
   });
   const offRecorder = events.on("RecorderChanged", ({ event }) =>
     useShelf.setState({ recorder: event.payload }),
+  );
+  const offScreenRec = events.on("ScreenRecChanged", ({ event }) =>
+    useShelf.setState({ screenRec: event.payload }),
+  );
+  ipc.screenrecState().then(
+    (screenRec) => useShelf.setState({ screenRec }),
+    () => {},
   );
   const offSaved = events.on("RecordingSaved", ({ event }) => {
     const { name, path } = event.payload;
@@ -162,6 +209,8 @@ function init({ events, activities }: ModuleContext) {
   return () => {
     offClips();
     offShelf();
+    offShot();
+    offScreenRec();
     offReadLater();
     offDrops();
     offBridge();

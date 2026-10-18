@@ -3,6 +3,7 @@ import { minutesToTime, timeToMinutes } from "../shell/behavior";
 import { useSettings } from ".";
 import { Row, TimeField } from "./controls";
 import { patch, resetGroups } from "./patch";
+import { PowerScheduleSetting } from "./PowerScheduleSetting";
 import { pageLead } from "./searchIndex";
 import { Section } from "./Section";
 
@@ -17,7 +18,8 @@ const TILES: { id: string; label: string; description: string }[] = [
 export function HomeSection() {
   const home = useSettings((s) => s.settings?.home);
   const day = useSettings((s) => s.settings?.day);
-  if (!home || !day) return null;
+  const desk = useSettings((s) => s.settings?.desk);
+  if (!home || !day || !desk) return null;
   const toggleDay = (d: number) =>
     patch("day", {
       workDays: day.workDays.includes(d) ? day.workDays.filter((x) => x !== d) : [...day.workDays, d].sort(),
@@ -133,7 +135,44 @@ export function HomeSection() {
             onChange={(on) => patch("day", { noAutoPlan: !on })}
           />
         </div>
+        <div id="setting-routines-from-habits">
+          <Switch
+            label="Suggest routines from my habits"
+            description="When the same apps keep starting together at about the same time, offer a Desk routine that opens them for you. Only which apps came to the front and when is noted, kept 30 days on this PC."
+            checked={!desk.noHabitRoutines}
+            onChange={(on) => patch("desk", { noHabitRoutines: !on })}
+          />
+        </div>
+        <div id="setting-morning-briefing">
+          <Switch
+            label="Morning briefing"
+            description="The first time you're at the PC after 5 am: the weather, your meetings, open tasks and unread mail in one card."
+            checked={!day.noBriefing}
+            onChange={(on) => patch("day", { noBriefing: !on })}
+          />
+        </div>
+        <div id="setting-evening-review">
+          <Switch
+            label="Evening review"
+            description="Once a day, a card sums up your day: tasks done, focus, coding time, screen time and meetings."
+            checked={!day.noReview}
+            onChange={(on) => patch("day", { noReview: !on })}
+          />
+          {!day.noReview && (
+            <Row label="Show it at">
+              <TimeField
+                label="Evening review time"
+                value={minutesToTime(day.reviewAt)}
+                onChange={(t) => {
+                  const m = timeToMinutes(t);
+                  if (m !== null) patch("day", { reviewAt: m });
+                }}
+              />
+            </Row>
+          )}
+        </div>
       </Surface>
+      <PowerScheduleSetting />
     </Section>
   );
 }

@@ -24,8 +24,9 @@ import { heatmapLevel } from "../../design/heatmap";
 import { comparisonText, formatHour, formatTokens, prettyModel, useClaude } from "./claudeStore";
 import { limitTone, resetText, updatedText } from "./limits";
 import "./claude.css";
+import { Sessions } from "./Sessions";
 
-type Tab = "overview" | "models";
+type Tab = "sessions" | "overview" | "models";
 type UsageAgent = "claude" | "codex";
 const SOURCE: Record<UsageAgent, string> = {
   claude: "Local estimate from Claude Code transcripts on this PC",
@@ -94,6 +95,7 @@ export default function ClaudeExpanded() {
         label="Claude view"
         value={tab}
         options={[
+          { value: "sessions", label: "Sessions" },
           { value: "overview", label: "Overview" },
           { value: "models", label: "Models" },
         ]}
@@ -113,7 +115,9 @@ export default function ClaudeExpanded() {
   );
 
   let body: ReactNode;
-  if (agent === "claude" && status && !status.index.transcriptsFound) {
+  if (tab === "sessions") {
+    body = <Sessions />;
+  } else if (agent === "claude" && status && !status.index.transcriptsFound) {
     body = (
       <EmptyState
         title="Usage unavailable"

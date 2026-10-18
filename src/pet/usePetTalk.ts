@@ -16,8 +16,13 @@ import { useControl } from "../modules/control/controlStore";
 import { useSettings } from "../settings";
 import { inQuietHours } from "../shell/behavior";
 import { lineFor, maySpeak, type LineEvent } from "./lines";
-import { LOW_BATTERY } from "./petState";
+import { cheerPet } from "../focus/petCheer";
+import { useMedia } from "../modules/media/mediaStore";
+import { brandOf } from "../modules/media/mediaTheme";
+import { digest, hungerOf, type Hunger } from "./petLife";
+import { LOW_BATTERY, TIRED_AFTER_MIN } from "./petState";
 import { onPetNews, usePetLive, type PetNews } from "./petStore";
+import { playOnWalker } from "./useWalkLook";
 
 const TOPIC: Record<LineEvent, keyof PetSettings | null> = {
   greeting: "sayGreeting",
@@ -37,11 +42,38 @@ const TOPIC: Record<LineEvent, keyof PetSettings | null> = {
   coding: null,
   watching: null,
   chat: null,
+  fetched: null,
+  dropped: null,
+  dizzy: null,
+  pounce: null,
+  friend: null,
+  wake: "sayGreeting",
+  snack: null,
+  sulk: null,
+  celebrate: null,
+  longCoding: "sayBreaks",
+  coffee: "sayBreaks",
+  videoMarathon: "sayBreaks",
 };
 /** Notch already shows a card for these; the pet's line goes to its own section only. */
 const SECTION_ONLY: LineEvent[] = ["meeting", "agentDone", "agentWaiting", "pat"];
 const MEETING_LEAD_MS = 5 * 60_000;
 const CHECK_MS = 30_000;
+/** Away at least this long and it greets you with a stretch when you're back. */
+const WAKE_AFTER_MS = 10 * 60_000;
+/** A break this long (but not longer) is a coffee break. */
+const COFFEE_MIN_MS = 10 * 60_000;
+const COFFEE_MAX_MS = 25 * 60_000;
+/** Hunger is saved this often while you're at the PC. */
+const DIGEST_EVERY_MIN = 10;
+const SNACK_ASK_GAP_MS = 60 * 60_000;
+const VIDEO_MARATHON_MS = 90 * 60_000;
+
+/** A cheer: on the taskbar if it's out, in the notch otherwise. */
+function celebrate() {
+  cheerPet();
+  playOnWalker({ kind: "celebrate" });
+}
 
 function today(now = new Date()) {
   return now.toDateString();
@@ -135,12 +167,33 @@ export function usePetTalk() {
     };
     const offNews = onPetNews(onNews);
 
-    const offFocus = eventBus.on("FocusDone", () => onNews({ event: "focusDone", xp: 3 }));
+    const offFocus = eventBus.on("FocusDone", () => {
+      celebrate();
+      onNews({ event: "focusDone", xp: 3 });
+    });
     let doneTasks: number | null = null;
     const offTodo = eventBus.on("TodoChanged", ({ event }) => {
       const done = event.payload.tasks.filter((t) => t.done).length;
-      if (doneTasks !== null && done > doneTasks) void addXp(done - doneTasks);
+      if (doneTasks !== null && done > doneTasks) {
+        void addXp(done - doneTasks);
+        celebrate();
+        say("celebrate");
+      }
       doneTasks = done;
+    });
+    // Inbox zero: unread mail just went down to none.
+    let unread: number | null = null;
+    const offMail = eventBus.on("MailChanged", ({ event }) => {
+      const now = event.payload.status === "ready" ? event.payload.unread : null;
+      if (now === 0 && unread !== null && unread > 0) {
+        celebrate();
+        say("celebrate");
+      }
+      if (now !== null) unread = now;
+    });
+    // A routine that ran without a hitch.
+    const offRoutine = eventBus.on("RoutineRan", ({ event }) => {
+      if (event.payload.failed === 0 && event.payload.done > 0) celebrate();
     });
 
     // Coding agents: a line in the Pet section when one finishes or needs you.
@@ -150,7 +203,10 @@ export function usePetTalk() {
         const before = agentStates.get(s.sessionId);
         const agent = s.agent === "codex" ? "Codex" : s.agent === "gemini" ? "Gemini CLI" : "Claude Code";
         if (s.state === "waiting" && before !== "waiting") say("agentWaiting", { agent });
-        if (s.state === "idle" && before === "working") say("agentDone", { agent });
+        if (s.state === "idle" && before === "working") {
+          celebrate();
+          say("agentDone", { agent });
+        }
         agentStates.set(s.sessionId, s.state);
       }
     });
@@ -181,10 +237,73 @@ export function usePetTalk() {
       }
     });
 
+    let lastIdle = 0;
+    let activeMinutes = 0;
+    let hunger: Hunger | null = null;
+    let askedSnackAt = 0;
+    let videoSince: number | null = null;
+    let videoNoted = false;
+    let codingNotedAt = 0;
+
     const tick = async () => {
       const now = new Date();
       const idle = await ipc.systemIdleMs().catch(() => 0);
       const active = idle < 60_000;
+      const p = pet();
+
+      // Back after a while: a stretch and a hello; a short break was a coffee break.
+      if (active && lastIdle >= WAKE_AFTER_MS) {
+        playOnWalker({ kind: "wake" });
+        say(lastIdle >= COFFEE_MIN_MS && lastIdle <= COFFEE_MAX_MS ? "coffee" : "wake");
+      }
+      lastIdle = idle;
+
+      // Hunger: a little while you're at the PC, saved every few minutes.
+      if (p?.hunger && active) {
+        activeMinutes += CHECK_MS / 60_000;
+        if (activeMinutes >= DIGEST_EVERY_MIN) {
+          const minutes = activeMinutes;
+          activeMinutes = 0;
+          void useSettings
+            .getState()
+            .update((s) => ({ ...s, pet: { ...s.pet, fullness: digest(s.pet.fullness, minutes) } }));
+        }
+      }
+      if (p?.hunger) {
+        const h = hungerOf(p.fullness);
+        if (h !== hunger) {
+          if (h === "sulky" && hunger !== null) say("sulk");
+          else if (h === "peckish" && hunger !== "sulky" && now.getTime() - askedSnackAt > SNACK_ASK_GAP_MS) {
+            askedSnackAt = now.getTime();
+            say("snack");
+          }
+          hunger = h;
+        }
+      }
+
+      // A long video session.
+      const media = useMedia.getState().media;
+      const watching = media?.status === "playing" && !media.mock && !!brandOf(media)?.video;
+      if (watching) {
+        videoSince ??= now.getTime();
+        if (!videoNoted && now.getTime() - videoSince >= VIDEO_MARATHON_MS) {
+          videoNoted = true;
+          say("videoMarathon");
+        }
+      } else {
+        videoSince = null;
+        videoNoted = false;
+      }
+
+      // A long day of coding: once when it passes three hours, then every two hours.
+      if (active && now.getTime() - codingNotedAt > 2 * 3600_000) {
+        const stats = await ipc.codingStats().catch(() => null);
+        const minutes = stats?.today.reduce((sum, t) => sum + t.minutes, 0) ?? 0;
+        if (minutes >= TIRED_AFTER_MIN) {
+          codingNotedAt = now.getTime();
+          say("longCoding", { hours: Math.floor(minutes / 60) });
+        }
+      }
       // Morning hello: the first time you're at the PC each day (after 5 am).
       if (active && now.getHours() >= 5 && remembered("pet-greeted") !== today(now)) {
         remember("pet-greeted", today(now));
@@ -216,6 +335,8 @@ export function usePetTalk() {
       offNews();
       offFocus();
       offTodo();
+      offMail();
+      offRoutine();
       offClaude();
       offWeather();
       offPower();

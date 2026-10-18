@@ -2,7 +2,8 @@
 //! Bluetooth devices connecting. All event-driven; nothing here is logged beyond failures.
 
 #[cfg(windows)]
-mod audio;
+pub(crate) mod apps;
+pub(crate) mod audio;
 #[cfg(windows)]
 mod bluetooth;
 #[cfg(windows)]
@@ -11,6 +12,9 @@ mod brightness;
 mod brightness_set;
 #[cfg(windows)]
 mod desktops;
+pub(crate) mod disks;
+pub mod mixer;
+pub(crate) mod procs;
 pub mod screentime;
 pub mod service;
 #[cfg(windows)]

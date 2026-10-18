@@ -1,9 +1,13 @@
 // Recent phone notifications from Phone Link, newest first, with Reply (opens Phone Link)
 // and Dismiss (clears it from Action Center).
-import { MessageSquareReply, X } from "lucide-react";
+import { getCurrentWebview } from "@tauri-apps/api/webview";
+import { ImageDown, MessageSquareReply, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { ipc } from "../../core/ipc";
+import { ipc, isIpcError } from "../../core/ipc";
+import { claimDrops } from "../../shell/dropOwner";
+import { BridgePanel } from "../clipboard/BridgePanel";
+import { useShelf } from "../clipboard/shelfStore";
 import { Button, EmptyState, IconButton, ModuleContainer } from "../../design/components";
 import { ago, usePhone } from "./phoneStore";
 import "./phone.css";
@@ -17,9 +21,43 @@ function useMinuteClock() {
   return now;
 }
 
+/** Files dropped on the Phone panel go to your phone (scan the code once). */
+function useSendDrops(onError: (message: string) => void) {
+  const [hover, setHover] = useState(false);
+  useEffect(() => {
+    const release = claimDrops("phone");
+    let webview;
+    try {
+      webview = getCurrentWebview();
+    } catch {
+      return release;
+    }
+    const unlisten = webview.onDragDropEvent(({ payload }) => {
+      if (payload.type === "enter") setHover(true);
+      else if (payload.type === "leave") setHover(false);
+      else if (payload.type === "drop") {
+        setHover(false);
+        if (payload.paths.length > 0)
+          ipc.bridgeStart(payload.paths).then(
+            (b) => useShelf.getState().setBridge(b),
+            (e) => onError(isIpcError(e) ? e.message : "Couldn't start sending"),
+          );
+      }
+    });
+    return () => {
+      release();
+      void unlisten.then((off) => off());
+    };
+  }, [onError]);
+  return hover;
+}
+
 export default function PhoneExpanded() {
   const snapshot = usePhone((s) => s.snapshot);
   const now = useMinuteClock();
+  const bridge = useShelf((s) => s.bridge);
+  const [error, setError] = useState<string | null>(null);
+  const dropping = useSendDrops(setError);
   const open = <Button onClick={() => void ipc.phoneOpen()}>Open Phone Link</Button>;
 
   let body;
@@ -82,10 +120,31 @@ export default function PhoneExpanded() {
     );
   }
 
+  const getPhotos = () =>
+    ipc.bridgeStart([]).then(
+      (b) => useShelf.getState().setBridge(b),
+      (e) => setError(isIpcError(e) ? e.message : "Couldn't start"),
+    );
+
   return (
-    <ModuleContainer title="Phone" trailing={snapshot?.phoneLinkInstalled ? open : undefined}>
-      <div className="phone">
-        {body}
+    <ModuleContainer
+      title="Phone"
+      trailing={
+        <>
+          <IconButton
+            icon={ImageDown}
+            label="Get photos or files from your phone (scan the code, pick them there)"
+            size="sm"
+            onClick={() => void getPhotos()}
+          />
+          {snapshot?.phoneLinkInstalled ? open : null}
+        </>
+      }
+    >
+      <div className={`phone${dropping ? " phone--drop" : ""}`}>
+        {bridge ? <BridgePanel bridge={bridge} /> : body}
+        {error && <p className="phone-tip">{error}</p>}
+        {dropping && <div className="phone__drop">Drop to send to your phone</div>}
         {snapshot?.access === "allowed" && (
           <p className="phone-tip">
             Seeing messages twice? Turn off banners for Phone Link in Windows Settings → System →

@@ -23,6 +23,8 @@ struct Inner {
     last_suggested: Mutex<Option<u64>>,
     /// PNGs of copied pictures.
     dir: PathBuf,
+    /// The paste stack while it's on: copies made since, oldest first (by content).
+    stack: Mutex<Option<std::collections::VecDeque<u64>>>,
 }
 
 #[derive(Clone)]
@@ -38,6 +40,7 @@ impl ClipboardService {
                 history: Mutex::new(History::default()),
                 last_suggested: Mutex::new(None),
                 dir,
+                stack: Mutex::new(None),
             }),
         }
     }
@@ -57,7 +60,45 @@ impl ClipboardService {
     }
 
     pub fn snapshot(&self) -> ClipboardSnapshot {
-        self.inner.history().snapshot()
+        self.inner.snapshot()
+    }
+
+    /// Start (or stop) the paste stack: copies from now on queue up, and the paste-next
+    /// shortcut pastes them one by one in the order you copied them.
+    pub fn set_stack(&self, on: bool) {
+        *self.inner.stack.lock().unwrap_or_else(|e| e.into_inner()) =
+            on.then(std::collections::VecDeque::new);
+        self.inner.publish();
+    }
+
+    /// Paste the next item of the stack into the app in front. The stack ends when it's empty.
+    pub fn paste_next(&self) -> AppResult<()> {
+        let id = {
+            let mut stack = self.inner.stack.lock().unwrap_or_else(|e| e.into_inner());
+            let Some(queue) = stack.as_mut() else {
+                return Err(AppError::InvalidInput("The paste stack is off".into()));
+            };
+            let history = self.inner.history();
+            let mut found = None;
+            while let Some(hash) = queue.pop_front() {
+                if let Some(id) = history.id_for_hash(hash) {
+                    found = Some(id);
+                    break;
+                }
+            }
+            if queue.is_empty() {
+                *stack = None;
+            }
+            found
+        };
+        let Some(id) = id else {
+            self.inner.publish();
+            return Err(AppError::InvalidInput("The paste stack is empty".into()));
+        };
+        self.copy(&id, false)?;
+        #[cfg(windows)]
+        super::win::press_paste();
+        Ok(())
     }
 
     /// Put a clip back on the clipboard (`formatted`: JSON indented) and move it to the top.
@@ -145,8 +186,19 @@ impl Inner {
             .ok_or_else(|| AppError::InvalidInput("That clip is no longer in history".into()))
     }
 
+    fn snapshot(&self) -> ClipboardSnapshot {
+        let mut snapshot = self.history().snapshot();
+        snapshot.stack = self
+            .stack
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .as_ref()
+            .map(|q| q.len() as u32);
+        snapshot
+    }
+
     fn publish(&self) {
-        let snapshot = self.history().snapshot();
+        let snapshot = self.snapshot();
         self.app
             .state::<AppState>()
             .bus
@@ -155,6 +207,9 @@ impl Inner {
 
     #[cfg(windows)]
     fn on_copy(&self, captured: super::win::Captured) {
+        if super::ignoring_copies() {
+            return;
+        }
         use super::win::Raw;
         // Notch re-copying a clip from the list: already moved to the top.
         if captured.own {
@@ -217,8 +272,15 @@ impl Inner {
         if suggestions {
             self.suggest(&entry);
         }
+        let hash = entry.hash;
         let evicted = self.history().add(entry);
         self.forget(evicted);
+        if let Some(queue) = self.stack.lock().unwrap_or_else(|e| e.into_inner()).as_mut() {
+            // Some apps announce one copy several times: queue it once.
+            if queue.back() != Some(&hash) {
+                queue.push_back(hash);
+            }
+        }
         self.publish();
     }
 

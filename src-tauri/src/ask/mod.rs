@@ -6,7 +6,10 @@
 #[cfg(windows)]
 pub mod capture;
 pub mod once;
+pub mod pc;
 pub mod providers;
+pub mod research;
+pub mod rewrite;
 pub mod service;
 
 use base64::Engine;

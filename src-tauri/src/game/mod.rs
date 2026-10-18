@@ -3,7 +3,7 @@
 //! NVML), CPU, RAM, ping and the time — and holds other cards until you're done.
 
 #[cfg(windows)]
-mod nvml;
+pub(crate) mod nvml;
 #[cfg(windows)]
 mod ping;
 pub mod service;

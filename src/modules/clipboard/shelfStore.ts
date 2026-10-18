@@ -2,6 +2,7 @@ import { create } from "zustand";
 
 import type { BridgeState } from "../../core/generated/BridgeState";
 import type { DownloadProgress } from "../../core/generated/DownloadProgress";
+import type { ScreenRecState } from "../../core/generated/ScreenRecState";
 import type { RecorderState } from "../../core/generated/RecorderState";
 import type { ShelfSnapshot } from "../../core/generated/ShelfSnapshot";
 
@@ -22,6 +23,8 @@ interface ShelfState {
   downloads: DownloadProgress[];
   /** Recording what the PC plays. */
   recorder: RecorderState;
+  /** Recording the screen. */
+  screenRec: ScreenRecState;
 }
 
 export const useShelf = create<ShelfState>((set) => ({
@@ -35,6 +38,7 @@ export const useShelf = create<ShelfState>((set) => ({
   setBridge: (bridge) => set({ bridge }),
   downloads: [],
   recorder: { recording: false },
+  screenRec: { gif: false },
 }));
 
 const UNITS = ["B", "KB", "MB", "GB", "TB"];

@@ -24,9 +24,58 @@ impl ShelfService {
         self.app.state::<AppState>().db.with(f)
     }
 
-    /// Re-reads each file, so moved or deleted ones show as missing.
+    /// Re-reads each file, so moved or deleted ones show as missing. Old unpinned files are
+    /// cleaned off first.
     pub fn snapshot(&self) -> AppResult<ShelfSnapshot> {
+        let keep = super::keep_for(
+            &self
+                .app
+                .state::<AppState>()
+                .settings
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .clipboard
+                .shelf_keep,
+        );
+        self.db(|conn| super::prune(conn, Utc::now(), keep))?;
         self.db(super::list)
+    }
+
+    /// Clean the shelf now and then, even while nobody looks at it.
+    pub fn start(&self) {
+        let this = self.clone();
+        super::screenshots::watch(move |path| {
+            let state = this.app.state::<AppState>();
+            if state
+                .settings
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .clipboard
+                .no_screenshots
+            {
+                return;
+            }
+            let text = path.display().to_string();
+            let _ = this.add(std::slice::from_ref(&text));
+            let name = path
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            state
+                .bus
+                .emit("shelf", AppEvent::ScreenshotTaken { path: text, name });
+        });
+        let this = self.clone();
+        std::thread::spawn(move || loop {
+            std::thread::sleep(std::time::Duration::from_secs(3600));
+            this.publish();
+        });
+    }
+
+    pub fn pin(&self, id: &str, pinned: bool) -> AppResult<()> {
+        self.db(|conn| super::set_pinned(conn, id, pinned))?;
+        self.publish();
+        Ok(())
     }
 
     fn publish(&self) {

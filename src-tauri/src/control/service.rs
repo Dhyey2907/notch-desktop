@@ -36,6 +36,10 @@ struct Inner {
     app_io: Option<(Instant, std::collections::HashMap<u32, u64>)>,
     /// The speed test running now, or the last one.
     speed_test: Option<super::speedtest::SpeedTest>,
+    /// Low-battery warnings already given for the PC itself.
+    battery: super::BatteryWatch,
+    /// Counters at the last data-usage sample.
+    usage_counters: Option<(u64, u64)>,
 }
 
 const SPEED_TEST_KEY: &str = "control.speedtest";
@@ -368,6 +372,17 @@ impl ControlService {
                     minutes: p.minutes,
                 });
             }
+            let low = self
+                .inner
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .battery
+                .check(p.percent, p.plugged);
+            if let Some(level) = low {
+                self.alert(SystemAlert::BatteryLow {
+                    percent: p.percent.min(level),
+                });
+            }
         }
         self.update(|s| s.power = power.clone());
         power
@@ -428,10 +443,48 @@ impl ControlService {
             // Network events can be missed (sleep, driver resets): re-read now and then.
             if ticks.is_multiple_of(4) {
                 self.refresh_network(false);
+                self.record_usage(hud.data_cap_gb);
             }
             ticks += 1;
             std::thread::sleep(SLOW_TICK);
         }
+    }
+
+    /// Add the minute's bytes to today's data use, and warn when the month crosses the cap.
+    #[cfg(windows)]
+    fn record_usage(&self, cap_gb: u32) {
+        let (now, _) = super::network::counters();
+        let before = {
+            let mut inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+            inner.usage_counters.replace(now)
+        };
+        let Some(before) = before else { return };
+        let (down, up) = super::usage::delta(before, now);
+        let today = chrono::Local::now().format("%Y-%m-%d").to_string();
+        let db = &self.app.state::<AppState>().db;
+        let result = db.with(|conn| {
+            let was = super::usage::read(conn, &today, cap_gb)?;
+            super::usage::add(conn, &today, down, up)?;
+            Ok(was.month_down + was.month_up)
+        });
+        match result {
+            Ok(was) => {
+                if let Some(percent) = super::usage::crossed(cap_gb, was, was + down + up) {
+                    self.alert(SystemAlert::DataCap { percent, cap_gb });
+                }
+            }
+            Err(error) => tracing::debug!(%error, "could not record data use"),
+        }
+    }
+
+    /// Today's and this month's data use.
+    pub fn data_usage(&self) -> AppResult<super::usage::DataUsage> {
+        let today = chrono::Local::now().format("%Y-%m-%d").to_string();
+        let cap = self.hud().data_cap_gb;
+        self.app
+            .state::<AppState>()
+            .db
+            .with(|conn| super::usage::read(conn, &today, cap))
     }
 
     #[cfg(windows)]

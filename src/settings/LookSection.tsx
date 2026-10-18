@@ -3,10 +3,12 @@ import type { CSSProperties } from "react";
 
 import type { AppearanceSettings } from "../core/generated/AppearanceSettings";
 import type { BubbleStyle } from "../core/generated/BubbleStyle";
+import type { ScreenEdge } from "../core/generated/ScreenEdge";
 import type { Scale } from "../core/generated/Scale";
 import type { Theme } from "../core/generated/Theme";
 import { SegmentedControl, Surface, Switch } from "../design/components";
 import { appearanceVars, scaledRadius, SIZE_SCALE } from "../shell/appearance";
+import { ipc } from "../core/ipc";
 import { useSettings } from ".";
 import { ColorChoice, Row, Slider } from "./controls";
 import { patch, resetGroups } from "./patch";
@@ -155,6 +157,14 @@ export function LookSection() {
             onChange={(accentFromMusic) => set({ accentFromMusic })}
           />
         </div>
+        <div id="setting-match-the-wallpaper">
+          <Switch
+            label="Match the wallpaper"
+            description="Highlights take a color from your desktop wallpaper, and change with it."
+            checked={look.accentFromWallpaper}
+            onChange={(accentFromWallpaper) => set({ accentFromWallpaper })}
+          />
+        </div>
         <div id="setting-music-glow">
           <Switch
             label="Music glow"
@@ -167,13 +177,53 @@ export function LookSection() {
         </div>
       </Surface>
       <Surface>
+        <div id="setting-screen-edge">
+          <Row label="Screen edge" description="Top of the screen, or just above the taskbar.">
+            <SegmentedControl<ScreenEdge>
+              label="Screen edge"
+              value={look.edge}
+              options={[
+                { value: "top", label: "Top" },
+                { value: "bottom", label: "Bottom" },
+              ]}
+              onChange={(edge) => set({ edge })}
+            />
+          </Row>
+        </div>
+        <div id="setting-notch-position">
+          <Row label="Position along the edge" description="Or hold Alt and drag the resting notch sideways.">
+            <SegmentedControl<"left" | "center" | "right" | "custom">
+              label="Position along the edge"
+              value={
+                look.offsetX <= -4000
+                  ? "left"
+                  : look.offsetX >= 4000
+                    ? "right"
+                    : look.offsetX === 0
+                      ? "center"
+                      : "custom"
+              }
+              options={[
+                { value: "left", label: "Left" },
+                { value: "center", label: "Center" },
+                { value: "right", label: "Right" },
+                ...(look.offsetX !== 0 && Math.abs(look.offsetX) < 4000
+                  ? [{ value: "custom" as const, label: "Custom" }]
+                  : []),
+              ]}
+              onChange={(v) => {
+                if (v !== "custom") set({ offsetX: v === "left" ? -4000 : v === "right" ? 4000 : 0 });
+              }}
+            />
+          </Row>
+        </div>
         <Row
           label="Move left or right"
           description="Nudge the notch away from the center, e.g. past a webcam."
         >
           <Slider
             label="Move left or right"
-            value={look.offsetX}
+            value={Math.max(-600, Math.min(600, look.offsetX))}
             min={-600}
             max={600}
             step={10}
@@ -181,9 +231,14 @@ export function LookSection() {
             format={(v) => (v === 0 ? "Center" : `${Math.abs(v)} ${v < 0 ? "left" : "right"}`)}
           />
         </Row>
-        <Row label="Distance from the top" description="Leave a gap above the notch.">
+        <Row
+          label={look.edge === "bottom" ? "Distance from the taskbar" : "Distance from the top"}
+          description={
+            look.edge === "bottom" ? "Leave a gap below the notch." : "Leave a gap above the notch."
+          }
+        >
           <Slider
-            label="Distance from the top"
+            label="Distance from the edge"
             value={look.offsetY}
             min={0}
             max={40}
@@ -191,6 +246,56 @@ export function LookSection() {
             format={(v) => (v === 0 ? "None" : `${v} px`)}
           />
         </Row>
+      </Surface>
+      <Surface>
+        <div id="setting-fade-while-typing">
+          <Switch
+            label="Fade while typing under it"
+            description="Typing in a box right under the notch (an address bar, a chat box) fades the resting bubble until you stop."
+            checked={look.fadeWhileTyping}
+            onChange={(fadeWhileTyping) => set({ fadeWhileTyping })}
+          />
+        </div>
+        <div id="setting-lock-screen-info">
+          <Switch
+            label="Lock-screen info"
+            description="Your next meeting, the weather, what's playing and unread mail, drawn onto your wallpaper as the lock-screen picture (updated every few minutes). With Windows Spotlight on, turning this off opens the lock-screen settings to pick it again."
+            checked={look.lockscreenInfo}
+            onChange={(lockscreenInfo) => {
+              set({ lockscreenInfo });
+              if (!lockscreenInfo) void ipc.lockscreenOff().catch(() => {});
+            }}
+          />
+        </div>
+        <div id="setting-slide-aside">
+          <Switch
+            label="Slide aside for maximized browsers"
+            description="When Chrome, Edge, Firefox or another browser fills the screen, the notch moves to the right end, clear of the tabs."
+            checked={look.slideAsideBrowsers}
+            onChange={(slideAsideBrowsers) => set({ slideAsideBrowsers })}
+          />
+          <Row
+            label="Also slide aside for"
+            description="Program names, separated by commas, e.g. code.exe, notion.exe."
+          >
+            <input
+              className="nd-input"
+              aria-label="Also slide aside for"
+              defaultValue={look.slideAside.join(", ")}
+              placeholder="code.exe, notion.exe"
+              onBlur={(e) =>
+                set({
+                  slideAside: e.target.value
+                    .split(",")
+                    .map((x) => x.trim().toLowerCase())
+                    .filter(Boolean)
+                    .map((x) => (x.endsWith(".exe") ? x : `${x}.exe`))
+                    .slice(0, 30),
+                })
+              }
+            />
+          </Row>
+        </div>
       </Surface>
     </Section>
   );

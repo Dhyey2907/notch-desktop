@@ -54,6 +54,18 @@ export interface AlertCard {
   hud?: { kind: "caps" | "numlock" | "language"; on: boolean };
 }
 
+/** "1.2 GB", "340 MB", "12 KB". */
+export function formatBytes(bytes: number): string {
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let n = Math.max(0, bytes);
+  let i = 0;
+  while (n >= 1000 && i < units.length - 1) {
+    n /= 1000;
+    i += 1;
+  }
+  return `${n >= 100 || i === 0 ? Math.round(n) : n.toFixed(1)} ${units[i]}`;
+}
+
 export function alertCard(alert: SystemAlert): AlertCard {
   switch (alert.kind) {
     case "internetDown":
@@ -88,6 +100,18 @@ export function alertCard(alert: SystemAlert): AlertCard {
         title: `${alert.name} battery low`,
         body: `${alert.percent}% left. Time to charge it.`,
         tone: "warning",
+      };
+    case "dataCap":
+      return {
+        title: alert.percent >= 100 ? "Data cap reached" : `${alert.percent}% of your data cap used`,
+        body: `This month on this PC, against your ${alert.cap_gb} GB cap.`,
+        tone: alert.percent >= 100 ? "danger" : "warning",
+      };
+    case "batteryLow":
+      return {
+        title: `Battery at ${alert.percent}%`,
+        body: alert.percent <= 10 ? "Plug in soon — it's almost empty." : "Time to find a charger.",
+        tone: alert.percent <= 10 ? "danger" : "warning",
       };
     case "capsLock":
       return {

@@ -31,7 +31,7 @@
       "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: http://asset.localhost data: https://*.scdn.co https://*.spotifycdn.com; font-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; connect-src ipc: http://ipc.localhost",
       "assetProtocol": {
         "enable": true,
-        "scope": ["$APPCACHE/artwork/*", "$APPCACHE/clips/*"]
+        "scope": ["$APPCACHE/artwork/*", "$APPCACHE/clips/*", "$APPCACHE/wallpapers/thumbs/*"]
       },
       "devCsp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: http://asset.localhost data: https://*.scdn.co https://*.spotifycdn.com; font-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; connect-src ipc: http://ipc.localhost ws://localhost:1420 http://localhost:1420",
       "freezePrototype": true

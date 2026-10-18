@@ -19,4 +19,17 @@ noLinkCleaning: boolean,
 /**
  * Turn text snippets off (the keyboard hook stops).
  */
-noSnippets: boolean, };
+noSnippets: boolean, 
+/**
+ * How long files stay on the shelf unless pinned: "day" (default, also ""), "week" or
+ * "forever".
+ */
+shelfKeep: string, 
+/**
+ * Don't copy sign-in codes from phone notifications.
+ */
+noPhoneCodes: boolean, 
+/**
+ * Don't put new screenshots (Win+Shift+S, Print Screen) on the shelf.
+ */
+noScreenshots: boolean, };

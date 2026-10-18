@@ -100,6 +100,62 @@ pub struct Clip {
     pub app: Option<String>,
     pub at: DateTime<Utc>,
     pub pinned: bool,
+    /// A one-click action for what the text is: an address, a date, a tracking number.
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub smart: Option<Smart>,
+}
+
+/// What a copied text looks like, and what to do with it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct Smart {
+    /// "address" (open in Maps), "date" (add an event) or "tracking" (track the parcel).
+    pub kind: String,
+    /// "Open in Maps", "Add event", "Track UPS parcel".
+    pub label: String,
+    /// The address, the local date-time (`YYYY-MM-DDTHH:MM:SS`), or the tracking number.
+    pub value: String,
+    /// Page to open (maps, tracking).
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    /// For a date: only the day was copied.
+    pub all_day: bool,
+}
+
+/// A one-click action for a copied text, if it is one of the things Notch recognises.
+pub fn smart_for(text: &str, now: chrono::NaiveDateTime) -> Option<Smart> {
+    if let Some((carrier, url)) = suggest::find_tracking(text) {
+        return Some(Smart {
+            kind: "tracking".into(),
+            label: format!("Track {carrier} parcel"),
+            value: text.trim().to_owned(),
+            url: Some(url),
+            all_day: false,
+        });
+    }
+    if let Some(address) = suggest::find_address(text) {
+        let url = format!(
+            "https://www.google.com/maps/search/?api=1&query={}",
+            url::form_urlencoded::byte_serialize(address.as_bytes()).collect::<String>()
+        );
+        return Some(Smart {
+            kind: "address".into(),
+            label: "Open in Maps".into(),
+            value: address,
+            url: Some(url),
+            all_day: false,
+        });
+    }
+    suggest::find_when(text, now).map(|when| Smart {
+        kind: "date".into(),
+        label: "Add event".into(),
+        value: when.at.format("%Y-%m-%dT%H:%M:%S").to_string(),
+        url: None,
+        all_day: when.all_day,
+    })
 }
 
 /// Something useful in a copy: a date/time to be reminded of, or an address to look up.
@@ -148,6 +204,10 @@ pub struct ClipboardSnapshot {
     pub pinned: Vec<Clip>,
     /// Most recently copied first.
     pub recent: Vec<Clip>,
+    /// Copies waiting in the paste stack (none while it's off).
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stack: Option<u32>,
 }
 
 /// What a clip holds, in full.
@@ -198,6 +258,7 @@ pub fn text_entry(text: String, app: Option<String>, at: DateTime<Utc>) -> Optio
             app,
             at,
             pinned: false,
+            smart: smart_for(&text, chrono::Local::now().naive_local()),
         },
         content: Content::Text(text),
         hash,
@@ -225,6 +286,7 @@ pub fn image_entry(
             app,
             at,
             pinned: false,
+            smart: None,
         },
         content: Content::Image(path),
         hash,
@@ -255,6 +317,7 @@ pub fn files_entry(mut files: Vec<String>, app: Option<String>, at: DateTime<Utc
             app,
             at,
             pinned: false,
+            smart: None,
         },
         content: Content::Files(files),
         hash,
@@ -304,6 +367,20 @@ fn is_color(t: &str) -> bool {
 pub fn pretty_json(text: &str) -> Option<String> {
     let value: serde_json::Value = serde_json::from_str(text.trim()).ok()?;
     serde_json::to_string_pretty(&value).ok()
+}
+
+/// Until this moment (ms since the epoch) new copies stay out of history: Overline's own
+/// copy-and-restore around "rewrite selection".
+static IGNORE_UNTIL: std::sync::atomic::AtomicI64 = std::sync::atomic::AtomicI64::new(0);
+
+/// Keep copies out of history for the next `ms` milliseconds.
+pub fn ignore_copies_for(ms: i64) {
+    let until = chrono::Utc::now().timestamp_millis() + ms;
+    IGNORE_UNTIL.fetch_max(until, std::sync::atomic::Ordering::SeqCst);
+}
+
+pub fn ignoring_copies() -> bool {
+    chrono::Utc::now().timestamp_millis() < IGNORE_UNTIL.load(std::sync::atomic::Ordering::SeqCst)
 }
 
 /// "C:\...\chrome.exe" -> "chrome.exe" (lowercase), for block lists.
@@ -442,7 +519,17 @@ impl History {
         ClipboardSnapshot {
             pinned: self.pinned.iter().map(|e| e.clip.clone()).collect(),
             recent: self.recent.iter().map(|e| e.clip.clone()).collect(),
+            stack: None,
         }
+    }
+
+    /// The clip holding this content now (copying the same thing again keeps one clip).
+    pub fn id_for_hash(&self, hash: u64) -> Option<String> {
+        self.pinned
+            .iter()
+            .chain(self.recent.iter())
+            .find(|e| e.hash == hash)
+            .map(|e| e.clip.id.clone())
     }
 }
 

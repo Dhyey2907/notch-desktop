@@ -17,6 +17,7 @@ export type PageId =
   | "games"
   | "ai"
   | "vault"
+  | "wallpaper"
   | "developer"
   | "desk"
   | "privacy"
@@ -109,6 +110,12 @@ export const PAGES: PageInfo[] = [
     lead: "Logins kept in your Obsidian vault, and 2FA codes.",
   },
   {
+    id: "wallpaper",
+    label: "Wallpaper",
+    group: "Features",
+    lead: "Photos to switch your desktop wallpaper to in a click.",
+  },
+  {
     id: "privacy",
     label: "Privacy & data",
     group: "More",
@@ -136,6 +143,15 @@ export const ENTRIES: Entry[] = [
   { page: "general", label: "Start with Windows", keywords: "startup login boot launch" },
   { page: "general", label: "Show the notch on", keywords: "screen monitor display second" },
   { page: "general", label: "Animation", keywords: "motion reduce effects" },
+  { page: "look", label: "Screen edge", keywords: "bottom taskbar top position move notch" },
+  { page: "look", label: "Position along the edge", keywords: "left right center alt drag move" },
+  { page: "look", label: "Lock-screen info", keywords: "lock screen picture meeting weather music" },
+  { page: "look", label: "Fade while typing under it", keywords: "hide transparent typing address bar" },
+  {
+    page: "look",
+    label: "Slide aside for maximized browsers",
+    keywords: "tabs chrome edge move out of the way",
+  },
   { page: "look", label: "Notch size", keywords: "bigger smaller scale zoom" },
   { page: "look", label: "Text size", keywords: "font bigger smaller readable" },
   { page: "look", label: "Resting bubble", keywords: "idle pill dot hidden collapsed" },
@@ -165,6 +181,7 @@ export const ENTRIES: Entry[] = [
   { page: "behavior", label: "Internet down and back", keywords: "offline connection wifi network" },
   { page: "behavior", label: "Show charging", keywords: "battery plugged charger" },
   { page: "behavior", label: "Remind me to unplug", keywords: "battery health 80 charge limit" },
+  { page: "behavior", label: "Monthly data cap", keywords: "data usage metered mobile hotspot gb limit" },
   { page: "shortcuts", label: "Open or close the notch", keywords: "keyboard shortcut hotkey ctrl alt n" },
   { page: "shortcuts", label: "Ask Claude", keywords: "keyboard shortcut hotkey ai ctrl alt a" },
   { page: "shortcuts", label: "Clipboard history", keywords: "keyboard shortcut hotkey ctrl alt v paste" },
@@ -175,6 +192,13 @@ export const ENTRIES: Entry[] = [
   { page: "home", label: "Temperature", keywords: "celsius fahrenheit weather units" },
   { page: "home", label: "Clock", keywords: "24 hour 12 hour am pm time format" },
   { page: "home", label: "Workday", keywords: "work hours days weekend progress" },
+  { page: "home", label: "Power schedule", keywords: "sleep wake schedule night morning timer" },
+  {
+    page: "home",
+    label: "Suggest routines from my habits",
+    keywords: "habit routine apps start automatically",
+  },
+  { page: "home", label: "Morning briefing", keywords: "morning summary weather meetings tasks" },
   { page: "home", label: "Plan my day each morning", keywords: "ai planner schedule claude" },
   { page: "calendar", label: "Gmail glance", keywords: "email inbox unread mail google" },
   {
@@ -191,11 +215,35 @@ export const ENTRIES: Entry[] = [
   { page: "media", label: "Spotify", keywords: "playlists account connect" },
   { page: "calendar", label: "Google Calendar", keywords: "meetings events reminders connect" },
   { page: "git", label: "Repositories", keywords: "github pull requests ci reviews" },
+  { page: "clipboard", label: "Screenshots to the shelf", keywords: "screenshot print screen snip ocr" },
   { page: "clipboard", label: "Clipboard history", keywords: "copy paste pause blocked apps" },
   { page: "clipboard", label: "Suggestions", keywords: "remind me maps dates addresses" },
   { page: "clipboard", label: "Clean tracking from links", keywords: "utm fbclid privacy url" },
   { page: "clipboard", label: "Text snippets", keywords: "expander autotext abbreviations shortcuts typing" },
   { page: "shortcuts", label: "Grab text from the screen", keywords: "ocr copy text image screenshot" },
+  { page: "home", label: "Evening review", keywords: "day summary stats night recap" },
+  { page: "look", label: "Match the wallpaper", keywords: "accent color colour background desktop" },
+  { page: "shortcuts", label: "Command palette", keywords: "run command search launcher ctrl k" },
+  { page: "shortcuts", label: "Quick note", keywords: "note jot write hotkey" },
+  {
+    page: "shortcuts",
+    label: "Paste the next from the stack",
+    keywords: "paste stack queue clipboard multiple",
+  },
+  { page: "dock", label: "Dock profiles", keywords: "work gaming study switch apps time profile" },
+  {
+    page: "dock",
+    label: "Widget beside the bubble",
+    keywords: "pin widget timer music meeting mail focus bubble",
+  },
+  {
+    page: "clipboard",
+    label: "Copy sign-in codes from the phone",
+    keywords: "otp 2fa sms code verification phone",
+  },
+  { page: "clipboard", label: "Keep shelf files", keywords: "shelf clean up expire day week forever pin" },
+  { page: "wallpaper", label: "Wallpaper folder", keywords: "my folder pictures photos background desktop" },
+  { page: "wallpaper", label: "Recent wallpapers", keywords: "clear history background" },
   { page: "vault", label: "Obsidian vault", keywords: "passwords logins folder sync" },
   { page: "desk", label: "Routines", keywords: "start work gaming open apps automation schedule morning" },
   { page: "shortcuts", label: "Keep the window in front on top", keywords: "pin always on top topmost" },
@@ -206,6 +254,7 @@ export const ENTRIES: Entry[] = [
   },
   { page: "developer", label: "Tell me when a dev server stops", keywords: "localhost port crash node vite" },
   { page: "developer", label: "Count coding time", keywords: "wakatime editor project streak vscode" },
+  { page: "developer", label: "Claude daily spend cap", keywords: "claude cost budget limit usd tokens" },
   { page: "developer", label: "Widgets", keywords: "custom script url json command dashboard" },
   { page: "vault", label: "Ask for Windows Hello", keywords: "fingerprint face pin security" },
   { page: "vault", label: "Clear copied passwords after", keywords: "clipboard seconds" },
@@ -221,6 +270,9 @@ export const ENTRIES: Entry[] = [
   { page: "pet", label: "Talks to you", keywords: "pet speech bubble lines messages chatty quiet" },
   { page: "pet", label: "Reactions", keywords: "pet dance music popcorn video coding weather battery mood" },
   { page: "pet", label: "Petting", keywords: "pet pat click" },
+  { page: "pet", label: "Play on the taskbar", keywords: "pet fetch ball pick up drop chase cursor pounce" },
+  { page: "pet", label: "Gets hungry", keywords: "pet hunger food treats sulk energy" },
+  { page: "pet", label: "Friends visit", keywords: "pet friend visitor wave" },
   {
     page: "pet",
     label: "Says something on the taskbar",

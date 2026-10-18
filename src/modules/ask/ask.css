@@ -243,3 +243,76 @@
   opacity: 0.5;
   cursor: default;
 }
+
+/* Ask → My PC: the answer, then what was found (numbered as the answer cites them). */
+.askpc {
+  display: grid;
+  gap: 8px;
+}
+
+.askpc__answer {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.askpc__busy,
+.askpc__note {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.askpc__found {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 3px;
+}
+
+.askpc__found li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12px;
+}
+
+.askpc__n {
+  flex: none;
+  min-width: 14px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.askpc__open,
+.askpc__title {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+}
+
+.askpc__open {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--border-strong);
+}
+
+.askpc__detail {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+}

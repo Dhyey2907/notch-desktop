@@ -31,4 +31,8 @@ noChargeAlert: boolean,
 /**
  * Percent for the unplug reminder (0 = the default, 80).
  */
-chargeAlertAt: number, };
+chargeAlertAt: number, 
+/**
+ * Monthly data cap in GB for the usage meter's warnings (0 = no cap).
+ */
+dataCapGb: number, };

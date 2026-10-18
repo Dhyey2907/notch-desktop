@@ -496,3 +496,64 @@ mod tests {
         assert!(find_address("Meeting at 4pm, room 2").is_none());
     }
 }
+
+/// A parcel tracking number copied on its own: the carrier (a guess from its shape) and a
+/// tracking page. Numbers that are probably something else (phone numbers) are left alone.
+pub fn find_tracking(text: &str) -> Option<(&'static str, String)> {
+    let t: String = text.trim().chars().filter(|c| !c.is_whitespace()).collect();
+    if t.len() < 10
+        || t.len() > 30
+        || !t.chars().all(|c| c.is_ascii_alphanumeric())
+        || text.trim().contains('\n')
+    {
+        return None;
+    }
+    let up = t.to_ascii_uppercase();
+    let digits = up.chars().filter(char::is_ascii_digit).count();
+    let all_digits = digits == up.len();
+    let carrier = if up.starts_with("1Z") && up.len() == 18 {
+        "UPS"
+    } else if up.starts_with("TBA") && up.len() == 15 && up[3..].chars().all(|c| c.is_ascii_digit()) {
+        "Amazon"
+    } else if up.len() == 13
+        && up[..2].chars().all(|c| c.is_ascii_alphabetic())
+        && up[2..11].chars().all(|c| c.is_ascii_digit())
+        && up[11..].chars().all(|c| c.is_ascii_alphabetic())
+    {
+        // The international postal format: India Post, Royal Mail, USPS international…
+        if up.ends_with("IN") {
+            "India Post"
+        } else {
+            "Post"
+        }
+    } else if all_digits && (up.len() == 20 || up.len() == 22) {
+        "USPS"
+    } else if all_digits && (up.len() == 15 || (up.len() == 12 && !up.starts_with("91"))) {
+        "FedEx"
+    } else {
+        return None;
+    };
+    Some((carrier, format!("https://parcelsapp.com/en/tracking/{up}")))
+}
+
+#[cfg(test)]
+mod tracking_tests {
+    use super::find_tracking;
+
+    #[test]
+    fn spots_tracking_numbers_and_skips_phone_numbers() {
+        assert_eq!(find_tracking("1Z999AA10123456784").map(|t| t.0), Some("UPS"));
+        assert_eq!(find_tracking(" EE123456789IN ").map(|t| t.0), Some("India Post"));
+        assert_eq!(find_tracking("TBA123456789012").map(|t| t.0), Some("Amazon"));
+        assert_eq!(find_tracking("9400111899223197428490").map(|t| t.0), Some("USPS"));
+        assert_eq!(find_tracking("123456789012").map(|t| t.0), Some("FedEx"));
+        assert!(find_tracking("919876543210").is_none());
+        assert!(find_tracking("9876543210").is_none());
+        assert!(find_tracking("hello world").is_none());
+        assert!(find_tracking("1Z999AA1012345678\nmore").is_none());
+        assert!(find_tracking("1Z999AA10123456784")
+            .unwrap()
+            .1
+            .ends_with("/1Z999AA10123456784"));
+    }
+}

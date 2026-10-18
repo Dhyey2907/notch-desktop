@@ -7,6 +7,7 @@ import { ipc } from "../../core/ipc";
 import type { ModuleContext, NotchModule } from "../types";
 import { CalendarCompact, CalendarPeek } from "./CalendarIndicators";
 import { showInPetCloud } from "../../pet/petStore";
+import { useIsland } from "../../shell/useIsland";
 import { countdownText, useCalendar } from "./calendarStore";
 
 /** Keep the countdown up this long after the meeting starts, so "Join" stays reachable. */
@@ -35,6 +36,26 @@ function init({ events, activities }: ModuleContext) {
                 label: "Join",
                 variant: "primary" as const,
                 run: () => ipc.calendarOpenLink(event.joinUrl!),
+              },
+            ]
+          : []),
+        // Video meetings: one click to start meeting notes (set up first if Whisper isn't there).
+        ...(event.joinUrl
+          ? [
+              {
+                id: "notes",
+                label: "Take notes",
+                run: () =>
+                  void ipc.meetingState().then((s) => {
+                    if (s.ready) void ipc.meetingStart().catch(() => {});
+                    else {
+                      // Loaded here: the module list imports this file (a cycle at load).
+                      void import("../../shell/useModules").then(({ useModuleNav }) => {
+                        useModuleNav.getState().setActive("meeting");
+                        void useIsland.getState().request("expanded");
+                      });
+                    }
+                  }),
               },
             ]
           : []),

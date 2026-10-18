@@ -7,13 +7,15 @@ import { useIsland } from "./useIsland";
 const END_PADDING = 9;
 const GAP = 6;
 const MAX_WIDTH = 160;
+/** With a widget pinned beside the bubble it may grow this wide. */
+export const MAX_WIDTH_WITH_WIDGET = 320;
 
 /** The resting bubble's width for marks of these widths (logical px). */
-export function bubbleWidthFor(widths: number[]): number {
+export function bubbleWidthFor(widths: number[], max = MAX_WIDTH): number {
   const shown = widths.filter((w) => Number.isFinite(w) && w > 0);
   if (shown.length === 0) return ISLAND_SIZE.collapsed.width;
   const content = shown.reduce((a, b) => a + b, 0) + GAP * (shown.length - 1);
-  return Math.min(MAX_WIDTH, Math.max(ISLAND_SIZE.collapsed.width, Math.ceil(content + END_PADDING * 2)));
+  return Math.min(max, Math.max(ISLAND_SIZE.collapsed.width, Math.ceil(content + END_PADDING * 2)));
 }
 
 /**
@@ -47,7 +49,7 @@ export function useBubbleFit(island: RefObject<HTMLElement | null>, active: bool
           marks.push(size(child));
         }
       }
-      return bubbleWidthFor(marks);
+      return bubbleWidthFor(marks, content.querySelector(".mini-widget") ? MAX_WIDTH_WITH_WIDGET : undefined);
     };
     const contents = () => Array.from(root.querySelectorAll<HTMLElement>(".island-content--collapsed"));
     // While the old content fades out the new one is already there: fit the larger.

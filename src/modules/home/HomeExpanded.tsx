@@ -36,6 +36,7 @@ import { useReduceMotion } from "../../design/useReduceMotion";
 import { useSettings } from "../../settings";
 import type { ScreenTime } from "../../core/generated/ScreenTime";
 import { dayKeyBack, dayLabel, formatMinutes, greeting, longDate } from "./dashboard";
+import { HistoryView } from "./HistoryView";
 import "./home.css";
 
 /** How often the open dashboard refreshes CPU, memory and battery. */
@@ -116,7 +117,9 @@ export default function HomeExpanded() {
   const home = useSettings((s) => s.settings?.home);
   const day = useSettings((s) => s.settings?.day);
   const show = (tile: string) => !home?.hiddenTiles.includes(tile);
+  const [history, setHistory] = useState(false);
 
+  if (history) return <HistoryView onBack={() => setHistory(false)} />;
   return (
     <section className="home" aria-label="Home">
       <header className="home__head">
@@ -127,7 +130,12 @@ export default function HomeExpanded() {
             {workdayText(day, now)}
           </p>
         </div>
-        {show("desktops") && dash && dash.desktops.desktops.length > 0 && <DesktopPicker dash={dash} />}
+        <div className="home__head-end">
+          <button type="button" className="nd-chip" onClick={() => setHistory(true)}>
+            What did I miss?
+          </button>
+          {show("desktops") && dash && dash.desktops.desktops.length > 0 && <DesktopPicker dash={dash} />}
+        </div>
       </header>
       <div className="home__grid">
         {show("system") && <SystemCard stats={stats} />}

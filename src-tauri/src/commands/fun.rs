@@ -34,6 +34,14 @@ pub async fn pet_buddy_hide(
     crate::fun::buddy::hide(&app)
 }
 
+/// The walking pet's window takes the mouse while the pointer is on the pet (to pet, carry
+/// or throw it) and lets clicks through again afterwards. Async: it touches a window.
+#[tauri::command]
+pub async fn pet_capture(on: bool, fun: State<'_, FunService>) -> crate::error::AppResult<()> {
+    fun.capture_pet(on);
+    Ok(())
+}
+
 /// The pet is out walking the taskbar.
 #[tauri::command]
 pub fn pet_walking(fun: State<'_, FunService>) -> bool {

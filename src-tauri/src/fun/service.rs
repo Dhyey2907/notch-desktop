@@ -37,6 +37,9 @@ pub const PET_LEAVE_EVENT: &str = "pet-leave";
 /// Tells the pet window where you clicked inside it (it knows where the pet is, and whether
 /// that was a click on the pet: a treat).
 pub const PET_CLICK_EVENT: &str = "pet-click";
+/// Tells the pet window where the mouse is while it's over the pet's strip (and once when it
+/// leaves), so the pet can be petted, chase the cursor, or be picked up.
+pub const PET_POINTER_EVENT: &str = "pet-pointer";
 /// Tells every window whether the pet is out walking: there is one pet, so while it walks it
 /// isn't in the notch.
 pub const PET_WALKING_EVENT: &str = "pet-walking";
@@ -67,6 +70,9 @@ pub struct FunService {
     send_back: Arc<AtomicBool>,
     /// It was just called out: don't finish the current wait.
     wake: Arc<AtomicBool>,
+    /// The pointer is on the pet: its window takes the mouse (to pet, carry or throw it)
+    /// instead of letting clicks through to the taskbar.
+    captured: Arc<AtomicBool>,
 }
 
 impl FunService {
@@ -78,6 +84,7 @@ impl FunService {
             walking: Arc::default(),
             send_back: Arc::default(),
             wake: Arc::default(),
+            captured: Arc::default(),
         }
     }
 
@@ -278,6 +285,7 @@ impl FunService {
         let mut media_place = Place::Unknown;
         let mut media_checked: Option<Instant> = None;
         let mut was_down = false;
+        let mut last_pointer: Option<(i64, i64, bool)> = None;
         loop {
             let (fun, _) = self.settings();
             let (on_click, called_out) = self.pet_leave();
@@ -332,13 +340,16 @@ impl FunService {
                 out = false;
                 continue;
             }
+            // While its window has the mouse, it hears clicks itself.
+            let captured = self.captured.load(Ordering::Relaxed);
             // You called it out and clicked: if that was on the pet, it gets a treat.
-            if called_out && pressed {
+            if called_out && pressed && !captured {
                 self.pet_clicked();
             }
+            self.pet_pointer(down, &mut last_pointer);
             // Back at work means on the pet's screen: clicking or typing on another one doesn't
-            // count.
-            let clicked_here = (down || tapped) && buddy::cursor_on_pet_screen(&self.app);
+            // count. Playing with the pet itself doesn't either.
+            let clicked_here = (down || tapped) && !captured && buddy::cursor_on_pet_screen(&self.app);
             busy_since = if idle < 1500 && buddy::front_on_pet_screen(&self.app) {
                 busy_since.or(Some(Instant::now()))
             } else {
@@ -364,6 +375,55 @@ impl FunService {
                 continue;
             }
             std::thread::sleep(PET_WATCH);
+        }
+    }
+
+    /// Where the mouse is over the pet's strip, in the window's own pixels, sent only when it
+    /// moved or a button changed; one `inside: false` when it leaves the strip.
+    fn pet_pointer(&self, down: bool, last: &mut Option<(i64, i64, bool)>) {
+        use tauri::Emitter;
+        let Some(w) = self.app.get_webview_window(PET_WINDOW) else {
+            return;
+        };
+        let (Ok(pos), Ok(size), Ok(scale), Some(cursor)) = (
+            w.outer_position(),
+            w.outer_size(),
+            w.scale_factor(),
+            super::buddy::cursor(),
+        ) else {
+            return;
+        };
+        match point_in_window(cursor, (pos.x, pos.y), (size.width, size.height), scale) {
+            Some((x, y)) => {
+                let now = (x.round() as i64, y.round() as i64, down);
+                if *last != Some(now) {
+                    *last = Some(now);
+                    let _ = self.app.emit_to(
+                        PET_WINDOW,
+                        PET_POINTER_EVENT,
+                        serde_json::json!({ "x": x, "y": y, "down": down, "inside": true }),
+                    );
+                }
+            }
+            None => {
+                if last.take().is_some() {
+                    let _ = self.app.emit_to(
+                        PET_WINDOW,
+                        PET_POINTER_EVENT,
+                        serde_json::json!({ "x": -1, "y": -1, "down": false, "inside": false }),
+                    );
+                }
+            }
+        }
+    }
+
+    /// The pet's window takes the mouse while the pointer is on the pet (to pet, carry or
+    /// throw it), and lets it through again when it leaves.
+    pub fn capture_pet(&self, on: bool) {
+        if let Some(w) = self.app.get_webview_window(PET_WINDOW) {
+            if set_click_through(&w, !on) {
+                self.captured.store(on, Ordering::Relaxed);
+            }
         }
     }
 
@@ -410,7 +470,9 @@ impl FunService {
     fn hide_pet(&self) {
         if let Some(w) = self.app.get_webview_window(PET_WINDOW) {
             let _ = w.hide();
+            set_click_through(&w, true);
         }
+        self.captured.store(false, Ordering::Relaxed);
     }
 
     fn open_pet(&self) -> tauri::Result<()> {
@@ -448,6 +510,41 @@ impl FunService {
         let _ = w.set_size(PhysicalSize::new(area.size.width, height));
         let _ = w.set_position(PhysicalPosition::new(area.position.x, y));
     }
+}
+
+/// Let the mouse through the pet's window, or take it. Only flips `WS_EX_TRANSPARENT`: Tauri's
+/// `set_ignore_cursor_events` rewrites the whole window style and drops `WS_EX_LAYERED` too,
+/// which on a transparent window leaves ghost trails and can draw a classic window frame (that
+/// also lifts the pet off the taskbar). The window keeps `WS_EX_LAYERED` from when it opened.
+#[cfg(windows)]
+fn set_click_through(w: &tauri::WebviewWindow, through: bool) -> bool {
+    use windows::Win32::UI::WindowsAndMessaging::{
+        GetWindowLongPtrW, SetWindowLongPtrW, GWL_EXSTYLE, WS_EX_LAYERED, WS_EX_TRANSPARENT,
+    };
+    let Ok(raw) = w.hwnd() else {
+        return false;
+    };
+    // Tauri may link a different `windows` version; both HWNDs wrap the same raw handle.
+    let hwnd = windows::Win32::Foundation::HWND(raw.0);
+    // SAFETY: `hwnd` is this process's live pet window; only extended-style bits change.
+    unsafe {
+        let style = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
+        let layered = style | WS_EX_LAYERED.0 as isize;
+        let next = if through {
+            layered | WS_EX_TRANSPARENT.0 as isize
+        } else {
+            layered & !(WS_EX_TRANSPARENT.0 as isize)
+        };
+        if next != style {
+            SetWindowLongPtrW(hwnd, GWL_EXSTYLE, next);
+        }
+    }
+    true
+}
+
+#[cfg(not(windows))]
+fn set_click_through(w: &tauri::WebviewWindow, through: bool) -> bool {
+    w.set_ignore_cursor_events(through).is_ok()
 }
 
 /// Where the pet walks: a strip whose bottom is the taskbar's top edge (the bottom of the work

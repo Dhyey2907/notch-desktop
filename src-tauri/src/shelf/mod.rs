@@ -2,6 +2,7 @@
 //! them). The shelf keeps only *where* each file is, never a copy, so a file moved or deleted
 //! meanwhile shows as missing. File names are never logged.
 
+pub mod screenshots;
 pub mod service;
 #[cfg(windows)]
 mod win;
@@ -39,6 +40,8 @@ pub struct ShelfItem {
     /// False once the file was moved or deleted.
     pub exists: bool,
     pub added_at: DateTime<Utc>,
+    /// Kept past the clean-up.
+    pub pinned: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
@@ -107,24 +110,25 @@ fn exists_in(conn: &Connection, path: &Path) -> AppResult<bool> {
 }
 
 pub fn list(conn: &Connection) -> AppResult<ShelfSnapshot> {
-    let mut stmt =
-        conn.prepare("SELECT id, path, added_at FROM shelf_items ORDER BY added_at DESC, rowid DESC")?;
+    let mut stmt = conn
+        .prepare("SELECT id, path, added_at, pinned FROM shelf_items ORDER BY added_at DESC, rowid DESC")?;
     let rows = stmt.query_map([], |row| {
         Ok((
             row.get::<_, String>(0)?,
             row.get::<_, String>(1)?,
             row.get::<_, i64>(2)?,
+            row.get::<_, i64>(3)?,
         ))
     })?;
     let mut items = Vec::new();
     for row in rows {
-        let (id, path, at) = row?;
-        items.push(describe(id, path, at));
+        let (id, path, at, pinned) = row?;
+        items.push(describe(id, path, at, pinned != 0));
     }
     Ok(ShelfSnapshot { items })
 }
 
-fn describe(id: String, path: String, added_ms: i64) -> ShelfItem {
+fn describe(id: String, path: String, added_ms: i64, pinned: bool) -> ShelfItem {
     let p = Path::new(&path);
     let meta = std::fs::metadata(p).ok();
     let is_dir = meta.as_ref().is_some_and(|m| m.is_dir());
@@ -140,6 +144,7 @@ fn describe(id: String, path: String, added_ms: i64) -> ShelfItem {
         size: meta.as_ref().filter(|m| m.is_file()).map(|m| m.len()),
         exists: meta.is_some(),
         added_at: Utc.timestamp_millis_opt(added_ms).single().unwrap_or_default(),
+        pinned,
         id,
         path,
     }
@@ -150,6 +155,34 @@ pub fn remove(conn: &Connection, ids: &[String]) -> AppResult<()> {
         conn.execute("DELETE FROM shelf_items WHERE id = ?1", [id])?;
     }
     Ok(())
+}
+
+pub fn set_pinned(conn: &Connection, id: &str, pinned: bool) -> AppResult<()> {
+    conn.execute(
+        "UPDATE shelf_items SET pinned = ?2 WHERE id = ?1",
+        params![id, i64::from(pinned)],
+    )?;
+    Ok(())
+}
+
+/// How long unpinned files stay: "day" (also ""), "week", or "forever" (`None`).
+pub fn keep_for(setting: &str) -> Option<chrono::Duration> {
+    match setting {
+        "forever" => None,
+        "week" => Some(chrono::Duration::days(7)),
+        _ => Some(chrono::Duration::days(1)),
+    }
+}
+
+/// Take unpinned files older than `keep` off the shelf (the files themselves stay where they
+/// are). Returns how many went.
+pub fn prune(conn: &Connection, now: DateTime<Utc>, keep: Option<chrono::Duration>) -> AppResult<usize> {
+    let Some(keep) = keep else { return Ok(0) };
+    let before = (now - keep).timestamp_millis();
+    Ok(conn.execute(
+        "DELETE FROM shelf_items WHERE pinned = 0 AND added_at < ?1",
+        [before],
+    )?)
 }
 
 pub fn clear(conn: &Connection) -> AppResult<()> {
@@ -193,6 +226,29 @@ mod tests {
             })
             .collect();
         (dir, files)
+    }
+
+    #[test]
+    fn old_unpinned_files_leave_the_shelf() {
+        let conn = db();
+        let (dir, files) = temp_files("prune", 3);
+        let day = chrono::Duration::days(1);
+        let start = Utc::now() - chrono::Duration::days(3);
+        add(&conn, &files[..2], start).unwrap();
+        add(&conn, &files[2..], Utc::now()).unwrap();
+        let pinned = list(&conn)
+            .unwrap()
+            .items
+            .into_iter()
+            .find(|i| i.path == files[0])
+            .unwrap();
+        set_pinned(&conn, &pinned.id, true).unwrap();
+        assert_eq!(prune(&conn, Utc::now(), keep_for("forever")).unwrap(), 0);
+        assert_eq!(prune(&conn, Utc::now(), keep_for("")).unwrap(), 1);
+        let left: Vec<String> = list(&conn).unwrap().items.into_iter().map(|i| i.path).collect();
+        assert!(left.contains(&files[0]) && left.contains(&files[2]));
+        assert_eq!(keep_for("week"), Some(day * 7));
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]

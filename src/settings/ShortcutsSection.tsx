@@ -45,6 +45,48 @@ const SHORTCUTS: { key: keyof ShortcutSettings; label: string; description: stri
       "Type a task, reminder, note, event or link from anywhere — Overline files it in the right place.",
     fallback: "Ctrl+Alt+Space",
   },
+  {
+    key: "palette",
+    label: "Command palette",
+    description: "Type to run anything: “timer 10”, “volume 40”, “open mail”, “next wallpaper”…",
+    fallback: "Ctrl+Alt+K",
+  },
+  {
+    key: "note",
+    label: "Quick note",
+    description: "Opens the command palette with “note ” typed — write it and press Enter.",
+    fallback: "Ctrl+Alt+J",
+  },
+  {
+    key: "pasteNext",
+    label: "Paste the next from the stack",
+    description: "With the paste stack on (Clipboard), pastes what you copied, one by one, in order.",
+    fallback: "Ctrl+Alt+Shift+V",
+  },
+  {
+    key: "switcher",
+    label: "Window switcher",
+    description: "Every open window as a live view in the notch — arrows or a click to jump to one.",
+    fallback: "Ctrl+Alt+W",
+  },
+  {
+    key: "blur",
+    label: "Privacy blur",
+    description: "Covers every screen with a blur at once. Press it again, click, or Esc to come back.",
+    fallback: "Ctrl+Alt+B",
+  },
+  {
+    key: "explain",
+    label: "Explain my screen",
+    description: "The AI looks at the window in front and explains it: an error, a chart, a page.",
+    fallback: "Ctrl+Alt+E",
+  },
+  {
+    key: "rewrite",
+    label: "Rewrite selection",
+    description: "Select text in any app, press this, pick Fix grammar, Shorter, Formal… then Replace.",
+    fallback: "Ctrl+Alt+R",
+  },
 ];
 
 export function ShortcutsSection() {

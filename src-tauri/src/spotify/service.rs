@@ -57,6 +57,16 @@ fn update_settings(app: &AppHandle, change: impl FnOnce(&mut Settings)) -> AppRe
     persist_and_broadcast(&state, next).map(|_| ())
 }
 
+/// Liking and the queue need permissions older sign-ins didn't ask for.
+fn scope_error(error: ApiError) -> AppError {
+    match error {
+        ApiError::Forbidden => AppError::InvalidInput(
+            "Reconnect Spotify in Settings → Media to allow liking songs and seeing the queue".into(),
+        ),
+        other => api_error(other),
+    }
+}
+
 fn api_error(error: ApiError) -> AppError {
     match error {
         ApiError::Unauthorized => {
@@ -265,6 +275,28 @@ impl SpotifyService {
             }
             Err(other) => Err(api_error(other)),
         }
+    }
+
+    /// The song playing, whether it's liked, and the queue. An old sign-in without the library
+    /// permission asks to reconnect.
+    pub async fn now(&self) -> AppResult<super::SpotifyNow> {
+        if self.inner.mock {
+            return Ok(super::SpotifyNow::default());
+        }
+        let token = self.inner.token().await.map_err(api_error)?;
+        super::now_playing(&self.inner.http, &token)
+            .await
+            .map_err(scope_error)
+    }
+
+    pub async fn set_liked(&self, track_id: &str, liked: bool) -> AppResult<()> {
+        if self.inner.mock {
+            return Ok(());
+        }
+        let token = self.inner.token().await.map_err(api_error)?;
+        super::set_liked(&self.inner.http, &token, track_id, liked)
+            .await
+            .map_err(scope_error)
     }
 
     /// Start a playlist. Falls back to opening it in the Spotify app when there's no device to

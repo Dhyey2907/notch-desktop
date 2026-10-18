@@ -84,3 +84,37 @@ pub async fn recorder_stop(files: State<'_, FilesService>) -> AppResult<Option<S
     let files = files.inner().clone();
     blocking(move || files.record_stop()).await
 }
+
+/// Record the screen under the pointer: an MP4, or a short GIF (`gif`).
+#[tauri::command]
+pub fn screenrec_start(gif: bool, files: State<'_, FilesService>) -> AppResult<crate::files::ScreenRecState> {
+    files.screen_rec_start(gif)
+}
+
+/// Stop the screen recording; the file goes on the shelf.
+#[tauri::command]
+pub async fn screenrec_stop(files: State<'_, FilesService>) -> AppResult<Option<String>> {
+    let files = files.inner().clone();
+    blocking(move || files.screen_rec_stop()).await
+}
+
+#[tauri::command]
+pub fn screenrec_state(files: State<'_, FilesService>) -> crate::files::ScreenRecState {
+    files.screen_rec()
+}
+
+/// Downloads finished in the last day, newest first.
+#[tauri::command]
+pub fn files_recent_downloads(app: tauri::AppHandle) -> AppResult<Vec<crate::files::RecentDownload>> {
+    use tauri::Manager;
+    let dir = app
+        .path()
+        .download_dir()
+        .map_err(|e| crate::error::AppError::Platform(e.to_string()))?;
+    Ok(crate::files::recent_downloads(
+        &dir,
+        std::time::SystemTime::now(),
+        24,
+        15,
+    ))
+}

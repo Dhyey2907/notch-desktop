@@ -40,10 +40,16 @@ export interface PetInputs {
   battery?: { percent: number; plugged: boolean } | null;
   /** Lots of meetings or a deadline close. */
   busyDay: boolean;
+  /** Minutes of coding today (for "tired after a long session"). */
+  codingMinutesToday?: number;
+  /** How hungry it is (when hunger is on). */
+  hunger?: "full" | "fine" | "peckish" | "sulky";
   settings: PetSettings;
 }
 
 const SLEEPY_AFTER_MS = 10 * 60_000;
+/** After this much coding in a day it looks tired. */
+export const TIRED_AFTER_MIN = 180;
 export const LOW_BATTERY = 20;
 
 export function outfitFor(weather: PetInputs["weather"]): Outfit {
@@ -99,6 +105,12 @@ export function petLook(i: PetInputs): PetLook {
   } else if (lateNight) {
     face = "sleepy";
     status = "Yawning — it's late";
+  } else if (s.hunger && i.hunger === "sulky") {
+    face = "droopy";
+    status = "Sulking — it's hungry (a treat helps)";
+  } else if (s.reactCoding && (i.codingMinutesToday ?? 0) >= TIRED_AFTER_MIN) {
+    face = "droopy";
+    status = `Tired after ${Math.floor((i.codingMinutesToday ?? 0) / 60)} hours of coding`;
   } else if (s.reactDay && i.busyDay) {
     face = "stressed";
     status = "A busy day — hang in there";
@@ -114,6 +126,7 @@ export function petLook(i: PetInputs): PetLook {
     status = "Happy to be here";
   }
   // What it's doing beats a plain mood in the status line.
+  if (face === "happy" && s.hunger && i.hunger === "peckish") status = "Getting peckish";
   if (face === "happy" || face === "focused") {
     if (video) status = "Watching with you";
     else if (music && !editing) status = "Dancing to your music";

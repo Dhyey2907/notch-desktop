@@ -24,4 +24,12 @@ noWorkdayBar: boolean,
  * The AI day planner may see today's Google Calendar meetings and Classroom deadlines
  * (titles and times). Off until the user turns it on (Google's Limited Use policy).
  */
-shareGoogle: boolean, };
+shareGoogle: boolean, 
+/**
+ * The evening review: a card summing up your day, at this time (minutes after midnight).
+ */
+reviewAt: number, noReview: boolean, 
+/**
+ * No morning briefing card.
+ */
+noBriefing: boolean, };

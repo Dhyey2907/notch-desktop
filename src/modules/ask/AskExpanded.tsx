@@ -5,9 +5,10 @@ import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 
 
 import type { Exchange } from "../../core/generated/Exchange";
 import { ipc, isIpcError } from "../../core/ipc";
-import { EmptyState, IconButton, ModuleContainer } from "../../design/components";
+import { EmptyState, IconButton, ModuleContainer, SegmentedControl } from "../../design/components";
 import { useSettings } from "../../settings";
 import { patch } from "../../settings/patch";
+import { AskPc, Research } from "./AskPc";
 import { useAsk } from "./askStore";
 import { Markdown } from "./Markdown";
 import "./ask.css";
@@ -18,7 +19,10 @@ function message(error: unknown) {
     : "Something went wrong. Try again.";
 }
 
+type Mode = "chat" | "pc" | "research";
+
 export default function AskExpanded() {
+  const [mode, setMode] = useState<Mode>("chat");
   const snapshot = useAsk((s) => s.snapshot);
   const [question, setQuestion] = useState("");
   const [withScreen, setWithScreen] = useState(false);
@@ -59,8 +63,18 @@ export default function AskExpanded() {
       title={`Ask ${who}`}
       trailing={
         <>
+          <SegmentedControl<Mode>
+            label="Ask what"
+            value={mode}
+            options={[
+              { value: "chat", label: "Chat" },
+              { value: "pc", label: "My PC" },
+              { value: "research", label: "Research" },
+            ]}
+            onChange={setMode}
+          />
           <AiPicker disabled={busy} />
-          {exchanges.length > 0 && (
+          {mode === "chat" && exchanges.length > 0 && (
             <IconButton
               icon={Trash2}
               label="Clear conversation"
@@ -71,65 +85,71 @@ export default function AskExpanded() {
         </>
       }
     >
-      <div className="ask">
-        <div className="ask__list" ref={list}>
-          {snapshot && !snapshot.available ? (
-            <EmptyState
-              title={who === "Claude" ? "Claude Code isn't installed" : `${who} isn't set up yet`}
-              body="Choose which AI answers in Settings → AI: Claude Code, Codex, Gemini CLI, Ollama or any OpenAI-compatible API."
+      {mode === "pc" ? (
+        <AskPc />
+      ) : mode === "research" ? (
+        <Research />
+      ) : (
+        <div className="ask">
+          <div className="ask__list" ref={list}>
+            {snapshot && !snapshot.available ? (
+              <EmptyState
+                title={who === "Claude" ? "Claude Code isn't installed" : `${who} isn't set up yet`}
+                body="Choose which AI answers in Settings → AI: Claude Code, Codex, Gemini CLI, Ollama or any OpenAI-compatible API."
+              />
+            ) : exchanges.length === 0 ? (
+              <EmptyState
+                title="Ask anything"
+                body={`Answers come from ${who === "AI" ? "your API" : who}. Press Ctrl+Alt+A in any app to ask about the window you're in. Change it in Settings → AI.`}
+              />
+            ) : (
+              exchanges.map((e) => <ExchangeView key={e.id} exchange={e} />)
+            )}
+          </div>
+          {error && <p className="ask__error">{error}</p>}
+          <form
+            className="ask__form"
+            onSubmit={(e: FormEvent) => {
+              e.preventDefault();
+              void send();
+            }}
+          >
+            <textarea
+              ref={input}
+              className="ask__input"
+              aria-label="Your question"
+              placeholder={busy ? "Answering…" : "Ask a question"}
+              rows={1}
+              maxLength={4000}
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              onKeyDown={onKey}
             />
-          ) : exchanges.length === 0 ? (
-            <EmptyState
-              title="Ask anything"
-              body={`Answers come from ${who === "AI" ? "your API" : who}. Press Ctrl+Alt+A in any app to ask about the window you're in. Change it in Settings → AI.`}
-            />
-          ) : (
-            exchanges.map((e) => <ExchangeView key={e.id} exchange={e} />)
-          )}
+            {snapshot?.targetApp && snapshot.seesScreen && (
+              <button
+                type="button"
+                className={`ask__screen${withScreen ? " ask__screen--on" : ""}`}
+                aria-pressed={withScreen}
+                title={`Send a screenshot of the ${snapshot.targetApp} window with your question`}
+                onClick={() => setWithScreen(!withScreen)}
+              >
+                <AppWindow size={12} aria-hidden /> {snapshot.targetApp}
+              </button>
+            )}
+            {busy ? (
+              <IconButton icon={Square} label="Stop" size="sm" onClick={() => void ipc.askStop()} />
+            ) : (
+              <IconButton
+                icon={CornerDownLeft}
+                label="Send"
+                size="sm"
+                disabled={!question.trim()}
+                onClick={() => void send()}
+              />
+            )}
+          </form>
         </div>
-        {error && <p className="ask__error">{error}</p>}
-        <form
-          className="ask__form"
-          onSubmit={(e: FormEvent) => {
-            e.preventDefault();
-            void send();
-          }}
-        >
-          <textarea
-            ref={input}
-            className="ask__input"
-            aria-label="Your question"
-            placeholder={busy ? "Answering…" : "Ask a question"}
-            rows={1}
-            maxLength={4000}
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-            onKeyDown={onKey}
-          />
-          {snapshot?.targetApp && snapshot.seesScreen && (
-            <button
-              type="button"
-              className={`ask__screen${withScreen ? " ask__screen--on" : ""}`}
-              aria-pressed={withScreen}
-              title={`Send a screenshot of the ${snapshot.targetApp} window with your question`}
-              onClick={() => setWithScreen(!withScreen)}
-            >
-              <AppWindow size={12} aria-hidden /> {snapshot.targetApp}
-            </button>
-          )}
-          {busy ? (
-            <IconButton icon={Square} label="Stop" size="sm" onClick={() => void ipc.askStop()} />
-          ) : (
-            <IconButton
-              icon={CornerDownLeft}
-              label="Send"
-              size="sm"
-              disabled={!question.trim()}
-              onClick={() => void send()}
-            />
-          )}
-        </form>
-      </div>
+      )}
     </ModuleContainer>
   );
 }

@@ -29,10 +29,39 @@ pub fn screen_under_pointer() -> AppResult<Shot> {
             return Err(fail());
         }
         let r = info.rcMonitor;
-        let (w, h) = (r.right - r.left, r.bottom - r.top);
-        if w <= 0 || h <= 0 {
+        rect(r.left, r.top, r.right - r.left, r.bottom - r.top)
+    }
+}
+
+/// The rectangle (left, top, width, height) of the screen under the pointer.
+pub fn monitor_under_pointer() -> AppResult<(i32, i32, i32, i32)> {
+    let fail = || AppError::Platform("could not find the screen".into());
+    // SAFETY: plain queries into local structs.
+    unsafe {
+        let mut cursor = POINT::default();
+        GetCursorPos(&mut cursor).map_err(|_| fail())?;
+        let monitor = MonitorFromPoint(cursor, MONITOR_DEFAULTTONEAREST);
+        let mut info = MONITORINFO {
+            cbSize: std::mem::size_of::<MONITORINFO>() as u32,
+            ..Default::default()
+        };
+        if !GetMonitorInfoW(monitor, &mut info).as_bool() {
             return Err(fail());
         }
+        let r = info.rcMonitor;
+        Ok((r.left, r.top, r.right - r.left, r.bottom - r.top))
+    }
+}
+
+/// Capture part of the desktop (physical pixels), e.g. one whole screen.
+pub fn rect(left: i32, top: i32, w: i32, h: i32) -> AppResult<Shot> {
+    let fail = || AppError::Platform("could not capture the screen".into());
+    if w <= 0 || h <= 0 {
+        return Err(fail());
+    }
+    // SAFETY: GDI objects created here are released before returning; the DIB's pixels are
+    // copied out while it is alive.
+    unsafe {
         let screen = GetDC(None);
         let memory = CreateCompatibleDC(Some(screen));
         let header = BITMAPINFOHEADER {
@@ -53,18 +82,8 @@ pub fn screen_under_pointer() -> AppResult<Shot> {
             .ok()
             .and_then(|dib| {
                 let old = SelectObject(memory, dib.into());
-                let copied = BitBlt(
-                    memory,
-                    0,
-                    0,
-                    w,
-                    h,
-                    Some(screen),
-                    r.left,
-                    r.top,
-                    SRCCOPY | CAPTUREBLT,
-                )
-                .is_ok();
+                let copied =
+                    BitBlt(memory, 0, 0, w, h, Some(screen), left, top, SRCCOPY | CAPTUREBLT).is_ok();
                 let pixels = (copied && !bits.is_null())
                     .then(|| std::slice::from_raw_parts(bits.cast::<u8>(), (w * h * 4) as usize).to_vec());
                 SelectObject(memory, old);
@@ -82,8 +101,8 @@ pub fn screen_under_pointer() -> AppResult<Shot> {
             width: w as u32,
             height: h as u32,
             bgra,
-            x: r.left,
-            y: r.top,
+            x: left,
+            y: top,
         })
     }
 }

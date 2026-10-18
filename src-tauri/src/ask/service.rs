@@ -74,6 +74,9 @@ pub(crate) fn claude_exe() -> Option<PathBuf> {
         .find(|path| path.is_file())
 }
 
+const EXPLAIN: &str = "Explain what's on my screen in a few short lines. If there's an error or warning, \
+say what it means and how to fix it.";
+
 impl AskService {
     pub fn new(app: AppHandle, workdir: PathBuf) -> Self {
         Self {
@@ -95,6 +98,28 @@ impl AskService {
             .unwrap_or_else(|e| e.into_inner())
             .ai
             .clone()
+    }
+
+    /// One answer, no conversation: rewrite, briefing, research and "ask your PC" use this.
+    pub fn answer_once(&self, system: &str, input: &str) -> AppResult<String> {
+        let _ = std::fs::create_dir_all(&self.workdir);
+        super::providers::answer(&self.ai(), system, input, &self.workdir)
+    }
+
+    /// Is the AI Claude Code (which can search the web itself)?
+    pub fn uses_claude(&self) -> bool {
+        matches!(Provider::from_settings(&self.ai()), Provider::Claude)
+    }
+
+    /// One answer from Claude Code allowed to search and read the web.
+    pub fn answer_web(&self, system: &str, input: &str) -> AppResult<String> {
+        let _ = std::fs::create_dir_all(&self.workdir);
+        super::once::answer_with_web(system, input, &self.workdir)
+    }
+
+    /// Ask about the window that was in front, with its picture.
+    pub fn explain_screen(&self) -> AppResult<String> {
+        self.ask(EXPLAIN, true)
     }
 
     pub fn snapshot(&self) -> AskSnapshot {

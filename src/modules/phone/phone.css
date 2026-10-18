@@ -82,3 +82,20 @@
   flex: none;
   gap: 2px;
 }
+
+.phone {
+  position: relative;
+}
+
+.phone__drop {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border: 2px dashed var(--info);
+  border-radius: 14px;
+  background: rgba(10, 10, 14, 0.85);
+  color: var(--text-primary);
+  font-weight: 600;
+  pointer-events: none;
+}

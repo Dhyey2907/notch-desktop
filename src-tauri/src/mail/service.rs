@@ -128,10 +128,17 @@ impl MailService {
             .await
             .map_err(|_| AppError::InvalidInput("You're offline".into()))?;
         if !response.status().is_success() {
-            return Err(AppError::Platform(format!(
-                "gmail answered {}",
-                response.status().as_u16()
-            )));
+            let status = response.status().as_u16();
+            // Google's own reason for saying no ("accessNotConfigured", "rateLimitExceeded"):
+            // a fixed keyword, never anything from the mailbox.
+            let body: Value = response.json().await.unwrap_or_default();
+            let reason = body["error"]["errors"][0]["reason"]
+                .as_str()
+                .or_else(|| body["error"]["status"].as_str())
+                .unwrap_or("unknown")
+                .to_owned();
+            tracing::info!(status, %reason, "gmail said no");
+            return Err(AppError::Platform(format!("gmail answered {status}")));
         }
         response
             .json()
@@ -238,6 +245,30 @@ impl MailService {
             }
         }
         Ok((unread, messages))
+    }
+
+    /// Messages matching a Gmail search (subject, sender, date and Gmail's snippet only).
+    pub async fn search(&self, query: &str, max: usize) -> AppResult<Vec<MailMessage>> {
+        let q: String = url::form_urlencoded::byte_serialize(query.as_bytes()).collect();
+        let list = self
+            .get(&format!("{API}/messages?q={q}&maxResults={}", max.clamp(1, 10)))
+            .await?;
+        let mut messages = Vec::new();
+        for item in list["messages"].as_array().cloned().unwrap_or_default() {
+            let Some(id) = item["id"].as_str() else { continue };
+            if id.is_empty() || !id.chars().all(|c| c.is_ascii_alphanumeric()) {
+                continue;
+            }
+            let json = self
+                .get(&format!(
+                    "{API}/messages/{id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject"
+                ))
+                .await?;
+            if let Some(m) = parse_message(&json) {
+                messages.push(m);
+            }
+        }
+        Ok(messages)
     }
 
     async fn modify(&self, id: &str, remove: &str) -> AppResult<()> {

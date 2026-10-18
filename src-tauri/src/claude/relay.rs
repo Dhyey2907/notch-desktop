@@ -112,7 +112,7 @@ fn agent_pid() -> Option<u32> {
 }
 
 #[cfg(windows)]
-mod win {
+pub(crate) mod win {
     use std::collections::HashMap;
 
     use windows::Win32::{

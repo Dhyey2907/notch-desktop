@@ -70,6 +70,22 @@ export function DeveloperSection() {
             onChange={(on) => patch("dev", { noCodingTracker: !on })}
           />
         </div>
+        <div id="setting-claude-spend-cap">
+          <Row
+            label="Claude daily spend cap"
+            description="Today's Claude Code use, priced at API rates (your plan may not bill it): a warning at 80% and when it passes the cap."
+          >
+            <Select
+              label="Claude daily spend cap"
+              value={String(dev.claudeDailyCapUsd)}
+              options={[
+                { value: "0", label: "Off" },
+                ...[5, 10, 20, 50, 100, 200].map((usd) => ({ value: String(usd), label: `${usd}` })),
+              ]}
+              onChange={(v) => patch("dev", { claudeDailyCapUsd: Number(v) })}
+            />
+          </Row>
+        </div>
       </Surface>
       <Surface>
         <p id="setting-widgets" className="settings__row-label settings__surface-title">

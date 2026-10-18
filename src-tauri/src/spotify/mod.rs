@@ -17,9 +17,10 @@ const AUTH_URL: &str = "https://accounts.spotify.com/authorize";
 const TOKEN_URL: &str = "https://accounts.spotify.com/api/token";
 const API: &str = "https://api.spotify.com/v1";
 /// Read playlists; read devices and start playback (Premium); `user-read-private` tells us
-/// whether the account is Premium so we can fall back gracefully.
-pub const SCOPES: &str =
-    "playlist-read-private playlist-read-collaborative user-read-playback-state user-modify-playback-state user-read-private";
+/// whether the account is Premium so we can fall back gracefully. The library scopes let the
+/// heart button save the song playing; "currently playing" reads which song that is.
+pub const SCOPES: &str = "playlist-read-private playlist-read-collaborative user-read-playback-state \
+user-modify-playback-state user-read-private user-read-currently-playing user-library-read user-library-modify";
 /// Most playlists shown in the notch.
 pub const MAX_PINNED: usize = 4;
 /// Playlists fetched for the Settings picker.
@@ -210,6 +211,96 @@ async fn get_json(http: &reqwest::Client, token: &str, url: &str) -> Result<serd
         return Err(classify(status, &body));
     }
     serde_json::from_str(&body).map_err(|e| ApiError::Other(e.to_string()))
+}
+
+/// The song playing on Spotify now and whether it's in Liked Songs; plus what's up next.
+#[derive(Debug, Clone, Default, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct SpotifyNow {
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub track_id: Option<String>,
+    pub title: String,
+    pub artist: String,
+    pub liked: bool,
+    /// The next few songs ("Title — Artist").
+    pub up_next: Vec<String>,
+}
+
+fn track_line(t: &serde_json::Value) -> Option<(String, String)> {
+    let name = t["name"].as_str()?.to_string();
+    let artist = t["artists"]
+        .as_array()
+        .map(|a| {
+            a.iter()
+                .filter_map(|x| x["name"].as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        })
+        .or_else(|| t["show"]["name"].as_str().map(str::to_string))
+        .unwrap_or_default();
+    Some((name, artist))
+}
+
+/// What's playing, whether it's liked, and the queue.
+pub async fn now_playing(http: &reqwest::Client, token: &str) -> Result<SpotifyNow, ApiError> {
+    let queue = get_json(http, token, &format!("{API}/me/player/queue")).await?;
+    let current = &queue["currently_playing"];
+    let mut now = SpotifyNow::default();
+    if let Some((title, artist)) = track_line(current) {
+        now.title = title;
+        now.artist = artist;
+        now.track_id = current["id"]
+            .as_str()
+            .filter(|id| valid_id(id))
+            .map(str::to_string);
+    }
+    now.up_next = queue["queue"]
+        .as_array()
+        .map(|q| {
+            q.iter()
+                .filter_map(track_line)
+                .take(5)
+                .map(|(t, a)| if a.is_empty() { t } else { format!("{t} — {a}") })
+                .collect()
+        })
+        .unwrap_or_default();
+    if let Some(id) = &now.track_id {
+        let liked = get_json(http, token, &format!("{API}/me/tracks/contains?ids={id}")).await?;
+        now.liked = liked
+            .as_array()
+            .and_then(|a| a.first())
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+    }
+    Ok(now)
+}
+
+/// Save (or remove) a song in Liked Songs.
+pub async fn set_liked(
+    http: &reqwest::Client,
+    token: &str,
+    track_id: &str,
+    liked: bool,
+) -> Result<(), ApiError> {
+    if !valid_id(track_id) {
+        return Err(ApiError::Other("invalid track".into()));
+    }
+    let url = format!("{API}/me/tracks?ids={track_id}");
+    let request = if liked { http.put(&url) } else { http.delete(&url) };
+    let response = request
+        .bearer_auth(token)
+        .header("Content-Length", "0")
+        .send()
+        .await
+        .map_err(network)?;
+    let status = response.status();
+    if status.is_success() {
+        return Ok(());
+    }
+    let body = response.text().await.unwrap_or_default();
+    Err(classify(status, &body))
 }
 
 #[derive(Debug, Deserialize)]

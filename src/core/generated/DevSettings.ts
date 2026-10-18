@@ -16,4 +16,8 @@ noServerAlerts: boolean,
 /**
  * Don't count coding time.
  */
-noCodingTracker: boolean, };
+noCodingTracker: boolean, 
+/**
+ * Warn when today's estimated Claude Code spend passes 80% / 100% of this (whole USD; 0 = off).
+ */
+claudeDailyCapUsd: number, };

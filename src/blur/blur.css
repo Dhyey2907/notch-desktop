@@ -1,0 +1,44 @@
+/* Privacy cover: the screen, shrunk and softened, edge to edge. */
+html.blur-window,
+html.blur-window body {
+  margin: 0;
+  overflow: hidden;
+  background: #111;
+}
+
+.blur-cover {
+  position: fixed;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  background: #111;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.blur-cover__picture {
+  position: absolute;
+  inset: -4%;
+  width: 108%;
+  height: 108%;
+  object-fit: cover;
+  filter: blur(28px) saturate(1.1);
+  user-select: none;
+}
+
+.blur-cover__note {
+  position: absolute;
+  left: 50%;
+  bottom: 48px;
+  translate: -50% 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: rgba(255, 255, 255, 0.85);
+  font:
+    500 13px/1 system-ui,
+    sans-serif;
+}

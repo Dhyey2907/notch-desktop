@@ -16,14 +16,26 @@ use crate::{
     state::AppState,
 };
 
+/// A window switcher tile: source window and its rect (physical pixels, island window).
+pub type GridTile = (i64, (i32, i32, i32, i32));
+
 const SCHEDULE_TICK: Duration = Duration::from_secs(30);
 /// A short pause between steps, so apps don't all start in the same instant.
 const STEP_GAP: Duration = Duration::from_millis(350);
+
+/// The rolling "last session" snapshot is refreshed this often.
+const SESSION_EVERY: Duration = Duration::from_secs(5 * 60);
+/// "Reopen last session" is offered only for a session this recent.
+const RESUME_WITHIN_SECS: i64 = 3 * 24 * 60 * 60;
 
 #[derive(Default)]
 struct Inner {
     /// Island label → (thumbnail id, source window).
     thumbnails: HashMap<String, (isize, i64)>,
+    /// Island label → the window switcher's live views.
+    grid: HashMap<String, Vec<isize>>,
+    /// The resume offer is made once per run.
+    offered: bool,
     /// Routine id → the day it last ran by schedule.
     ran: HashMap<String, NaiveDate>,
 }
@@ -67,6 +79,7 @@ impl DeskService {
                 let today = now.date_naive();
                 let weekday = now.weekday().number_from_monday() as u8;
                 let minute = now.hour() * 60 + now.minute();
+                this.maybe_sleep(today, weekday, minute);
                 for routine in this.routines() {
                     let ran = this
                         .inner
@@ -86,6 +99,224 @@ impl DeskService {
                 }
             })
             .ok();
+    }
+
+    /// The power schedule's sleep: at the time, on the day, once you've been away a while.
+    fn maybe_sleep(&self, today: NaiveDate, weekday: u8, minute: u32) {
+        #[cfg(windows)]
+        {
+            static SLEPT: Mutex<Option<NaiveDate>> = Mutex::new(None);
+            let schedule = self
+                .app
+                .state::<AppState>()
+                .settings
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .power
+                .clone();
+            if schedule.sleep_at.is_none() {
+                return;
+            }
+            let idle_min = (crate::system::screentime::probe::idle_ms() / 60_000) as u32;
+            let slept = *SLEPT.lock().unwrap_or_else(|e| e.into_inner()) == Some(today);
+            if crate::powerplan::sleep_due(&schedule, weekday, minute, idle_min, slept) {
+                *SLEPT.lock().unwrap_or_else(|e| e.into_inner()) = Some(today);
+                tracing::info!("power schedule: going to sleep");
+                let _ = crate::commands::system::system_power(crate::commands::system::PowerAction::Sleep);
+            }
+        }
+        #[cfg(not(windows))]
+        let _ = (today, weekday, minute);
+    }
+
+    /// Keep "last session" up to date. A sudden drop to fewer than half the windows (apps
+    /// closing as Windows shuts down) doesn't overwrite a fuller recent snapshot.
+    pub fn start_session_keeper(&self) {
+        #[cfg(windows)]
+        {
+            let this = self.clone();
+            std::thread::Builder::new()
+                .name("last-session".into())
+                .spawn(move || {
+                    // Not right at startup: that would save the empty desktop after a reboot.
+                    std::thread::sleep(SESSION_EVERY);
+                    loop {
+                        this.save_last_session();
+                        std::thread::sleep(SESSION_EVERY);
+                    }
+                })
+                .ok();
+        }
+    }
+
+    #[cfg(windows)]
+    fn save_last_session(&self) {
+        let windows = super::workspace::win::capture();
+        if windows.is_empty() {
+            return;
+        }
+        let now = Local::now().timestamp();
+        let db = &self.app.state::<AppState>().db;
+        let _ = db.with(|conn| {
+            if let Some(prev) = super::workspace::get(conn, super::workspace::LAST_SESSION)? {
+                let shrank = windows.len() * 2 < prev.windows.len();
+                if shrank && now - prev.saved_at < 30 * 60 {
+                    return Ok(());
+                }
+            }
+            super::workspace::save(
+                conn,
+                &super::place::Workspace {
+                    name: super::workspace::LAST_SESSION.into(),
+                    saved_at: now,
+                    windows,
+                },
+            )
+        });
+    }
+
+    /// Snap a window into a zone of its screen and bring it forward.
+    pub fn snap(&self, id: i64, zone: super::place::Zone) -> AppResult<()> {
+        #[cfg(windows)]
+        {
+            let h = super::place::win::hwnd(id);
+            let work = super::place::win::work_area(h)
+                .ok_or_else(|| AppError::Platform("couldn't find that window's screen".into()))?;
+            super::place::win::place(h, super::place::zone_rect(work, zone))?;
+            let _ = super::win::focus(id);
+            Ok(())
+        }
+        #[cfg(not(windows))]
+        {
+            let _ = (id, zone);
+            Ok(())
+        }
+    }
+
+    pub fn workspaces(&self) -> AppResult<Vec<super::place::Workspace>> {
+        self.app.state::<AppState>().db.with(super::workspace::list)
+    }
+
+    /// Save every window's place under `name` (replacing one with the same name).
+    pub fn workspace_save(&self, name: &str) -> AppResult<usize> {
+        #[cfg(windows)]
+        {
+            let windows = super::workspace::win::capture();
+            let count = windows.len();
+            let ws = super::place::Workspace {
+                name: name.to_string(),
+                saved_at: Local::now().timestamp(),
+                windows,
+            };
+            self.app
+                .state::<AppState>()
+                .db
+                .with(|conn| super::workspace::save(conn, &ws))?;
+            Ok(count)
+        }
+        #[cfg(not(windows))]
+        {
+            let _ = name;
+            Ok(0)
+        }
+    }
+
+    pub fn workspace_delete(&self, name: &str) -> AppResult<()> {
+        self.app
+            .state::<AppState>()
+            .db
+            .with(|conn| super::workspace::delete(conn, name))
+    }
+
+    /// Put a workspace back: (windows placed, programs started).
+    pub fn workspace_restore(&self, name: &str) -> AppResult<(usize, usize)> {
+        let ws = self
+            .app
+            .state::<AppState>()
+            .db
+            .with(|conn| super::workspace::get(conn, name))?
+            .ok_or_else(|| AppError::InvalidInput("That workspace is gone".into()))?;
+        #[cfg(windows)]
+        return Ok(super::workspace::win::restore(&ws.windows));
+        #[cfg(not(windows))]
+        {
+            let _ = ws;
+            Ok((0, 0))
+        }
+    }
+
+    /// After a restart (Overline started with Windows): the apps from last session that aren't
+    /// open, once per run. Empty when there's nothing to offer.
+    pub fn resume_offer(&self) -> AppResult<Vec<String>> {
+        {
+            let mut inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+            if inner.offered {
+                return Ok(Vec::new());
+            }
+            inner.offered = true;
+        }
+        if !std::env::args().any(|a| a == crate::shell::AUTOSTART_ARG) {
+            return Ok(Vec::new());
+        }
+        let Some(last) = self
+            .app
+            .state::<AppState>()
+            .db
+            .with(|conn| super::workspace::get(conn, super::workspace::LAST_SESSION))?
+        else {
+            return Ok(Vec::new());
+        };
+        if Local::now().timestamp() - last.saved_at > RESUME_WITHIN_SECS {
+            return Ok(Vec::new());
+        }
+        #[cfg(windows)]
+        {
+            let running = super::workspace::win::running_exes();
+            Ok(super::workspace::missing(&last.windows, &running)
+                .into_iter()
+                .map(|w| crate::clipboard::app_label(&w.exe))
+                .collect())
+        }
+        #[cfg(not(windows))]
+        Ok(Vec::new())
+    }
+
+    /// The window switcher: one live view per tile (physical pixels, island window).
+    pub fn grid_show(&self, island: &WebviewWindow, tiles: &[GridTile]) -> AppResult<()> {
+        self.grid_hide(island);
+        #[cfg(windows)]
+        {
+            let dest = windows::Win32::Foundation::HWND(island.hwnd()?.0);
+            let mut ids = Vec::new();
+            for (source, rect) in tiles.iter().take(12) {
+                if let Ok(thumb) = super::win::thumbnail(dest, *source, *rect) {
+                    ids.push(thumb);
+                }
+            }
+            self.inner
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .grid
+                .insert(island.label().to_owned(), ids);
+        }
+        #[cfg(not(windows))]
+        let _ = tiles;
+        Ok(())
+    }
+
+    pub fn grid_hide(&self, island: &WebviewWindow) {
+        let removed = self
+            .inner
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .grid
+            .remove(island.label());
+        #[cfg(windows)]
+        for thumb in removed.into_iter().flatten() {
+            super::win::drop_thumbnail(thumb);
+        }
+        #[cfg(not(windows))]
+        let _ = removed;
     }
 
     pub fn windows(&self) -> Vec<DeskWindow> {

@@ -10,7 +10,7 @@ import type { ModuleContext, NotchModule } from "../types";
 import { AskPeek } from "./AskPeek";
 import { useAsk } from "./askStore";
 
-function init({ events }: ModuleContext) {
+function init({ events, activities }: ModuleContext) {
   const offChanged = events.on("AskChanged", ({ event }) => useAsk.getState().set(event.payload));
   const offDelta = events.on("AskDelta", ({ event }) =>
     useAsk.getState().append(event.payload.id, event.payload.text),
@@ -33,10 +33,26 @@ function init({ events }: ModuleContext) {
         .catch(() => {});
     provider = ai;
   });
+  // Background research came back: a card with the start of the brief (the rest is in Notes).
+  const offResearch = events.on("ResearchDone", ({ event }) => {
+    const { topic, brief, ok } = event.payload;
+    activities.push({
+      moduleId: "ask",
+      priority: "normal",
+      tone: ok ? "success" : "warning",
+      dedupKey: `research-${topic}`,
+      countRepeats: false,
+      persistent: ok,
+      title: ok ? `Research ready: ${topic}` : `Research didn't work: ${topic}`,
+      body: ok ? `${brief}${brief.length >= 280 ? "…" : ""} (full brief in Notes)` : brief,
+      actions: ok ? [{ id: "dismiss", label: "Got it", run: () => {} }] : undefined,
+    });
+  });
   return () => {
     offChanged();
     offDelta();
     offSettings();
+    offResearch();
   };
 }
 

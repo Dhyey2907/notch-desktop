@@ -83,6 +83,20 @@ export function HudSetting() {
             }
           />
         </Row>
+        <Row
+          label="Monthly data cap"
+          description="For metered or mobile data: a warning at 80% and 100% of what this PC uses in a month."
+        >
+          <Select
+            label="Monthly data cap"
+            value={String(hud.dataCapGb)}
+            options={[
+              { value: "0", label: "No cap" },
+              ...[10, 25, 50, 100, 200, 500, 1000].map((gb) => ({ value: String(gb), label: `${gb} GB` })),
+            ]}
+            onChange={(v) => set({ dataCapGb: Number(v) })}
+          />
+        </Row>
       </Surface>
     </>
   );

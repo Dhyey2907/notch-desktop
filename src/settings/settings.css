@@ -1106,3 +1106,12 @@ html.settings-window #root {
 .settings__field .nd-field {
   flex: 1;
 }
+
+.dock-profile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border);
+}

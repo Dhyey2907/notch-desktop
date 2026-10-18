@@ -115,3 +115,41 @@ pub async fn codex_usage(
 pub fn claude_test_approval(claude: State<'_, ClaudeService>) {
     claude.test_approval();
 }
+
+/// Tokens and estimated cost per session today.
+#[tauri::command]
+pub async fn claude_session_usage(
+    state: State<'_, crate::state::AppState>,
+) -> AppResult<Vec<crate::claude::sessions::SessionUsage>> {
+    let day = chrono::Local::now().format("%Y-%m-%d").to_string();
+    state
+        .db
+        .with(|conn| crate::claude::sessions::usage_for_day(conn, &day))
+}
+
+/// Bring a live session's terminal window to the front.
+#[tauri::command]
+pub async fn claude_focus_session(session_id: String, claude: State<'_, ClaudeService>) -> AppResult<()> {
+    let pid = claude
+        .status()
+        .live
+        .into_iter()
+        .find(|s| s.session_id == session_id)
+        .and_then(|s| s.pid)
+        .ok_or_else(|| crate::error::AppError::InvalidInput("That session's window isn't known".into()))?;
+    tauri::async_runtime::spawn_blocking(move || crate::claude::sessions::focus_process(pid))
+        .await
+        .map_err(|e| crate::error::AppError::Platform(e.to_string()))?
+}
+
+/// Folders Claude Code has worked in, most recent first.
+#[tauri::command]
+pub fn claude_projects(state: State<'_, crate::state::AppState>) -> AppResult<Vec<String>> {
+    state.db.with(|conn| crate::claude::sessions::projects(conn, 30))
+}
+
+/// Start Claude Code on a task in a project folder, in a new terminal.
+#[tauri::command]
+pub fn claude_launch(cwd: String, prompt: String) -> AppResult<()> {
+    crate::claude::sessions::launch(&cwd, &prompt)
+}

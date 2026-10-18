@@ -63,6 +63,34 @@ treats: number,
  */
 buddyOut: boolean, 
 /**
+ * Play on the taskbar: fetch, chasing the cursor, being picked up and petted.
+ */
+play: boolean, 
+/**
+ * It gets hungry over the day (gently) and treats fill it up.
+ */
+hunger: boolean, 
+/**
+ * 0 (starving) to 100 (full).
+ */
+fullness: number, 
+/**
+ * Now and then a friend walks by.
+ */
+friends: boolean, 
+/**
+ * The hat it wears ("" = none); hats unlock with its level.
+ */
+hat: string, 
+/**
+ * Days in a row you played with it, and the last such day (YYYY-MM-DD).
+ */
+streakDays: number, lastPlayDay: string, 
+/**
+ * Fetches today (only the first few give xp), and that day.
+ */
+fetchesToday: number, fetchDay: string, 
+/**
  * No longer used (the pet isn't placed on the desktop any more); kept so older settings load.
  */
 buddyX?: number, buddyY?: number, };

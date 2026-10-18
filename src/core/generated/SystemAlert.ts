@@ -7,4 +7,4 @@ export type SystemAlert = { "kind": "internetDown" } | { "kind": "internetBack",
 /**
  * How long it was down.
  */
-seconds: number, } | { "kind": "chargeLimit", percent: number, } | { "kind": "plugged", percent: number, minutes?: number, } | { "kind": "deviceLow", name: string, percent: number, } | { "kind": "capsLock", on: boolean, } | { "kind": "numLock", on: boolean, } | { "kind": "language", name: string, };
+seconds: number, } | { "kind": "chargeLimit", percent: number, } | { "kind": "plugged", percent: number, minutes?: number, } | { "kind": "deviceLow", name: string, percent: number, } | { "kind": "dataCap", percent: number, cap_gb: number, } | { "kind": "batteryLow", percent: number, } | { "kind": "capsLock", on: boolean, } | { "kind": "numLock", on: boolean, } | { "kind": "language", name: string, };

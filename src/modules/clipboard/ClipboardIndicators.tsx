@@ -36,13 +36,24 @@ function clock(seconds: number) {
 /** Bubble: a red dot and the time while recording, an arrow while something downloads. */
 export function FilesCompact() {
   const recorder = useShelf((s) => s.recorder);
+  const screenRec = useShelf((s) => s.screenRec);
   const downloading = useShelf((s) => s.downloads.length > 0);
   const [now, setNow] = useState(() => Date.now());
+  const ticking = recorder.recording || screenRec.startedAt != null;
   useEffect(() => {
-    if (!recorder.recording) return;
+    if (!ticking) return;
     const id = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(id);
-  }, [recorder.recording]);
+  }, [ticking]);
+  if (screenRec.startedAt != null) {
+    return (
+      <span className="files-compact files-compact--rec" role="img" aria-label="Recording the screen">
+        <span className="files-compact__dot" />
+        {screenRec.gif ? "GIF " : ""}
+        {clock(Math.max(0, Math.floor((now - screenRec.startedAt) / 1000)))}
+      </span>
+    );
+  }
   if (recorder.recording && recorder.startedAt != null) {
     return (
       <span className="files-compact files-compact--rec" role="img" aria-label="Recording">

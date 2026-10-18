@@ -15,6 +15,9 @@ mod network;
 mod radios;
 pub mod service;
 pub mod speedtest;
+pub mod toggles;
+pub mod usage;
+pub mod wifi;
 
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
@@ -156,6 +159,15 @@ pub enum SystemAlert {
     },
     DeviceLow {
         name: String,
+        percent: u8,
+    },
+    /// This month's data use crossed 80% or 100% of the cap in Settings.
+    DataCap {
+        percent: u8,
+        cap_gb: u32,
+    },
+    /// The PC's own battery is running low (at 20%, then 10%).
+    BatteryLow {
         percent: u8,
     },
     CapsLock {
@@ -301,6 +313,49 @@ impl LowWatch {
             }
         }
         alerts
+    }
+}
+
+/// The PC's battery: a warning at 20%, another at 10%, and none again until it charges.
+#[derive(Default)]
+pub struct BatteryWatch {
+    warned_at: Option<u8>,
+}
+
+pub const BATTERY_WARN: [u8; 2] = [20, 10];
+
+impl BatteryWatch {
+    /// The level to warn about now, if any.
+    pub fn check(&mut self, percent: u8, plugged: bool) -> Option<u8> {
+        if plugged {
+            self.warned_at = None;
+            return None;
+        }
+        let level = BATTERY_WARN.iter().copied().filter(|l| percent <= *l).min()?;
+        if self.warned_at.is_some_and(|w| w <= level) {
+            return None;
+        }
+        self.warned_at = Some(level);
+        Some(level)
+    }
+}
+
+#[cfg(test)]
+mod battery_tests {
+    use super::BatteryWatch;
+
+    #[test]
+    fn warns_once_at_20_and_once_at_10_until_charged() {
+        let mut w = BatteryWatch::default();
+        assert_eq!(w.check(35, false), None);
+        assert_eq!(w.check(20, false), Some(20));
+        assert_eq!(w.check(18, false), None);
+        assert_eq!(w.check(9, false), Some(10));
+        assert_eq!(w.check(5, false), None);
+        assert_eq!(w.check(30, true), None);
+        assert_eq!(w.check(19, false), Some(20));
+        // Starting already very low warns at 10 straight away.
+        assert_eq!(BatteryWatch::default().check(7, false), Some(10));
     }
 }
 

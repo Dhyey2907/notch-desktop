@@ -35,6 +35,20 @@ describe("islandStore", () => {
     expect(sizes).toEqual([windowSizeFor("collapsed")]);
   });
 
+  it("keeps the window large when the bubble refits mid-collapse", async () => {
+    const { store, sizes } = setup();
+    await store.getState().request("expanded");
+    await store.getState().request("collapsed");
+    sizes.length = 0;
+
+    // The resting bubble measures its marks while the island is still shrinking.
+    await store.getState().setBubbleWidth(140);
+    expect(sizes.every((s) => s.width >= windowSizeFor("expanded").width)).toBe(true);
+
+    await store.getState().settle();
+    expect(sizes.at(-1)).toEqual(windowSizeFor("collapsed", { ...store.getState().size, width: 140 }));
+  });
+
   it("widens the expanded window to fit a long dock", async () => {
     const { store, sizes } = setup();
     await store.getState().request("expanded");

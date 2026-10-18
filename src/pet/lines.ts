@@ -1,6 +1,8 @@
 // What the pet says, in the tone you picked. Placeholders: {minutes}, {title}, {agent}, {percent},
 // {days}, {name}. Lines are short — they show in a small card.
 
+import { PLAY_LINES, type PlayEvent } from "./playLines";
+
 export type Tone = "cheerful" | "sarcastic" | "professional" | "calm" | "coach" | "nerdy" | "dramatic";
 
 /** What it says while it sits on your desktop. */
@@ -19,7 +21,8 @@ export type LineEvent =
   | "late"
   | "rain"
   | "pat"
-  | "streak";
+  | "streak"
+  | PlayEvent;
 
 export const TONES: { id: Tone; label: string; blurb: string }[] = [
   { id: "cheerful", label: "Cheerful", blurb: "Warm, upbeat, lots of encouragement" },
@@ -31,7 +34,7 @@ export const TONES: { id: Tone; label: string; blurb: string }[] = [
   { id: "dramatic", label: "Dramatic", blurb: "Everything is an epic saga" },
 ];
 
-type Library = Record<Tone, Record<Exclude<LineEvent, BuddyEvent>, string[]>>;
+type Library = Record<Tone, Record<Exclude<LineEvent, BuddyEvent | PlayEvent>, string[]>>;
 
 const LINES: Library = {
   cheerful: {
@@ -265,7 +268,11 @@ export function lineFor(
 ): string {
   const t = (tone in LINES ? tone : "cheerful") as Tone;
   const options =
-    event in BUDDY[t] ? BUDDY[t][event as BuddyEvent] : LINES[t][event as Exclude<LineEvent, BuddyEvent>];
+    event in BUDDY[t]
+      ? BUDDY[t][event as BuddyEvent]
+      : event in PLAY_LINES[t]
+        ? PLAY_LINES[t][event as PlayEvent]
+        : LINES[t][event as Exclude<LineEvent, BuddyEvent | PlayEvent>];
   const text = options[Math.min(options.length - 1, Math.floor(pick() * options.length))];
   return text.replace(/\{(\w+)\}/g, (_, key: string) => (key in vars ? String(vars[key]) : ""));
 }
@@ -284,7 +291,13 @@ export function maySpeak(event: LineEvent, chattiness: string, lastAt: number, n
     event === "agentWaiting" ||
     event === "pat" ||
     event === "treat" ||
-    event === "hello"
+    event === "hello" ||
+    // Answers to you playing with it.
+    event === "fetched" ||
+    event === "dropped" ||
+    event === "dizzy" ||
+    event === "pounce" ||
+    event === "wake"
   )
     return true;
   return now - lastAt >= (SPEAK_GAP_MS[chattiness] ?? SPEAK_GAP_MS.normal);

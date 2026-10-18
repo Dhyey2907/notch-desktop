@@ -1,6 +1,6 @@
 // Tasks | Notes | Focus. Tasks can carry a timer ("Write report 25m") or a reminder at a set
 // time; the bell decides whether it rings. Notes save as you type.
-import { AlarmClock, Bell, BellOff, Check, Plus, Trash2, X } from "lucide-react";
+import { AlarmClock, Bell, BellOff, Check, Pin, Plus, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import type { Note } from "../../core/generated/Note";
@@ -388,6 +388,12 @@ function NoteRow({
           timer.current = window.setTimeout(save, 800);
         }}
         onBlur={save}
+      />
+      <IconButton
+        icon={Pin}
+        label="Pin to the desktop as a sticky note"
+        size="sm"
+        onClick={() => void ipc.stickyPin(note.id).catch((err) => onError(message(err)))}
       />
       <IconButton
         icon={Trash2}

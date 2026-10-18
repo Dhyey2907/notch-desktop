@@ -2,9 +2,9 @@
 //! text inside with Windows' built-in OCR (on this PC; nothing is uploaded) and copy it.
 
 #[cfg(windows)]
-mod capture;
+pub(crate) mod capture;
 #[cfg(windows)]
-mod ocr;
+pub(crate) mod ocr;
 pub mod service;
 
 /// A captured screen: BGRA pixels, top-down.

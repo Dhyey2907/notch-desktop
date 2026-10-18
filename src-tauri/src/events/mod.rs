@@ -42,6 +42,7 @@ use crate::{
     system::{BluetoothDevice, Desktops, ScreenTime, SoundState, Weather},
     todo::{Task, TodoSnapshot},
     vault::VaultState,
+    wallpaper::WallpaperState,
 };
 
 /// Name of the single Tauri channel that carries every `EventEnvelope` to the frontend.
@@ -173,6 +174,8 @@ pub enum AppEvent {
     DownloadDone(DownloadDone),
     /// The audio recorder started or stopped.
     RecorderChanged(RecorderState),
+    /// A screen recording started or stopped.
+    ScreenRecChanged(crate::files::ScreenRecState),
     /// A recording was saved (and put on the shelf).
     RecordingSaved { name: String, path: String },
     /// Vault logins changed (here or in Obsidian).
@@ -210,6 +213,32 @@ pub enum AppEvent {
     BluetoothChanged(BluetoothDevice),
     /// Files on the drop shelf changed.
     ShelfChanged(ShelfSnapshot),
+    /// A different program came to the front (its exe name, lowercase, without ".exe").
+    FrontAppChanged { exe: String },
+    /// Fade (or bring back) an island's resting bubble: you're typing just under it.
+    NotchFade { label: String, on: bool },
+    /// Background research finished (or failed). `brief` is the start of the result.
+    ResearchDone { topic: String, brief: String, ok: bool },
+    /// Apps that keep starting together: offer a routine.
+    HabitFound(crate::habits::HabitSuggestion),
+    /// The watched prices changed (checked, added, removed).
+    PricesChanged(Vec<crate::prices::PriceItem>),
+    /// A watched price dropped to the target.
+    PriceDrop {
+        title: String,
+        price: f64,
+        target: f64,
+        currency: String,
+        url: String,
+    },
+    /// The meeting recorder's state changed.
+    MeetingChanged(crate::meeting::MeetingState),
+    /// Meeting notes are ready (or failed: `title` says why).
+    MeetingDone { title: String, actions: u32, ok: bool },
+    /// A new screenshot was saved (and put on the shelf).
+    ScreenshotTaken { path: String, name: String },
+    /// Saved wallpapers, the folder's pictures, or the screens' wallpapers changed.
+    WallpaperChanged(WallpaperState),
     /// A speed test moved on (ping → download → upload → done).
     SpeedTestChanged(SpeedTest),
     /// The read-later list changed.
@@ -236,6 +265,16 @@ impl AppEvent {
             AppEvent::ClipboardChanged(_) => "ClipboardChanged",
             AppEvent::CopySuggestion(_) => "CopySuggestion",
             AppEvent::ShelfChanged(_) => "ShelfChanged",
+            AppEvent::FrontAppChanged { .. } => "FrontAppChanged",
+            AppEvent::NotchFade { .. } => "NotchFade",
+            AppEvent::ScreenshotTaken { .. } => "ScreenshotTaken",
+            AppEvent::ResearchDone { .. } => "ResearchDone",
+            AppEvent::MeetingChanged(_) => "MeetingChanged",
+            AppEvent::PricesChanged(_) => "PricesChanged",
+            AppEvent::HabitFound(_) => "HabitFound",
+            AppEvent::PriceDrop { .. } => "PriceDrop",
+            AppEvent::MeetingDone { .. } => "MeetingDone",
+            AppEvent::WallpaperChanged(_) => "WallpaperChanged",
             AppEvent::ReadLaterChanged(_) => "ReadLaterChanged",
             AppEvent::SpeedTestChanged(_) => "SpeedTestChanged",
             AppEvent::SoundChanged { .. } => "SoundChanged",
@@ -257,6 +296,7 @@ impl AppEvent {
             AppEvent::DownloadsChanged(_) => "DownloadsChanged",
             AppEvent::DownloadDone(_) => "DownloadDone",
             AppEvent::RecorderChanged(_) => "RecorderChanged",
+            AppEvent::ScreenRecChanged(_) => "ScreenRecChanged",
             AppEvent::RecordingSaved { .. } => "RecordingSaved",
             AppEvent::ControlChanged(_) => "ControlChanged",
             AppEvent::SystemAlert(_) => "SystemAlert",
