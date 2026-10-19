@@ -114,6 +114,8 @@ const defaults: Settings = {
   fun: { petWalk: false, rgb: false, rgbPort: 0 },
   wallpaper: { target: "", recent: [] },
   power: { sleepIfIdleMin: 15, days: [1, 2, 3, 4, 5, 6, 7] },
+  away: { afterIdleMin: 0, allScreens: false },
+  layout: { density: "comfortable", panels: {} },
   pet: {
     name: "",
     color: "",

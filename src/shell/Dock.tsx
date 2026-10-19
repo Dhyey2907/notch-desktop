@@ -1,4 +1,4 @@
-import { Check, Settings } from "lucide-react";
+import { Check, LayoutDashboard, Settings } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useLayoutEffect, useRef, type KeyboardEvent, type PointerEvent } from "react";
 
@@ -8,6 +8,7 @@ import { contentEnter } from "../design/motion";
 import { useReduceMotion } from "../design/useReduceMotion";
 import { useSettings } from "../settings";
 import { DockEditBar } from "./DockEditBar";
+import { useLayoutEdit } from "./layout";
 import { LONG_PRESS_MS, moveId, PRESS_SLOP_PX, slotFor, useDockEdit } from "./dockEdit";
 import { useIsland } from "./useIsland";
 import { saveDockOrder, useDockModules, useModuleNav } from "./useModules";
@@ -31,6 +32,7 @@ export function Dock() {
   /** The click that ends a long press shouldn't also open the module. */
   const swallowClick = useRef(false);
   const hasSettings = useSettings((s) => s.settings !== null);
+  const layoutEditing = useLayoutEdit((s) => s.editing);
 
   // Tell the island how wide the dock wants to be, so the window grows to fit it (more modules
   // in the dock than the panel is wide would otherwise be cut off at both ends).
@@ -160,7 +162,17 @@ export function Dock() {
           <IconButton icon={Check} label="Done" active onClick={() => finish(true)} />
         </>
       ) : (
-        <IconButton icon={Settings} label="Settings" onClick={() => void ipc.openSettingsWindow()} />
+        <>
+          {hasSettings && (
+            <IconButton
+              icon={LayoutDashboard}
+              label="Edit layout"
+              active={layoutEditing}
+              onClick={() => useLayoutEdit.getState().set(!layoutEditing)}
+            />
+          )}
+          <IconButton icon={Settings} label="Settings" onClick={() => void ipc.openSettingsWindow()} />
+        </>
       )}
     </motion.div>
   );

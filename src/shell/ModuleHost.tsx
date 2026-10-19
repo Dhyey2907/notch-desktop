@@ -5,6 +5,8 @@ import { Button, ErrorState } from "../design/components";
 import { CONTENT_SWAP, INSTANT } from "../design/motion";
 import { useReduceMotion } from "../design/useReduceMotion";
 import { findModule, MODULES } from "../modules/registry";
+import { useLayoutEdit } from "./layout";
+import { LayoutEditor } from "./LayoutEditor";
 import { useEnabledModules, useModuleNav } from "./useModules";
 
 /** Isolates a module's render errors so the shell and other modules keep working. */
@@ -40,6 +42,7 @@ export class ModuleErrorBoundary extends Component<
 export function ModuleHost() {
   const activeId = useModuleNav((s) => s.activeId);
   const reduceMotion = useReduceMotion();
+  const editing = useLayoutEdit((s) => s.editing);
   const module = findModule(activeId);
   if (!module) return null;
   const { Expanded } = module;
@@ -47,7 +50,7 @@ export function ModuleHost() {
   return (
     <AnimatePresence mode="popLayout" initial={false}>
       <motion.div
-        key={module.id}
+        key={editing ? `${module.id}-layout` : module.id}
         className="module-host"
         initial={{ opacity: 0, x: 12 }}
         animate={{ opacity: 1, x: 0 }}
@@ -55,9 +58,13 @@ export function ModuleHost() {
         transition={reduceMotion ? INSTANT : CONTENT_SWAP}
       >
         <ModuleErrorBoundary name={module.name}>
-          <Suspense fallback={null}>
-            <Expanded />
-          </Suspense>
+          {editing ? (
+            <LayoutEditor module={module} />
+          ) : (
+            <Suspense fallback={null}>
+              <Expanded />
+            </Suspense>
+          )}
         </ModuleErrorBoundary>
       </motion.div>
     </AnimatePresence>

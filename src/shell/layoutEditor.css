@@ -1,0 +1,160 @@
+/* Edit layout: a compact editor in place of the open panel. */
+.layout-edit {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.layout-edit__head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.layout-edit__title {
+  flex: 1;
+  margin: 0;
+  font-size: var(--text-md, 14px);
+  font-weight: var(--weight-headline);
+}
+
+.layout-edit__done {
+  font-weight: var(--weight-emphasis);
+  border-color: var(--text-secondary);
+}
+
+.layout-edit__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-right: 2px;
+}
+
+.layout-edit__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.layout-edit__label {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.layout-edit__group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.layout-edit__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 6px;
+}
+
+.layout-edit__item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  height: 28px;
+  padding: 0 4px 0 6px;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: var(--text-xs);
+  cursor: grab;
+}
+
+.layout-edit__item--off .layout-edit__name {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.layout-edit__item--drag {
+  opacity: 0.5;
+  border-style: dashed;
+}
+
+.layout-edit__grip {
+  flex: none;
+  color: var(--text-muted);
+}
+
+.layout-edit__name {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.layout-edit__btn {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.layout-edit__btn:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.layout-edit__btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.layout-edit__btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.layout-edit__note {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+/* Spacing for every panel (Edit layout → Spacing). */
+html[data-density="compact"] {
+  --space-1: 3px;
+  --space-2: 5px;
+  --space-3: 8px;
+  --space-4: 12px;
+  --space-5: 15px;
+  --space-6: 18px;
+}
+
+html[data-density="spacious"] {
+  --space-1: 5px;
+  --space-2: 11px;
+  --space-3: 15px;
+  --space-4: 20px;
+  --space-5: 24px;
+  --space-6: 30px;
+}

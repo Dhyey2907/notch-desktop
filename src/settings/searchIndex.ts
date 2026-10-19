@@ -145,6 +145,11 @@ export const ENTRIES: Entry[] = [
   { page: "general", label: "Animation", keywords: "motion reduce effects" },
   { page: "look", label: "Screen edge", keywords: "bottom taskbar top position move notch" },
   { page: "look", label: "Position along the edge", keywords: "left right center alt drag move" },
+  {
+    page: "look",
+    label: "Away screen",
+    keywords: "away clock idle monitor screensaver second screen glance",
+  },
   { page: "look", label: "Lock-screen info", keywords: "lock screen picture meeting weather music" },
   { page: "look", label: "Fade while typing under it", keywords: "hide transparent typing address bar" },
   {

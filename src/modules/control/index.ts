@@ -8,6 +8,7 @@ import { ipc } from "../../core/ipc";
 import type { ModuleContext, NotchModule } from "../types";
 import { useControl } from "./controlStore";
 import { alertCard } from "./format";
+import { CONTROL_LAYOUT } from "./layout";
 
 /** Lock-key and language readouts, like the volume HUD. */
 const STATE_HUD_MS = 1300;
@@ -98,4 +99,5 @@ export const controlModule: NotchModule = {
   order: 2,
   init,
   Expanded: lazy(() => import("./ControlExpanded")),
+  layout: CONTROL_LAYOUT,
 };

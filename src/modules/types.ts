@@ -5,6 +5,7 @@ import type { ComponentType } from "react";
 
 import type { ActivityState } from "../activity/activityStore";
 import type { EventBus } from "../core/eventBus";
+import type { LayoutGroup } from "../shell/layout";
 
 export interface ModuleContext {
   events: Pick<EventBus, "on" | "onAny">;
@@ -38,4 +39,6 @@ export interface NotchModule {
   alwaysOn?: boolean;
   /** Never in the dock or the dock settings; opened another way (the command palette). */
   dockless?: boolean;
+  /** What Edit layout can rearrange: the panel's sections (id = module id) and lists inside it. */
+  layout?: readonly LayoutGroup[];
 }

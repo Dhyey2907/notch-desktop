@@ -2,6 +2,7 @@
 import type { AiSettings } from "./AiSettings";
 import type { AnimationPreference } from "./AnimationPreference";
 import type { AppearanceSettings } from "./AppearanceSettings";
+import type { AwaySettings } from "./AwaySettings";
 import type { BehaviorSettings } from "./BehaviorSettings";
 import type { BreakSettings } from "./BreakSettings";
 import type { CalendarSettings } from "./CalendarSettings";
@@ -19,6 +20,7 @@ import type { GitSettings } from "./GitSettings";
 import type { GithubAlertSettings } from "./GithubAlertSettings";
 import type { HomeSettings } from "./HomeSettings";
 import type { HudSettings } from "./HudSettings";
+import type { LayoutSettings } from "./LayoutSettings";
 import type { ModuleSettings } from "./ModuleSettings";
 import type { MusicSettings } from "./MusicSettings";
 import type { PetSettings } from "./PetSettings";
@@ -40,4 +42,12 @@ modules: { [key in string]: ModuleSettings }, calendar: CalendarSettings, spotif
 /**
  * Sleep and wake times.
  */
-power: PowerSchedule, };
+power: PowerSchedule, 
+/**
+ * The away screen on other monitors while you're away.
+ */
+away: AwaySettings, 
+/**
+ * Panel layouts: section order, hidden sections, panel size, spacing.
+ */
+layout: LayoutSettings, };

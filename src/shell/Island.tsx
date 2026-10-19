@@ -54,6 +54,7 @@ import { useBreaks } from "../focus/useBreaks";
 import { usePetCheers } from "../focus/usePetCheers";
 import { usePetTalk } from "../pet/usePetTalk";
 import { useIsland } from "./useIsland";
+import { useLayoutPrefs } from "./useLayoutPrefs";
 import { openFirstModule, useModuleLifecycle, useModuleNav } from "./useModules";
 import "./island.css";
 
@@ -98,6 +99,7 @@ export function Island() {
   const swipe = useRef(idleSwipe());
 
   useModuleLifecycle();
+  useLayoutPrefs();
   useEffect(() => trackFullscreen(), []);
   useFileDrop();
   useFocusSession();

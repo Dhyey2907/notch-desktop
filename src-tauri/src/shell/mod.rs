@@ -3,6 +3,7 @@
 //! module decides *where* that lands on the display.
 
 pub(crate) mod aside;
+pub(crate) mod away;
 pub(crate) mod blur;
 pub(crate) mod fade;
 pub mod islands;
@@ -495,6 +496,7 @@ pub fn init(app: &AppHandle) -> AppResult<()> {
     islands::sync(app);
     watch_display_setting(app);
     fade::start(app);
+    away::start(app);
     Ok(())
 }
 

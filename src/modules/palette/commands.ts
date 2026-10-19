@@ -258,6 +258,12 @@ export function commands(): Command[] {
       },
     },
     {
+      id: "away",
+      title: "Away screen",
+      keywords: "clock screensaver idle away glance monitor",
+      run: async () => void (await ipc.awayShow()),
+    },
+    {
       id: "blur",
       title: "Privacy blur",
       keywords: "hide screen cover privacy panic",

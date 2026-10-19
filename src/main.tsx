@@ -6,6 +6,7 @@ import { connectEventBus } from "./core/eventBus";
 import "./design/tokens.css";
 import "./index.css";
 import { useSettings } from "./settings";
+import { AwayApp } from "./away/AwayApp";
 import { BlurCover } from "./blur/BlurCover";
 import { PetWalk } from "./focus/PetWalk";
 import { PipApp } from "./pip/PipApp";
@@ -38,6 +39,9 @@ if (isPipWindow) document.documentElement.classList.add("pip-window");
 // A sticky note on the desktop (#sticky=<note id>).
 const isStickyWindow = window.location.hash.startsWith("#sticky=");
 if (isStickyWindow) document.documentElement.classList.add("sticky-window");
+// The away screen on other monitors (#away).
+const isAwayWindow = window.location.hash.startsWith("#away");
+if (isAwayWindow) document.documentElement.classList.add("away-window");
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     {isSettingsWindow ? (
@@ -52,6 +56,8 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
       <PipApp />
     ) : isStickyWindow ? (
       <StickyApp />
+    ) : isAwayWindow ? (
+      <AwayApp />
     ) : (
       <App />
     )}

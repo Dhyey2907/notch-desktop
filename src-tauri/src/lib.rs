@@ -77,6 +77,7 @@ macro_rules! app_commands {
             commands::shell::blur_picture,
             commands::shell::blur_toggle,
             commands::shell::blur_off,
+            commands::shell::away_show,
             commands::shell::lockscreen_update,
             commands::shell::lockscreen_off,
             commands::shell::shell_is_fullscreen,

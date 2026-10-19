@@ -2,6 +2,8 @@
 //! the `settings` table; unknown or missing fields fall back to defaults, so adding a field
 //! never needs a migration. Secrets never live here — they go to Windows Credential Manager.
 
+pub mod layout;
+
 use std::collections::BTreeMap;
 
 use rusqlite::{params, Connection, OptionalExtension};
@@ -919,6 +921,10 @@ pub struct Settings {
     pub wallpaper: WallpaperSettings,
     /// Sleep and wake times.
     pub power: crate::powerplan::PowerSchedule,
+    /// The away screen on other monitors while you're away.
+    pub away: crate::shell::away::AwaySettings,
+    /// Panel layouts: section order, hidden sections, panel size, spacing.
+    pub layout: layout::LayoutSettings,
 }
 
 impl Settings {
@@ -1077,6 +1083,12 @@ impl Settings {
             || !self.desk.stickies.iter().all(crate::desk::sticky::valid)
         {
             return Err(AppError::InvalidInput("invalid sticky notes".into()));
+        }
+        if !self.layout.valid() {
+            return Err(AppError::InvalidInput("invalid panel layout".into()));
+        }
+        if !self.away.valid() {
+            return Err(AppError::InvalidInput("invalid away screen".into()));
         }
         if !self.power.valid() {
             return Err(AppError::InvalidInput("invalid power schedule".into()));

@@ -3,6 +3,7 @@ import { lazy } from "react";
 
 import type { NotchModule } from "../types";
 import HomePeek from "./HomePeek";
+import { HOME_LAYOUT } from "./layout";
 
 export const homeModule: NotchModule = {
   id: "home",
@@ -12,4 +13,5 @@ export const homeModule: NotchModule = {
   alwaysOn: true,
   Peek: HomePeek,
   Expanded: lazy(() => import("./HomeExpanded")),
+  layout: HOME_LAYOUT,
 };

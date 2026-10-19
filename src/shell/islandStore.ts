@@ -26,6 +26,9 @@ export interface IslandState {
   /** Natural width of the module dock; the expanded window is at least this wide. */
   dockWidth: number;
   setDockWidth: (width: number) => Promise<void>;
+  /** Size of the open panel (Edit layout → size); resizes now if a panel is open. */
+  expandedSize: Size;
+  setExpandedSize: (size: Size) => Promise<void>;
 }
 
 export function createIslandStore(resizeWindow: ResizeWindow, initialMode: IslandMode = "collapsed") {
@@ -49,6 +52,13 @@ export function createIslandStore(resizeWindow: ResizeWindow, initialMode: Islan
 
     bubbleWidth: ISLAND_SIZE.collapsed.width,
     dockWidth: 0,
+    expandedSize: ISLAND_SIZE.expanded,
+
+    setExpandedSize: async (size) => {
+      if (sameSize(get().expandedSize, size)) return;
+      set({ expandedSize: size });
+      if (get().mode === "expanded") await get().request("expanded");
+    },
 
     setDockWidth: async (width) => {
       if (width === get().dockWidth) return;
@@ -65,7 +75,11 @@ export function createIslandStore(resizeWindow: ResizeWindow, initialMode: Islan
     request: async (mode, requested) => {
       const size =
         requested ??
-        (mode === "collapsed" ? { ...ISLAND_SIZE.collapsed, width: get().bubbleWidth } : ISLAND_SIZE[mode]);
+        (mode === "collapsed"
+          ? { ...ISLAND_SIZE.collapsed, width: get().bubbleWidth }
+          : mode === "expanded"
+            ? get().expandedSize
+            : ISLAND_SIZE[mode]);
       const current = get();
       if (mode === current.mode && sameSize(current.size, size)) return;
       const requestId = ++latestRequest;

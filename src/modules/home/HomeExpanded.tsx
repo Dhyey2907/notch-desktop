@@ -22,7 +22,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useRef, useState, type PointerEvent, type WheelEvent } from "react";
+import { Fragment, useEffect, useRef, useState, type PointerEvent, type WheelEvent } from "react";
 
 import { eventBus } from "../../core/eventBus";
 import type { Dashboard } from "../../core/generated/Dashboard";
@@ -34,9 +34,11 @@ import { span, weekendIn, workday } from "../../core/workday";
 import { ipc } from "../../core/ipc";
 import { useReduceMotion } from "../../design/useReduceMotion";
 import { useSettings } from "../../settings";
+import { useArranged } from "../../shell/layout";
 import type { ScreenTime } from "../../core/generated/ScreenTime";
 import { dayKeyBack, dayLabel, formatMinutes, greeting, longDate } from "./dashboard";
 import { HistoryView } from "./HistoryView";
+import { HOME_CARDS } from "./layout";
 import "./home.css";
 
 /** How often the open dashboard refreshes CPU, memory and battery. */
@@ -118,6 +120,17 @@ export default function HomeExpanded() {
   const day = useSettings((s) => s.settings?.day);
   const show = (tile: string) => !home?.hiddenTiles.includes(tile);
   const [history, setHistory] = useState(false);
+  const cards = useArranged("home", HOME_CARDS).filter((c) => show(c.id));
+  const card = (id: string) =>
+    id === "system" ? (
+      <SystemCard stats={stats} />
+    ) : id === "controls" ? (
+      <ControlsCard dash={dash} />
+    ) : id === "screen" ? (
+      <ScreenTimeCard dash={dash} now={now} />
+    ) : (
+      <WeatherCard weather={dash?.weather} fahrenheit={home?.fahrenheit ?? false} />
+    );
 
   if (history) return <HistoryView onBack={() => setHistory(false)} />;
   return (
@@ -138,10 +151,9 @@ export default function HomeExpanded() {
         </div>
       </header>
       <div className="home__grid">
-        {show("system") && <SystemCard stats={stats} />}
-        {show("controls") && <ControlsCard dash={dash} />}
-        {show("screen") && <ScreenTimeCard dash={dash} now={now} />}
-        {show("weather") && <WeatherCard weather={dash?.weather} fahrenheit={home?.fahrenheit ?? false} />}
+        {cards.map((c) => (
+          <Fragment key={c.id}>{card(c.id)}</Fragment>
+        ))}
       </div>
     </section>
   );

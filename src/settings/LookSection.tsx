@@ -10,7 +10,7 @@ import { SegmentedControl, Surface, Switch } from "../design/components";
 import { appearanceVars, scaledRadius, SIZE_SCALE } from "../shell/appearance";
 import { ipc } from "../core/ipc";
 import { useSettings } from ".";
-import { ColorChoice, Row, Slider } from "./controls";
+import { ColorChoice, Row, Select, Slider } from "./controls";
 import { patch, resetGroups } from "./patch";
 import { pageLead } from "./searchIndex";
 import { Section } from "./Section";
@@ -60,6 +60,7 @@ function Preview({ look }: { look: AppearanceSettings }) {
 
 export function LookSection() {
   const look = useSettings((s) => s.settings?.appearance);
+  const away = useSettings((s) => s.settings?.away);
   const music = useSettings((s) => s.settings?.music);
   if (!look || !music) return null;
   const set = (change: Partial<AppearanceSettings>) => patch("appearance", change);
@@ -254,6 +255,34 @@ export function LookSection() {
             description="Typing in a box right under the notch (an address bar, a chat box) fades the resting bubble until you stop."
             checked={look.fadeWhileTyping}
             onChange={(fadeWhileTyping) => set({ fadeWhileTyping })}
+          />
+        </div>
+        <div id="setting-away-screen">
+          <Row
+            label="Away screen"
+            description="While you're away, your other monitors (or all of them) show a big clock, next meeting, weather, music and unread mail. Any key or mouse movement brings your desktop back. Also “Away screen” in the palette."
+          >
+            <Select
+              label="Away screen"
+              value={String(away?.afterIdleMin ?? 0)}
+              options={[
+                { value: "0", label: "Only from the palette" },
+                ...[2, 5, 10, 15, 30].map((m) => ({ value: String(m), label: `After ${m} min away` })),
+              ]}
+              onChange={(v) =>
+                void useSettings
+                  .getState()
+                  .update((st) => ({ ...st, away: { ...st.away, afterIdleMin: Number(v) } }))
+              }
+            />
+          </Row>
+          <Switch
+            label="Away screen on every monitor"
+            description="Off: only on monitors other than the main one (with one monitor, it uses that one)."
+            checked={away?.allScreens ?? false}
+            onChange={(allScreens) =>
+              void useSettings.getState().update((st) => ({ ...st, away: { ...st.away, allScreens } }))
+            }
           />
         </div>
         <div id="setting-lock-screen-info">

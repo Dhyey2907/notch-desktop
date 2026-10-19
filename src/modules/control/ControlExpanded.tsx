@@ -18,12 +18,14 @@ import {
   WifiOff,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState, type ReactNode } from "react";
 
 import type { ControlSnapshot } from "../../core/generated/ControlSnapshot";
 import type { RadioKind } from "../../core/generated/RadioKind";
 import { ipc, isIpcError } from "../../core/ipc";
+import { useArranged } from "../../shell/layout";
 import { useControl } from "./controlStore";
+import { SECTIONS, TOGGLES } from "./layout";
 import { formatMinutes, formatSpeed } from "./format";
 import { NetworkPanel } from "./NetworkPanel";
 import { DisplayRow } from "./DisplayRow";
@@ -91,22 +93,38 @@ function Toggles({
     }
   };
   const open = (page: string) => void ipc.controlOpenSettings(page).catch(() => {});
+  const shown = useArranged("control.toggles", TOGGLES);
+  const toggle = (id: string) => {
+    if (id === "wifi")
+      return (
+        <Toggle icon={Wifi} label="Wi-Fi" on={radios.wifi} onClick={() => void flip("wifi", radios.wifi)} />
+      );
+    if (id === "bluetooth")
+      return (
+        <Toggle
+          icon={Bluetooth}
+          label="Bluetooth"
+          on={radios.bluetooth}
+          onClick={() => void flip("bluetooth", radios.bluetooth)}
+        />
+      );
+    if (id === "hotspot")
+      return (
+        <Toggle
+          icon={Radio}
+          label="Hotspot"
+          on={radios.hotspot}
+          onClick={() => void flip("hotspot", radios.hotspot)}
+        />
+      );
+    return <Toggle icon={Plane} label="Airplane" external onClick={() => open("airplane")} />;
+  };
+  if (shown.length === 0) return null;
   return (
     <div className="control-toggles" role="group" aria-label="Quick switches">
-      <Toggle icon={Wifi} label="Wi-Fi" on={radios.wifi} onClick={() => void flip("wifi", radios.wifi)} />
-      <Toggle
-        icon={Bluetooth}
-        label="Bluetooth"
-        on={radios.bluetooth}
-        onClick={() => void flip("bluetooth", radios.bluetooth)}
-      />
-      <Toggle
-        icon={Radio}
-        label="Hotspot"
-        on={radios.hotspot}
-        onClick={() => void flip("hotspot", radios.hotspot)}
-      />
-      <Toggle icon={Plane} label="Airplane" external onClick={() => open("airplane")} />
+      {shown.map(({ id }) => (
+        <Fragment key={id}>{toggle(id)}</Fragment>
+      ))}
     </div>
   );
 }
@@ -258,6 +276,7 @@ export default function ControlExpanded() {
   const [power, setPower] = useState(false);
   const [wifi, setWifi] = useState(false);
   const [system, setSystem] = useState(false);
+  const sections = useArranged("control", SECTIONS);
   // Fresh readings each time the panel opens (headphones may have just connected).
   useEffect(() => {
     ipc.controlRefresh().then(
@@ -271,34 +290,56 @@ export default function ControlExpanded() {
   if (power) return <PowerPanel onBack={() => setPower(false)} />;
   if (wifi) return <WifiPanel onBack={() => setWifi(false)} />;
   if (system) return <SystemPanel onBack={() => setSystem(false)} />;
+  const section = (id: string): ReactNode => {
+    if (id === "toggles") return <Toggles snapshot={snapshot} onError={setError} />;
+    if (id === "display") return <DisplayRow onError={setError} />;
+    if (id === "network") return <NetworkCard snapshot={snapshot} onMore={() => setNetwork(true)} />;
+    if (id === "battery") return <PowerCard snapshot={snapshot} />;
+    if (id === "devices") return <Devices snapshot={snapshot} />;
+    return more;
+  };
+  // The network and battery cards sit side by side when they are next to each other.
+  const rows: string[][] = [];
+  for (const { id } of sections) {
+    const last = rows[rows.length - 1];
+    const card = id === "network" || id === "battery";
+    if (card && last && last.length === 1 && (last[0] === "network" || last[0] === "battery")) last.push(id);
+    else rows.push([id]);
+  }
+  const more = (
+    <div className="control-more">
+      <button type="button" className="nd-chip" onClick={() => setSound(true)}>
+        Sound · apps &amp; output
+      </button>
+      <button type="button" className="nd-chip" onClick={() => setWifi(true)}>
+        Wi-Fi networks
+      </button>
+      <button type="button" className="nd-chip" onClick={() => setSystem(true)}>
+        System
+      </button>
+      <button type="button" className="nd-chip" onClick={() => setPower(true)}>
+        Power
+      </button>
+    </div>
+  );
   return (
     <section className="control" aria-label="Control">
-      <Toggles snapshot={snapshot} onError={setError} />
-      <DisplayRow onError={setError} />
       {error && (
         <p className="control-error" role="alert">
           {error}
         </p>
       )}
-      <div className="control-cards">
-        <NetworkCard snapshot={snapshot} onMore={() => setNetwork(true)} />
-        <PowerCard snapshot={snapshot} />
-      </div>
-      <Devices snapshot={snapshot} />
-      <div className="control-more">
-        <button type="button" className="nd-chip" onClick={() => setSound(true)}>
-          Sound · apps &amp; output
-        </button>
-        <button type="button" className="nd-chip" onClick={() => setWifi(true)}>
-          Wi-Fi networks
-        </button>
-        <button type="button" className="nd-chip" onClick={() => setSystem(true)}>
-          System
-        </button>
-        <button type="button" className="nd-chip" onClick={() => setPower(true)}>
-          Power
-        </button>
-      </div>
+      {rows.map((row) =>
+        row[0] === "network" || row[0] === "battery" ? (
+          <div key={row.join("+")} className="control-cards">
+            {row.map((id) => (
+              <Fragment key={id}>{section(id)}</Fragment>
+            ))}
+          </div>
+        ) : (
+          <Fragment key={row[0]}>{section(row[0])}</Fragment>
+        ),
+      )}
     </section>
   );
 }

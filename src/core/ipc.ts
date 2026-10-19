@@ -370,6 +370,8 @@ export const ipc = {
   spotifyLike: (trackId: string, liked: boolean) => invoke<void>("spotify_like", { trackId, liked }),
   /** Pin a note to the desktop as a sticky. */
   stickyPin: (noteId: string) => invoke<void>("sticky_pin", { noteId }),
+  /** Show the away screen now (any key or mouse movement hides it). */
+  awayShow: () => invoke<void>("away_show"),
   /** Don't offer this habit routine again. */
   habitDismiss: (key: string) => invoke<void>("habit_dismiss", { key }),
   /** Watch a product page against a target price (checked right away). */

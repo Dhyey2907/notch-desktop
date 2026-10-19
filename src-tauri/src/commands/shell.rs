@@ -140,3 +140,17 @@ pub async fn lockscreen_off(app: tauri::AppHandle) -> AppResult<bool> {
     }
     Ok(restored)
 }
+
+/// Show the away screen now (it goes away on the next key or mouse movement).
+#[tauri::command]
+pub fn away_show(app: tauri::AppHandle) -> AppResult<()> {
+    let app2 = app.clone();
+    std::thread::spawn(move || {
+        if let Err(error) = shell::away::show(&app2, true) {
+            tracing::warn!(kind = error.kind(), "could not show the away screen");
+            shell::away::hide(&app2);
+        }
+    });
+    let _ = app;
+    Ok(())
+}

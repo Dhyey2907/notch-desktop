@@ -9,6 +9,7 @@ import { CalendarCompact, CalendarPeek } from "./CalendarIndicators";
 import { showInPetCloud } from "../../pet/petStore";
 import { useIsland } from "../../shell/useIsland";
 import { countdownText, useCalendar } from "./calendarStore";
+import { CALENDAR_LAYOUT } from "./layout";
 
 /** Keep the countdown up this long after the meeting starts, so "Join" stays reachable. */
 const LINGER_AFTER_START_MS = 5 * 60_000;
@@ -99,4 +100,5 @@ export const calendarModule: NotchModule = {
   Compact: CalendarCompact,
   Peek: CalendarPeek,
   Expanded: lazy(() => import("./CalendarExpanded")),
+  layout: CALENDAR_LAYOUT,
 };
