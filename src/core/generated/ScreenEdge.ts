@@ -3,4 +3,4 @@
 /**
  * The screen edge the notch sits on.
  */
-export type ScreenEdge = "top" | "bottom";
+export type ScreenEdge = "top" | "bottom" | "left" | "right";

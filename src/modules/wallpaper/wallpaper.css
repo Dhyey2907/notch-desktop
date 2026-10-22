@@ -35,7 +35,8 @@
   overflow-y: hidden;
   padding: 2px 2px 6px;
   scroll-behavior: smooth;
-  scrollbar-width: thin;
+  /* No bar: the wheel scrolls it sideways. */
+  scrollbar-width: none;
 }
 
 .wall {

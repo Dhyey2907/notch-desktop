@@ -2,7 +2,6 @@
 //! (architecture.md §3–4). The frontend decides *what size* the island needs; this
 //! module decides *where* that lands on the display.
 
-pub(crate) mod aside;
 pub(crate) mod away;
 pub(crate) mod blur;
 pub(crate) mod fade;
@@ -63,7 +62,16 @@ pub fn open_settings_window(app: &AppHandle, section: Option<&str>) -> AppResult
 /// Size and position an island top-center on its screen (design.md §20).
 pub fn place(window: &WebviewWindow, (width, height): (f64, f64)) -> AppResult<()> {
     let shell = window.app_handle().state::<ShellState>();
-    let Some(monitor) = islands::monitor_for(window, &shell) else {
+    // Being dragged to a new spot: show it there (saved when you let go), maybe on another screen.
+    let spot = DRAG_SPOT.lock().unwrap_or_else(|e| e.into_inner()).clone();
+    let dragged_to = spot.as_ref().and_then(|s| s.monitor.clone()).and_then(|name| {
+        window
+            .available_monitors()
+            .ok()?
+            .into_iter()
+            .find(|m| m.name() == Some(&name))
+    });
+    let Some(monitor) = dragged_to.or_else(|| islands::monitor_for(window, &shell)) else {
         tracing::warn!("no monitor available; skipping island placement");
         return Ok(());
     };
@@ -74,25 +82,38 @@ pub fn place(window: &WebviewWindow, (width, height): (f64, f64)) -> AppResult<(
         width: area.size.width,
         height: area.size.height,
     };
+    let settings = window
+        .app_handle()
+        .state::<AppState>()
+        .settings
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .appearance
+        .clone();
+    let edge = spot.as_ref().map_or(settings.edge, |s| s.edge);
+    if edge.is_side() {
+        let from_top = spot.as_ref().map_or(settings.offset_side, |s| s.along);
+        let frame = placement::side_frame(
+            work,
+            monitor.scale_factor(),
+            (width, height),
+            edge == crate::settings::ScreenEdge::Right,
+            from_top,
+            settings.offset_y,
+        );
+        window.set_size(frame.1)?;
+        window.set_position(frame.0)?;
+        return Ok(());
+    }
     let (offset_x, offset_y, bottom) = {
-        let settings = window
-            .app_handle()
-            .state::<AppState>()
-            .settings
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .appearance
-            .clone();
         (
-            if let Some(dragging) = *DRAG_OFFSET.lock().unwrap_or_else(|e| e.into_inner()) {
-                dragging
-            } else if aside::is_aside(window.label()) {
-                aside::aside_offset(f64::from(work.width) / monitor.scale_factor(), width)
+            if let Some(spot) = &spot {
+                spot.along
             } else {
                 settings.offset_x
             },
             settings.offset_y,
-            settings.edge == crate::settings::ScreenEdge::Bottom,
+            edge == crate::settings::ScreenEdge::Bottom,
         )
     };
     let frame = if bottom {
@@ -107,18 +128,120 @@ pub fn place(window: &WebviewWindow, (width, height): (f64, f64)) -> AppResult<(
     Ok(())
 }
 
-/// While you Alt+drag the notch sideways: the offset to show (not saved until you let go).
-static DRAG_OFFSET: Mutex<Option<i32>> = Mutex::new(None);
+/// While you drag the notch: where it would land (shown, not saved until you let go).
+#[derive(Debug, Clone, PartialEq)]
+struct DragSpot {
+    edge: crate::settings::ScreenEdge,
+    along: i32,
+    /// Another screen's name when dragged onto it.
+    monitor: Option<String>,
+}
 
-/// Show the notch at `offset_x` while it's being dragged (or back to the saved offset with
-/// `None`). Placement keeps it on the screen.
-pub fn preview_offset(window: &WebviewWindow, offset_x: Option<i32>) -> AppResult<()> {
-    *DRAG_OFFSET.lock().unwrap_or_else(|e| e.into_inner()) = offset_x.map(|x| x.clamp(-4000, 4000));
-    let size = window
-        .app_handle()
-        .state::<ShellState>()
-        .window_size(window.label());
-    place(window, size)
+static DRAG_SPOT: Mutex<Option<DragSpot>> = Mutex::new(None);
+
+/// Where a dragged notch lands, for Settings to save.
+#[derive(Debug, Clone, serde::Serialize, ts_rs::TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct NotchSpot {
+    pub edge: crate::settings::ScreenEdge,
+    /// Left/right of center on the top or bottom; down from the top on a side (logical px).
+    pub along: i32,
+    /// Set when it was dragged onto another screen (its Windows device name).
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub screen: Option<String>,
+}
+
+/// Dragging the notch: `move` shows it on the edge nearest the cursor (on whichever screen the
+/// cursor is on), `end` returns that spot (still shown until `clear`, so it doesn't jump back
+/// before Settings saves it). `keep_edge` (Alt+drag): only slide along the edge it's on.
+pub fn drag_notch(window: &WebviewWindow, phase: &str, keep_edge: bool) -> AppResult<Option<NotchSpot>> {
+    let shell = window.app_handle().state::<ShellState>();
+    if phase == "clear" {
+        *DRAG_SPOT.lock().unwrap_or_else(|e| e.into_inner()) = None;
+        place(window, shell.window_size(window.label()))?;
+        return Ok(None);
+    }
+    let Some(home) = islands::monitor_for(window, &shell) else {
+        return Ok(None);
+    };
+    let Some(cursor) = cursor_position() else {
+        return Ok(None);
+    };
+    let (edge_now, every_screen) = {
+        let s = window
+            .app_handle()
+            .state::<AppState>()
+            .settings
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
+        (
+            s.appearance.edge,
+            s.display.mode == crate::settings::DisplayMode::All,
+        )
+    };
+    // A plain drag can take it to another screen (not when there's a notch on every screen).
+    let under = (!keep_edge && !every_screen)
+        .then(|| {
+            window.available_monitors().ok()?.into_iter().find(|m| {
+                placement::contains(
+                    cursor,
+                    (m.position().x, m.position().y),
+                    (m.size().width, m.size().height),
+                )
+            })
+        })
+        .flatten();
+    let monitor = under.unwrap_or_else(|| home.clone());
+    let area = monitor.work_area();
+    let work = WorkArea {
+        x: area.position.x,
+        y: area.position.y,
+        width: area.size.width,
+        height: area.size.height,
+    };
+    let (edge, along) = if keep_edge {
+        (
+            edge_now,
+            placement::along(work, monitor.scale_factor(), cursor, edge_now),
+        )
+    } else {
+        placement::snap(work, monitor.scale_factor(), cursor)
+    };
+    let screen = (monitor.name() != home.name())
+        .then(|| monitor.name().cloned())
+        .flatten();
+    let next = DragSpot {
+        edge,
+        along,
+        monitor: screen.clone(),
+    };
+    let changed = {
+        let mut spot = DRAG_SPOT.lock().unwrap_or_else(|e| e.into_inner());
+        let changed = spot.as_ref() != Some(&next);
+        *spot = Some(next);
+        changed
+    };
+    if changed {
+        place(window, shell.window_size(window.label()))?;
+    }
+    Ok((phase == "end").then_some(NotchSpot { edge, along, screen }))
+}
+
+#[cfg(windows)]
+fn cursor_position() -> Option<(i32, i32)> {
+    use windows::Win32::{Foundation::POINT, UI::WindowsAndMessaging::GetCursorPos};
+    let mut p = POINT::default();
+    // SAFETY: writes into a local POINT.
+    unsafe { GetCursorPos(&mut p) }.ok()?;
+    Some((p.x, p.y))
+}
+
+#[cfg(not(windows))]
+fn cursor_position() -> Option<(i32, i32)> {
+    None
 }
 
 /// Show the island and keep it out of Alt+Tab. Use this instead of `window.show()`.
@@ -551,10 +674,12 @@ fn watch_display_setting(app: &AppHandle) {
                             settings.appearance.offset_x,
                             settings.appearance.offset_y,
                             settings.appearance.edge,
+                            settings.appearance.offset_side,
                         ) != (
                             last.appearance.offset_x,
                             last.appearance.offset_y,
                             last.appearance.edge,
+                            last.appearance.offset_side,
                         ) {
                             for window in islands::all(&app) {
                                 let size = app.state::<ShellState>().window_size(window.label());
@@ -563,14 +688,6 @@ fn watch_display_setting(app: &AppHandle) {
                         }
                         if settings.shortcuts != last.shortcuts {
                             apply_shortcuts(&app, &settings.shortcuts);
-                        }
-                        if (
-                            &settings.appearance.slide_aside,
-                            settings.appearance.slide_aside_browsers,
-                        ) != (&last.appearance.slide_aside, last.appearance.slide_aside_browsers)
-                        {
-                            let app = app.clone();
-                            std::thread::spawn(move || aside::refresh(&app));
                         }
                         if settings.power.wake_at != last.power.wake_at
                             || settings.power.days != last.power.days
@@ -815,7 +932,6 @@ fn watch_front_window(app: &AppHandle) {
                 // Switching virtual desktops changes the front window too.
                 crate::system::service::desktops_maybe_changed(&app);
                 front_app_maybe_changed(&app);
-                aside::refresh(&app);
             });
         } else {
             PENDING.store(false, Ordering::SeqCst);

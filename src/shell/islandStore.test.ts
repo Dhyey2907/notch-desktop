@@ -13,6 +13,17 @@ function setup() {
 }
 
 describe("islandStore", () => {
+  it("stands the resting bubble upright on a side edge", async () => {
+    const { store } = setup();
+    await store.getState().setBubbleWidth(120);
+    const flat = store.getState().size;
+    await store.getState().setVertical(true);
+    expect(store.getState().size).toEqual({ width: flat.height, height: 120 });
+    // Opening is unchanged: panels open the usual way round.
+    await store.getState().request("expanded");
+    expect(store.getState().size.width).toBeGreaterThan(store.getState().size.height);
+  });
+
   it("grows the window before switching to a larger mode", async () => {
     const { store, sizes } = setup();
 

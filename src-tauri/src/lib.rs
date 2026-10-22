@@ -73,7 +73,7 @@ macro_rules! app_commands {
             commands::app::diagnostics_ping,
             commands::app::open_external,
             commands::shell::shell_set_window_size,
-            commands::shell::shell_preview_offset,
+            commands::shell::shell_drag_notch,
             commands::shell::blur_picture,
             commands::shell::blur_toggle,
             commands::shell::blur_off,

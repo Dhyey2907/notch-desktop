@@ -469,7 +469,7 @@ notch → active module
 
 Where useful:
 
--   Horizontal → switch module
+-   Horizontal → skip track on the closed notch (never switches module; panels scroll sideways)
 -   Vertical → notification list
 
 Keyboard accessibility must remain available.

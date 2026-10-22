@@ -33,10 +33,12 @@ export function useBubbleFit(island: RefObject<HTMLElement | null>, active: bool
     if (dot) return;
     if (!root || !active) return;
 
-    // Marks can be SVGs (no offsetWidth): measure on screen and undo the notch-size zoom.
+    // Marks can be SVGs (no offsetWidth): measure on screen and undo the notch-size zoom. On a
+    // side edge the content is turned upright, so its length on screen is its height.
     const size = (el: Element) => {
       const zoom = root.offsetWidth > 0 ? root.getBoundingClientRect().width / root.offsetWidth : 1;
-      return el.getBoundingClientRect().width / (zoom || 1);
+      const r = el.getBoundingClientRect();
+      return (root.hasAttribute("data-upright") ? r.height : r.width) / (zoom || 1);
     };
     const widthOf = (content: HTMLElement) => {
       const marks: number[] = [];
@@ -69,9 +71,13 @@ export function useBubbleFit(island: RefObject<HTMLElement | null>, active: bool
     watch();
     const mutations = new MutationObserver(watch);
     mutations.observe(root, { childList: true, subtree: true });
+    // Turning upright (a side edge) changes how long the bubble must be.
+    const turned = new MutationObserver(fit);
+    turned.observe(root, { attributes: true, attributeFilter: ["data-upright"] });
     return () => {
       resize.disconnect();
       mutations.disconnect();
+      turned.disconnect();
     };
   }, [island, active, dot]);
 }

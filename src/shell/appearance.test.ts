@@ -17,8 +17,7 @@ const LOOK: AppearanceSettings = {
   offsetX: 0,
   offsetY: 0,
   edge: "top",
-  slideAside: [],
-  slideAsideBrowsers: false,
+  offsetSide: 160,
   fadeWhileTyping: false,
   lockscreenInfo: false,
 };

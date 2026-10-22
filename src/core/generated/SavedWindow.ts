@@ -9,6 +9,12 @@ export type SavedWindow = {
  */
 exe: string, title: string, 
 /**
- * Left, top, width, height (physical pixels, the visible frame).
+ * Left, top, width, height (physical pixels, the visible frame; for a minimized window,
+ * where it sits when it's not minimized).
  */
-rect: [number, number, number, number], maximized: boolean, };
+rect: [number, number, number, number], maximized: boolean, minimized: boolean, 
+/**
+ * The app's own Windows id (e.g. Netflix inside Edge, or a Store app), so it reopens as
+ * that app and not as the program hosting it.
+ */
+appId?: string, };

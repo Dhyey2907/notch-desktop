@@ -194,11 +194,8 @@ pub struct AppearanceSettings {
     pub offset_y: u32,
     /// Which screen edge the notch sits on.
     pub edge: ScreenEdge,
-    /// Slide out of the way of these apps' tabs and toolbars when they're maximized under the
-    /// notch (exe names, e.g. "chrome.exe").
-    pub slide_aside: Vec<String>,
-    /// Also slide aside for any maximized browser.
-    pub slide_aside_browsers: bool,
+    /// On the left or right edge: logical px down from the top of the screen.
+    pub offset_side: i32,
     /// Fade the resting bubble while you type just below it.
     pub fade_while_typing: bool,
     /// Draw next meeting, weather, music and unread mail onto the lock-screen picture.
@@ -214,6 +211,16 @@ pub enum ScreenEdge {
     Top,
     /// Just above the taskbar.
     Bottom,
+    /// The left side of the screen.
+    Left,
+    /// The right side of the screen.
+    Right,
+}
+
+impl ScreenEdge {
+    pub fn is_side(self) -> bool {
+        matches!(self, ScreenEdge::Left | ScreenEdge::Right)
+    }
 }
 
 impl Default for AppearanceSettings {
@@ -232,8 +239,7 @@ impl Default for AppearanceSettings {
             offset_x: 0,
             offset_y: 0,
             edge: ScreenEdge::Top,
-            slide_aside: Vec::new(),
-            slide_aside_browsers: false,
+            offset_side: 160,
             fade_while_typing: false,
             lockscreen_info: false,
         }
@@ -1098,9 +1104,8 @@ impl Settings {
             || a.roundness > 100
             // Presets push to ±4000 and placement clamps to the screen's edges.
             || !(-4000..=4000).contains(&a.offset_x)
+            || !(0..=8000).contains(&a.offset_side)
             || a.offset_y > 80
-            || a.slide_aside.len() > 30
-            || a.slide_aside.iter().any(|e| e.is_empty() || e.len() > 80)
             || !(a.accent.is_empty() || valid_hex_color(&a.accent))
         {
             return Err(AppError::InvalidInput("invalid look settings".into()));

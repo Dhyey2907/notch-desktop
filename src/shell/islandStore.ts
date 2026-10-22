@@ -26,6 +26,9 @@ export interface IslandState {
   /** Natural width of the module dock; the expanded window is at least this wide. */
   dockWidth: number;
   setDockWidth: (width: number) => Promise<void>;
+  /** On a side edge the resting bubble stands upright (its width and height swap). */
+  vertical: boolean;
+  setVertical: (vertical: boolean) => Promise<void>;
   /** Size of the open panel (Edit layout → size); resizes now if a panel is open. */
   expandedSize: Size;
   setExpandedSize: (size: Size) => Promise<void>;
@@ -53,6 +56,13 @@ export function createIslandStore(resizeWindow: ResizeWindow, initialMode: Islan
     bubbleWidth: ISLAND_SIZE.collapsed.width,
     dockWidth: 0,
     expandedSize: ISLAND_SIZE.expanded,
+    vertical: false,
+
+    setVertical: async (vertical) => {
+      if (vertical === get().vertical) return;
+      set({ vertical });
+      if (get().mode === "collapsed") await get().request("collapsed");
+    },
 
     setExpandedSize: async (size) => {
       if (sameSize(get().expandedSize, size)) return;
@@ -73,13 +83,16 @@ export function createIslandStore(resizeWindow: ResizeWindow, initialMode: Islan
     },
 
     request: async (mode, requested) => {
-      const size =
+      const wanted =
         requested ??
         (mode === "collapsed"
           ? { ...ISLAND_SIZE.collapsed, width: get().bubbleWidth }
           : mode === "expanded"
             ? get().expandedSize
             : ISLAND_SIZE[mode]);
+      // Upright on a side: the bubble's length runs down the screen edge.
+      const size =
+        mode === "collapsed" && get().vertical ? { width: wanted.height, height: wanted.width } : wanted;
       const current = get();
       if (mode === current.mode && sameSize(current.size, size)) return;
       const requestId = ++latestRequest;

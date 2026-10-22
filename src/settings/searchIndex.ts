@@ -143,7 +143,11 @@ export const ENTRIES: Entry[] = [
   { page: "general", label: "Start with Windows", keywords: "startup login boot launch" },
   { page: "general", label: "Show the notch on", keywords: "screen monitor display second" },
   { page: "general", label: "Animation", keywords: "motion reduce effects" },
-  { page: "look", label: "Screen edge", keywords: "bottom taskbar top position move notch" },
+  {
+    page: "look",
+    label: "Screen edge",
+    keywords: "bottom taskbar top left right side position move drag notch",
+  },
   { page: "look", label: "Position along the edge", keywords: "left right center alt drag move" },
   {
     page: "look",
@@ -152,11 +156,6 @@ export const ENTRIES: Entry[] = [
   },
   { page: "look", label: "Lock-screen info", keywords: "lock screen picture meeting weather music" },
   { page: "look", label: "Fade while typing under it", keywords: "hide transparent typing address bar" },
-  {
-    page: "look",
-    label: "Slide aside for maximized browsers",
-    keywords: "tabs chrome edge move out of the way",
-  },
   { page: "look", label: "Notch size", keywords: "bigger smaller scale zoom" },
   { page: "look", label: "Text size", keywords: "font bigger smaller readable" },
   { page: "look", label: "Resting bubble", keywords: "idle pill dot hidden collapsed" },

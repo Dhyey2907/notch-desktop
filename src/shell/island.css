@@ -396,3 +396,25 @@
   opacity: 0.22;
   pointer-events: none;
 }
+
+/* On a side edge the resting bubble stands upright against the screen side; its content is
+   turned to read along it (top to bottom on the right, bottom to top on the left). The
+   separate rotate/translate properties are used because the content animation owns transform. */
+.island[data-upright] .island-content--collapsed {
+  inset: auto;
+  top: 0;
+  left: 0;
+  width: var(--bubble-long);
+  height: var(--bubble-short);
+  transform-origin: top left;
+}
+
+.island-frame[data-edge="right"] .island[data-upright] .island-content--collapsed {
+  rotate: 90deg;
+  translate: var(--bubble-short) 0;
+}
+
+.island-frame[data-edge="left"] .island[data-upright] .island-content--collapsed {
+  rotate: -90deg;
+  translate: 0 var(--bubble-long);
+}

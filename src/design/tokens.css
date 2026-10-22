@@ -64,3 +64,8 @@
   /* Focus */
   --focus-ring: 0 0 0 2px var(--background), 0 0 0 4px rgba(255, 255, 255, 0.6);
 }
+
+/* Scrollbars: thin and dark everywhere (never the bright system default). */
+* {
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}

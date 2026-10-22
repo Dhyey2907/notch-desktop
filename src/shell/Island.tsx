@@ -1,6 +1,6 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useRef, type WheelEvent } from "react";
+import { useEffect, useRef, type CSSProperties, type WheelEvent } from "react";
 
 import { useActivities } from "../activity";
 import { isPersistent, type Activity } from "../activity/activityStore";
@@ -37,7 +37,7 @@ import { WorkdayLine } from "./WorkdayLine";
 import { useAlertSound, useCardTime, useLook, useQuietHours } from "./useNotchPrefs";
 import { useHistoryLogger } from "../activity/useHistoryLogger";
 import { useLockScreenInfo } from "./useLockScreenInfo";
-import { useNotchDrag, useNotchFade } from "./useNotchMove";
+import { isNotchDragging, useNotchDrag, useNotchFade } from "./useNotchMove";
 import {
   activityIslandSize,
   GAME_HUD_SIZE,
@@ -107,8 +107,18 @@ export function Island() {
   useAmbient();
   const showPet = useSettings((s) => !s.settings?.focus.hidePet);
   const look = useSettings((s) => s.settings?.appearance);
-  const bottomEdge = look?.edge === "bottom";
-  const notchDrag = useNotchDrag();
+  const edge = look?.edge ?? "top";
+  const bottomEdge = edge === "bottom";
+  const sideEdge = edge === "left" || edge === "right";
+  useEffect(() => {
+    void useIsland.getState().setVertical(sideEdge);
+  }, [sideEdge]);
+  const upright = sideEdge && mode === "collapsed";
+  // A drag cancels a pending hover-open, and a peek goes back to the bubble.
+  const notchDrag = useNotchDrag(() => {
+    window.clearTimeout(hoverTimer.current);
+    if (useIsland.getState().mode === "peek") void useIsland.getState().request("collapsed");
+  });
   const faded = useNotchFade();
   const fullscreenBehavior = useSettings((s) => s.settings?.behavior.fullscreen ?? "alerts");
   const islandRef = useRef<HTMLElement>(null);
@@ -231,6 +241,7 @@ export function Island() {
 
   const scheduleHover = (target: IslandMode, delay: number) => {
     window.clearTimeout(hoverTimer.current);
+    if (isNotchDragging()) return;
     hoverTimer.current = window.setTimeout(() => void request(target), delay);
   };
 
@@ -240,6 +251,7 @@ export function Island() {
     const current = useIsland.getState().mode;
     const prefs = behavior();
     window.clearTimeout(hoverTimer.current);
+    if (isNotchDragging()) return;
     if (current === "collapsed" && prefs?.openOnHover) {
       hoverTimer.current = window.setTimeout(() => {
         // Something put away is waiting: hovering brings it back, like a click would.
@@ -291,20 +303,17 @@ export function Island() {
     void request("expanded");
   };
 
-  // Two-finger swipes (design.md §18). Expanded: left/right switches module. On the bubble or
-  // peek: left/right skips the track, up opens the notch, down puts it away.
+  // Two-finger swipes (design.md §18). Expanded: none (sideways scrolling inside a panel must
+  // never switch tabs). On the bubble or peek: left/right skips the track, up opens the notch,
+  // down puts it away.
   const onWheel = (e: WheelEvent) => {
     const gestures = useSettings.getState().settings?.gestures;
-    if (mode === "activity" || gestures?.disabled) return;
+    if (mode === "activity" || mode === "expanded" || gestures?.disabled) return;
     const distance = SWIPE_DISTANCE[gestures?.sensitivity ?? "normal"];
     const result = addWheel(swipe.current, e.deltaX, e.deltaY, performance.now(), distance);
     swipe.current = result.state;
     const fired = result.swipe;
     if (!fired) return;
-    if (mode === "expanded") {
-      if (fired === "left" || fired === "right") useModuleNav.getState().step(fired === "right" ? 1 : -1);
-      return;
-    }
     if (fired === "left" || fired === "right") {
       if (gestures?.noTrackSwipe) return;
       void ipc.mediaCommand({ kind: fired === "right" ? "next" : "previous" }).catch(() => {});
@@ -324,13 +333,25 @@ export function Island() {
   return (
     <div
       className="island-frame"
-      data-edge={bottomEdge ? "bottom" : "top"}
-      style={bottomEdge ? { paddingBottom: WINDOW_MARGIN.top } : { paddingTop: WINDOW_MARGIN.top }}
+      data-edge={edge}
+      style={
+        bottomEdge
+          ? { paddingBottom: WINDOW_MARGIN.top }
+          : sideEdge
+            ? undefined
+            : { paddingTop: WINDOW_MARGIN.top }
+      }
     >
       <motion.section
         ref={islandRef}
         className="island"
         data-mode={mode}
+        data-upright={upright ? "" : undefined}
+        style={
+          upright
+            ? ({ "--bubble-long": `${size.height}px`, "--bubble-short": `${size.width}px` } as CSSProperties)
+            : undefined
+        }
         data-faded={faded && mode === "collapsed" ? "" : undefined}
         data-bubble={look?.bubble ?? "pill"}
         aria-label="Overline"
@@ -351,7 +372,7 @@ export function Island() {
             className="island-hit"
             aria-label="Open Overline"
             aria-expanded={false}
-            title="Alt+drag to slide the notch along the edge"
+            title="Alt+drag to move the notch to any edge or screen"
             onPointerDown={notchDrag.onPointerDown}
             onPointerMove={notchDrag.onPointerMove}
             onPointerUp={notchDrag.onPointerUp}

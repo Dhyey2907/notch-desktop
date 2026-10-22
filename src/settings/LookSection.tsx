@@ -64,6 +64,7 @@ export function LookSection() {
   const music = useSettings((s) => s.settings?.music);
   if (!look || !music) return null;
   const set = (change: Partial<AppearanceSettings>) => patch("appearance", change);
+  const side = look.edge === "left" || look.edge === "right";
 
   return (
     <Section title="Look" lead={pageLead("look")} onReset={() => void resetGroups(["appearance"])}>
@@ -179,63 +180,97 @@ export function LookSection() {
       </Surface>
       <Surface>
         <div id="setting-screen-edge">
-          <Row label="Screen edge" description="Top of the screen, or just above the taskbar.">
+          <Row
+            label="Screen edge"
+            description="Top, just above the taskbar, or either side. Or hold Alt and drag the resting notch to any edge or screen."
+          >
             <SegmentedControl<ScreenEdge>
               label="Screen edge"
               value={look.edge}
               options={[
                 { value: "top", label: "Top" },
                 { value: "bottom", label: "Bottom" },
+                { value: "left", label: "Left" },
+                { value: "right", label: "Right" },
               ]}
               onChange={(edge) => set({ edge })}
             />
           </Row>
         </div>
-        <div id="setting-notch-position">
-          <Row label="Position along the edge" description="Or hold Alt and drag the resting notch sideways.">
-            <SegmentedControl<"left" | "center" | "right" | "custom">
-              label="Position along the edge"
-              value={
-                look.offsetX <= -4000
-                  ? "left"
-                  : look.offsetX >= 4000
-                    ? "right"
-                    : look.offsetX === 0
-                      ? "center"
-                      : "custom"
-              }
-              options={[
-                { value: "left", label: "Left" },
-                { value: "center", label: "Center" },
-                { value: "right", label: "Right" },
-                ...(look.offsetX !== 0 && Math.abs(look.offsetX) < 4000
-                  ? [{ value: "custom" as const, label: "Custom" }]
-                  : []),
-              ]}
-              onChange={(v) => {
-                if (v !== "custom") set({ offsetX: v === "left" ? -4000 : v === "right" ? 4000 : 0 });
-              }}
+        {side ? (
+          <Row
+            label="Height on the side"
+            description="How far down the screen. Or hold Alt and drag the resting notch."
+          >
+            <Slider
+              label="Height on the side"
+              value={Math.min(1200, look.offsetSide)}
+              min={0}
+              max={1200}
+              step={10}
+              onChange={(offsetSide) => set({ offsetSide })}
+              format={(v) => (v === 0 ? "Top" : `${v} px down`)}
             />
           </Row>
-        </div>
+        ) : (
+          <>
+            <div id="setting-notch-position">
+              <Row label="Position along the edge" description="Or hold Alt and drag the resting notch.">
+                <SegmentedControl<"left" | "center" | "right" | "custom">
+                  label="Position along the edge"
+                  value={
+                    look.offsetX <= -4000
+                      ? "left"
+                      : look.offsetX >= 4000
+                        ? "right"
+                        : look.offsetX === 0
+                          ? "center"
+                          : "custom"
+                  }
+                  options={[
+                    { value: "left", label: "Left" },
+                    { value: "center", label: "Center" },
+                    { value: "right", label: "Right" },
+                    ...(look.offsetX !== 0 && Math.abs(look.offsetX) < 4000
+                      ? [{ value: "custom" as const, label: "Custom" }]
+                      : []),
+                  ]}
+                  onChange={(v) => {
+                    if (v !== "custom") set({ offsetX: v === "left" ? -4000 : v === "right" ? 4000 : 0 });
+                  }}
+                />
+              </Row>
+            </div>
+            <Row
+              label="Move left or right"
+              description="Nudge the notch away from the center, e.g. past a webcam."
+            >
+              <Slider
+                label="Move left or right"
+                value={Math.max(-600, Math.min(600, look.offsetX))}
+                min={-600}
+                max={600}
+                step={10}
+                onChange={(offsetX) => set({ offsetX })}
+                format={(v) => (v === 0 ? "Center" : `${Math.abs(v)} ${v < 0 ? "left" : "right"}`)}
+              />
+            </Row>
+          </>
+        )}
         <Row
-          label="Move left or right"
-          description="Nudge the notch away from the center, e.g. past a webcam."
-        >
-          <Slider
-            label="Move left or right"
-            value={Math.max(-600, Math.min(600, look.offsetX))}
-            min={-600}
-            max={600}
-            step={10}
-            onChange={(offsetX) => set({ offsetX })}
-            format={(v) => (v === 0 ? "Center" : `${Math.abs(v)} ${v < 0 ? "left" : "right"}`)}
-          />
-        </Row>
-        <Row
-          label={look.edge === "bottom" ? "Distance from the taskbar" : "Distance from the top"}
+          label={
+            look.edge === "bottom"
+              ? "Distance from the taskbar"
+              : side
+                ? "Distance from the side"
+                : "Distance from the top"
+          }
           description={
-            look.edge === "bottom" ? "Leave a gap below the notch." : "Leave a gap above the notch."
+            look.edge === "bottom"
+              ? "Leave a gap below the notch."
+              : side
+                ? "Leave a gap beside the notch."
+                : "Leave a gap above the notch."
           }
         >
           <Slider
@@ -295,35 +330,6 @@ export function LookSection() {
               if (!lockscreenInfo) void ipc.lockscreenOff().catch(() => {});
             }}
           />
-        </div>
-        <div id="setting-slide-aside">
-          <Switch
-            label="Slide aside for maximized browsers"
-            description="When Chrome, Edge, Firefox or another browser fills the screen, the notch moves to the right end, clear of the tabs."
-            checked={look.slideAsideBrowsers}
-            onChange={(slideAsideBrowsers) => set({ slideAsideBrowsers })}
-          />
-          <Row
-            label="Also slide aside for"
-            description="Program names, separated by commas, e.g. code.exe, notion.exe."
-          >
-            <input
-              className="nd-input"
-              aria-label="Also slide aside for"
-              defaultValue={look.slideAside.join(", ")}
-              placeholder="code.exe, notion.exe"
-              onBlur={(e) =>
-                set({
-                  slideAside: e.target.value
-                    .split(",")
-                    .map((x) => x.trim().toLowerCase())
-                    .filter(Boolean)
-                    .map((x) => (x.endsWith(".exe") ? x : `${x}.exe`))
-                    .slice(0, 30),
-                })
-              }
-            />
-          </Row>
         </div>
       </Surface>
     </Section>

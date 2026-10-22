@@ -69,7 +69,10 @@ pub fn start(app: &tauri::AppHandle) {
                         .unwrap_or_else(|e| e.into_inner())
                         .appearance
                         .clone();
-                    (s.fade_while_typing, s.edge == crate::settings::ScreenEdge::Bottom)
+                    (
+                        s.fade_while_typing && !s.edge.is_side(),
+                        s.edge == crate::settings::ScreenEdge::Bottom,
+                    )
                 };
                 if !on {
                     for (label, was) in faded.iter_mut() {

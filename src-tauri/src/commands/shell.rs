@@ -48,10 +48,15 @@ pub fn shell_list_screens(app: tauri::AppHandle) -> Vec<shell::islands::ScreenIn
     shell::islands::list_screens(&app)
 }
 
-/// Alt+drag: show the notch at this sideways offset while dragging (`null` ends the preview).
+/// Drag the notch to any edge (or, with `keepEdge`, along its edge): `move`, `end` (returns
+/// where it landed), then `clear`.
 #[tauri::command]
-pub fn shell_preview_offset(window: WebviewWindow, offset_x: Option<i32>) -> AppResult<()> {
-    shell::preview_offset(&window, offset_x)
+pub fn shell_drag_notch(
+    window: WebviewWindow,
+    phase: String,
+    keep_edge: bool,
+) -> AppResult<Option<shell::NotchSpot>> {
+    shell::drag_notch(&window, &phase, keep_edge)
 }
 
 /// The blurred picture for this privacy cover window.

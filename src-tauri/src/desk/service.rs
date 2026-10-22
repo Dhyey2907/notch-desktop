@@ -271,10 +271,10 @@ impl DeskService {
         }
         #[cfg(windows)]
         {
-            let running = super::workspace::win::running_exes();
+            let running = super::workspace::win::running();
             Ok(super::workspace::missing(&last.windows, &running)
-                .into_iter()
-                .map(|w| crate::clipboard::app_label(&w.exe))
+                .iter()
+                .map(super::workspace::label)
                 .collect())
         }
         #[cfg(not(windows))]

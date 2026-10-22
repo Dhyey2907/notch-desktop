@@ -65,7 +65,8 @@ export function windowSizeFor(mode: IslandMode, island: Size = ISLAND_SIZE[mode]
 
 /** Pill radius for short islands, a fixed corner once content gets taller (design.md §6). */
 export function islandRadius(size: Size): number {
-  return size.height <= 72 ? size.height / 2 : 24;
+  const short = Math.min(size.width, size.height);
+  return short <= 72 ? short / 2 : 24;
 }
 
 /** Smallest window that contains both sizes, used while animating between states. */

@@ -140,7 +140,7 @@ export function ShortcutsSection() {
         <div id="setting-touchpad-swipes">
           <Switch
             label="Touchpad swipes"
-            description="Two-finger swipes on the notch: up opens it, down closes it, left and right switch modules when open."
+            description="Two-finger swipes on the notch: up opens it, down closes it, left and right skip the song while it's closed."
             checked={!gestures.disabled}
             onChange={(on) => patch("gestures", { disabled: !on })}
           />

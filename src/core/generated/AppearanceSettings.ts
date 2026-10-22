@@ -45,14 +45,9 @@ offsetY: number,
  */
 edge: ScreenEdge, 
 /**
- * Slide out of the way of these apps' tabs and toolbars when they're maximized under the
- * notch (exe names, e.g. "chrome.exe").
+ * On the left or right edge: logical px down from the top of the screen.
  */
-slideAside: Array<string>, 
-/**
- * Also slide aside for any maximized browser.
- */
-slideAsideBrowsers: boolean, 
+offsetSide: number, 
 /**
  * Fade the resting bubble while you type just below it.
  */
