@@ -367,7 +367,7 @@ enum ShortcutAction {
     Blur,
     /// Explain what's on screen (default Ctrl+Alt+E).
     Explain,
-    /// Rewrite the selected text (default Ctrl+Alt+R).
+    /// Rewrite the selected text (default Ctrl+Alt+Shift+R).
     Rewrite,
 }
 

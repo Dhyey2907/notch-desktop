@@ -92,7 +92,7 @@ const defaults: Settings = {
     switcher: "Ctrl+Alt+W",
     blur: "Ctrl+Alt+B",
     explain: "Ctrl+Alt+E",
-    rewrite: "Ctrl+Alt+R",
+    rewrite: "Ctrl+Alt+Shift+R",
   },
   vault: { requireHello: false, clearSecs: 0, neverClear: false },
   dev: { widgets: [], noServerAlerts: false, noCodingTracker: false, claudeDailyCapUsd: 0 },

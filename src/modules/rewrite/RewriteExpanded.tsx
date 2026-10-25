@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import type { RewriteSession } from "../../core/generated/RewriteSession";
 import { ipc, isIpcError } from "../../core/ipc";
 import { Button, EmptyState, ModuleContainer } from "../../design/components";
+import { useSettings } from "../../settings";
 import { useIsland } from "../../shell/useIsland";
 import "./rewrite.css";
 
@@ -17,6 +18,7 @@ const STYLES = [
 ] as const;
 
 export default function RewriteExpanded() {
+  const shortcut = useSettings((s) => s.settings?.shortcuts.rewrite || "Ctrl+Alt+Shift+R");
   const [session, setSession] = useState<RewriteSession | null | undefined>(undefined);
   const [custom, setCustom] = useState("");
   const [result, setResult] = useState<string | null>(null);
@@ -50,7 +52,7 @@ export default function RewriteExpanded() {
       <ModuleContainer title="Rewrite">
         <EmptyState
           title="Select some text first"
-          body="Select text in any app, then press Ctrl+Alt+R: pick a style and the new version replaces it."
+          body={`Select text in any app, then press ${shortcut}: pick a style and the new version replaces it.`}
         />
       </ModuleContainer>
     );

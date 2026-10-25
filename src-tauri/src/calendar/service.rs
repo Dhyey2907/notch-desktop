@@ -54,6 +54,9 @@ struct Inner {
     mock: bool,
 }
 
+/// What Google features say when the saved sign-in has expired.
+const SIGN_IN_AGAIN: &str = "Sign in with Google again in Settings → Calendar";
+
 #[derive(Clone)]
 pub struct CalendarService {
     inner: Arc<Inner>,
@@ -242,12 +245,15 @@ impl CalendarService {
     /// A Google access token for other features (Gmail, Classroom) using the same sign-in.
     pub async fn google_token(&self) -> AppResult<String> {
         self.inner.access_token().await.map_err(|error| match error {
-            SyncError::AuthExpired => {
-                AppError::InvalidInput("Sign in with Google again in Settings → Calendar".into())
-            }
+            SyncError::AuthExpired => AppError::InvalidInput(SIGN_IN_AGAIN.into()),
             SyncError::Network => AppError::InvalidInput("You're offline".into()),
             _ => AppError::Platform("Google didn't answer".into()),
         })
+    }
+
+    /// Whether an error from `google_token` means the Google sign-in has expired.
+    pub fn is_sign_in_expired(error: &AppError) -> bool {
+        matches!(error, AppError::InvalidInput(m) if m == SIGN_IN_AGAIN)
     }
 
     /// Whether the user allowed this extra (Gmail, Classroom) when signing in.

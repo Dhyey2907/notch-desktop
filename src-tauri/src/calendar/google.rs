@@ -242,6 +242,8 @@ pub async fn quick_add(
         .post(format!("{EVENTS_URL}/quickAdd"))
         .bearer_auth(token)
         .query(&[("text", text)])
+        // No body, but Google rejects a POST without a length (411 Length Required).
+        .header(reqwest::header::CONTENT_LENGTH, "0")
         .send()
         .await
         .map_err(|e| FetchError::Network(e.without_url().to_string()))?;

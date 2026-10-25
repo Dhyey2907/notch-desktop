@@ -184,6 +184,15 @@
   gap: var(--space-2);
 }
 
+/* Switch rows in a panel header stay compact so a busy header never runs past the panel. */
+.nd-module__trailing .nd-segmented__option {
+  padding: 3px var(--space-2);
+}
+
+.nd-module__trailing {
+  min-width: 0;
+}
+
 .nd-module__body {
   flex: 1;
   min-height: 0;

@@ -30,6 +30,8 @@ pub enum MailStatus {
     Off,
     /// Turned on, but Google hasn't granted Gmail yet (sign in again).
     NeedsSignIn,
+    /// Google signed Overline out (sign-ins expire): sign in again in Settings.
+    SignInExpired,
     Ready,
     Error,
 }

@@ -24,6 +24,9 @@ use crate::{
 };
 
 const CACHE_KEY: &str = "spotify.playlists";
+/// At startup, how many times to try fetching playlists, and how long to wait between tries.
+const STARTUP_TRIES: u32 = 3;
+const STARTUP_RETRY: std::time::Duration = std::time::Duration::from_secs(30);
 
 struct State {
     status: SpotifyStatus,
@@ -127,8 +130,21 @@ impl SpotifyService {
         }
         let this = self.clone();
         tauri::async_runtime::spawn(async move {
-            if let Err(error) = this.refresh_playlists().await {
-                tracing::info!(kind = error.kind(), "spotify playlist refresh failed at startup");
+            // Right after the PC starts the network is often not up yet: try again a few times.
+            for attempt in 1..=STARTUP_TRIES {
+                match this.refresh_playlists().await {
+                    Ok(_) => return,
+                    Err(error) => {
+                        tracing::info!(
+                            kind = error.kind(),
+                            attempt,
+                            "spotify playlist refresh failed at startup"
+                        );
+                        if attempt < STARTUP_TRIES {
+                            tokio::time::sleep(STARTUP_RETRY).await;
+                        }
+                    }
+                }
             }
         });
     }

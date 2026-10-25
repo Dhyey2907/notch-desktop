@@ -85,7 +85,7 @@ const SHORTCUTS: { key: keyof ShortcutSettings; label: string; description: stri
     key: "rewrite",
     label: "Rewrite selection",
     description: "Select text in any app, press this, pick Fix grammar, Shorter, Formal… then Replace.",
-    fallback: "Ctrl+Alt+R",
+    fallback: "Ctrl+Alt+Shift+R",
   },
 ];
 

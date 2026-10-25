@@ -234,6 +234,7 @@ impl GithubService {
             .patch(format!("{API}/notifications/threads/{id}"))
             .bearer_auth(&token)
             .header("Accept", "application/vnd.github+json")
+            .header(reqwest::header::CONTENT_LENGTH, "0")
             .send()
             .await
             .map_err(|_| AppError::InvalidInput("Couldn't reach GitHub".into()))?;

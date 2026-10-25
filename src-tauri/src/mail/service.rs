@@ -218,7 +218,11 @@ impl MailService {
             Err(error) => {
                 tracing::info!(kind = error.kind(), "gmail check failed");
                 let mut state = self.state();
-                state.status = MailStatus::Error;
+                state.status = if crate::calendar::service::CalendarService::is_sign_in_expired(&error) {
+                    MailStatus::SignInExpired
+                } else {
+                    MailStatus::Error
+                };
                 self.set(state);
             }
         }

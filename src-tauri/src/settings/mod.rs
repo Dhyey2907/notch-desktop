@@ -382,7 +382,7 @@ impl Default for ShortcutSettings {
             switcher: "Ctrl+Alt+W".into(),
             blur: "Ctrl+Alt+B".into(),
             explain: "Ctrl+Alt+E".into(),
-            rewrite: "Ctrl+Alt+R".into(),
+            rewrite: "Ctrl+Alt+Shift+R".into(),
         }
     }
 }

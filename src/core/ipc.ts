@@ -386,7 +386,7 @@ export const ipc = {
   /** Stop; notes come back as a MeetingDone event. */
   meetingStop: () => invoke<void>("meeting_stop"),
   meetingCancel: () => invoke<void>("meeting_cancel"),
-  /** The selection waiting to be rewritten (Ctrl+Alt+R). */
+  /** The selection waiting to be rewritten (Ctrl+Alt+Shift+R). */
   rewriteSession: () => invoke<RewriteSession | null>("rewrite_session"),
   /** The AI's version of the selection in a style ("custom" uses the instruction). */
   rewriteRun: (style: string, custom: string) => invoke<string>("rewrite_run", { style, custom }),

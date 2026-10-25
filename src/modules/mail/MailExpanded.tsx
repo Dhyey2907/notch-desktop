@@ -44,6 +44,14 @@ export default function MailExpanded() {
         action={<Button onClick={() => void ipc.openSettingsWindow("calendar")}>Sign in again</Button>}
       />
     );
+  } else if (state.status === "signInExpired") {
+    body = (
+      <EmptyState
+        title="Google signed Overline out"
+        body="Sign-ins expire now and then. Sign in with Google again in Settings → Calendar and your inbox comes back."
+        action={<Button onClick={() => void ipc.openSettingsWindow("calendar")}>Sign in again</Button>}
+      />
+    );
   } else if (view === "one") {
     body = <MailTriage messages={state.messages} unread={state.unread} snoozed={state.snoozed} now={now} />;
   } else if (state.messages.length === 0) {

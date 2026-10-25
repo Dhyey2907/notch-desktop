@@ -1,4 +1,4 @@
-// Rewrite selection (Ctrl+Alt+R): select text in any app, press the shortcut, pick a style. It
+// Rewrite selection (Ctrl+Alt+Shift+R): select text in any app, press the shortcut, pick a style. It
 // isn't in the dock; the shortcut opens it with the selection.
 import { WandSparkles } from "lucide-react";
 import { lazy } from "react";
