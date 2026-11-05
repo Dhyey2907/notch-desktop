@@ -488,7 +488,8 @@ impl FunService {
             .focusable(false)
             .visible(false)
             .build()?;
-        w.set_ignore_cursor_events(true)?;
+        // Not `set_ignore_cursor_events`: see `set_click_through`.
+        set_click_through(&w, true);
         self.place_pet(&w);
         w.show()
     }
@@ -502,6 +503,7 @@ impl FunService {
         let Some(monitor) = notch_screen.or_else(|| w.primary_monitor().ok().flatten()) else {
             return;
         };
+        strip_frame(w);
         let area = monitor.work_area();
         let (y, height) = pet_strip(
             (area.position.y, area.size.height),
@@ -541,6 +543,43 @@ fn set_click_through(w: &tauri::WebviewWindow, through: bool) -> bool {
     }
     true
 }
+
+/// Take off a title bar and border if the pet's window ever got one (a style rewrite can add
+/// them back), so it stays an invisible strip standing on the taskbar.
+#[cfg(windows)]
+fn strip_frame(w: &tauri::WebviewWindow) {
+    use windows::Win32::UI::WindowsAndMessaging::{
+        GetWindowLongPtrW, SetWindowLongPtrW, SetWindowPos, GWL_STYLE, SWP_FRAMECHANGED, SWP_NOACTIVATE,
+        SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, WS_BORDER, WS_CAPTION, WS_DLGFRAME, WS_MAXIMIZEBOX,
+        WS_MINIMIZEBOX, WS_SYSMENU, WS_THICKFRAME,
+    };
+    let Ok(raw) = w.hwnd() else {
+        return;
+    };
+    let hwnd = windows::Win32::Foundation::HWND(raw.0);
+    let frame =
+        (WS_CAPTION | WS_BORDER | WS_DLGFRAME | WS_THICKFRAME | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX)
+            .0 as isize;
+    // SAFETY: `hwnd` is this process's live pet window; only frame bits are cleared.
+    unsafe {
+        let style = GetWindowLongPtrW(hwnd, GWL_STYLE);
+        if style & frame != 0 {
+            SetWindowLongPtrW(hwnd, GWL_STYLE, style & !frame);
+            let _ = SetWindowPos(
+                hwnd,
+                None,
+                0,
+                0,
+                0,
+                0,
+                SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE,
+            );
+        }
+    }
+}
+
+#[cfg(not(windows))]
+fn strip_frame(_: &tauri::WebviewWindow) {}
 
 #[cfg(not(windows))]
 fn set_click_through(w: &tauri::WebviewWindow, through: bool) -> bool {

@@ -12,6 +12,8 @@ const BASE: &str = "https://speed.cloudflare.com";
 const PINGS: usize = 5;
 const DOWN_BYTES: u64 = 25_000_000;
 const UP_BYTES: usize = 8_000_000;
+const UP_FIRST_PIECE: usize = 256 * 1024;
+const UP_MAX_PIECE: usize = 4 * 1024 * 1024;
 /// Each half stops after this long, even on a slow line.
 const PHASE_LIMIT: Duration = Duration::from_secs(12);
 
@@ -79,7 +81,7 @@ pub async fn ping(http: &reqwest::Client) -> Option<u32> {
 }
 
 pub async fn download(http: &reqwest::Client) -> Option<f64> {
-    let started = Instant::now();
+    let asked = Instant::now();
     let mut response = http
         .get(format!("{BASE}/__down?bytes={DOWN_BYTES}"))
         .send()
@@ -88,30 +90,58 @@ pub async fn download(http: &reqwest::Client) -> Option<f64> {
     if !response.status().is_success() {
         return None;
     }
+    // Time from the first byte, so the wait for the server (the ping) isn't counted as
+    // slow downloading; the first chunk only starts the clock.
+    let mut started: Option<Instant> = None;
     let mut got = 0u64;
     while let Ok(Some(chunk)) = response.chunk().await {
-        got += chunk.len() as u64;
+        match started {
+            None => started = Some(Instant::now()),
+            Some(_) => got += chunk.len() as u64,
+        }
+        if asked.elapsed() > PHASE_LIMIT {
+            break;
+        }
+    }
+    let started = started?;
+    (got > 0).then(|| mbps(got, started.elapsed()))
+}
+
+/// Upload piece sizes: small first so a slow line still finishes one, then doubling so a fast
+/// line isn't slowed by the round trip of each piece.
+pub fn upload_pieces(total: usize) -> Vec<usize> {
+    let mut pieces = Vec::new();
+    let (mut size, mut left) = (UP_FIRST_PIECE, total);
+    while left > 0 {
+        let take = size.min(left);
+        pieces.push(take);
+        left -= take;
+        size = (size * 2).min(UP_MAX_PIECE);
+    }
+    pieces
+}
+
+pub async fn upload(http: &reqwest::Client) -> Option<f64> {
+    let started = Instant::now();
+    let mut sent = 0u64;
+    for piece in upload_pieces(UP_BYTES) {
+        let ok = http
+            .post(format!("{BASE}/__up"))
+            .header(reqwest::header::CONTENT_TYPE, "application/octet-stream")
+            .timeout(PHASE_LIMIT)
+            .body(vec![0u8; piece])
+            .send()
+            .await
+            .is_ok_and(|r| r.status().is_success());
+        if !ok {
+            break;
+        }
+        sent += piece as u64;
         if started.elapsed() > PHASE_LIMIT {
             break;
         }
     }
-    (got > 0).then(|| mbps(got, started.elapsed()))
-}
-
-pub async fn upload(http: &reqwest::Client) -> Option<f64> {
-    let body = vec![0u8; UP_BYTES];
-    let started = Instant::now();
-    let response = http
-        .post(format!("{BASE}/__up"))
-        .header(reqwest::header::CONTENT_TYPE, "application/octet-stream")
-        .body(body)
-        .send()
-        .await
-        .ok()?;
-    response
-        .status()
-        .is_success()
-        .then(|| mbps(UP_BYTES as u64, started.elapsed()))
+    (sent > 0).then(|| mbps(sent, started.elapsed()))
 }
 
 #[cfg(test)]
@@ -123,5 +153,14 @@ mod tests {
         assert_eq!(mbps(12_500_000, Duration::from_secs(1)), 100.0);
         assert_eq!(mbps(1_000_000, Duration::from_millis(3000)), 2.7);
         assert_eq!(mbps(5, Duration::ZERO), 0.0);
+    }
+
+    #[test]
+    fn uploads_small_pieces_first_then_bigger() {
+        let p = upload_pieces(UP_BYTES);
+        assert_eq!(p[0], 256 * 1024);
+        assert_eq!(p[1], 512 * 1024);
+        assert!(p.iter().all(|&x| x <= UP_MAX_PIECE));
+        assert_eq!(p.iter().sum::<usize>(), UP_BYTES);
     }
 }
