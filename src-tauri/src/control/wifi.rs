@@ -168,6 +168,24 @@ pub mod win {
     }
 }
 
+/// Sample networks for demo mode (recording the website's videos).
+pub fn demo_networks() -> Vec<WifiNetwork> {
+    let n = |ssid: &str, signal: u8, known: bool, connected: bool| WifiNetwork {
+        ssid: ssid.into(),
+        signal,
+        secure: true,
+        known,
+        connected,
+        profile: ssid.into(),
+    };
+    vec![
+        n("Home Wi-Fi", 92, true, true),
+        n("Home Wi-Fi 5G", 78, true, false),
+        n("Cafe Guest", 55, false, false),
+        n("Office", 31, true, false),
+    ]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

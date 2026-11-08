@@ -7,7 +7,7 @@ use crate::{
 
 #[tauri::command]
 pub fn control_snapshot(control: State<'_, ControlService>) -> ControlSnapshot {
-    control.snapshot()
+    crate::control::demo_mask(control.snapshot())
 }
 
 /// Read radios, battery and accessories again now (the panel was opened).
@@ -16,7 +16,7 @@ pub async fn control_refresh(control: State<'_, ControlService>) -> AppResult<Co
     let control = control.inner().clone();
     tauri::async_runtime::spawn_blocking(move || {
         control.refresh();
-        control.snapshot()
+        crate::control::demo_mask(control.snapshot())
     })
     .await
     .map_err(|e| AppError::Platform(e.to_string()))
@@ -96,6 +96,9 @@ fn blocking_err(e: tauri::Error) -> crate::error::AppError {
 /// Wi-Fi networks nearby (one per name; connected, then known, then strongest).
 #[tauri::command]
 pub async fn wifi_networks() -> AppResult<Vec<crate::control::wifi::WifiNetwork>> {
+    if crate::demo() {
+        return Ok(crate::control::wifi::demo_networks());
+    }
     #[cfg(windows)]
     return tauri::async_runtime::spawn_blocking(crate::control::wifi::win::networks)
         .await

@@ -14,7 +14,8 @@ use std::{collections::HashMap, sync::Mutex};
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent,
+    AppHandle, Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
+    WindowEvent,
 };
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
@@ -59,8 +60,94 @@ pub fn open_settings_window(app: &AppHandle, section: Option<&str>) -> AppResult
     Ok(())
 }
 
+/// Set while `place` is moving a window: moving can cross onto a screen with another scale,
+/// whose `ScaleFactorChanged` would call `place` again from inside the move, without end.
+static PLACING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
 /// Size and position an island top-center on its screen (design.md §20).
-pub fn place(window: &WebviewWindow, (width, height): (f64, f64)) -> AppResult<()> {
+pub fn place(window: &WebviewWindow, size: (f64, f64)) -> AppResult<()> {
+    use std::sync::atomic::Ordering;
+    if PLACING.swap(true, Ordering::SeqCst) {
+        return Ok(());
+    }
+    let placed = place_now(window, size);
+    PLACING.store(false, Ordering::SeqCst);
+    placed
+}
+
+/// Move and resize in the order that keeps the window on its own screen: a window growing at a
+/// screen's edge would otherwise spill onto the next screen for a moment.
+fn apply_frame(
+    window: &WebviewWindow,
+    position: PhysicalPosition<i32>,
+    size: PhysicalSize<u32>,
+) -> AppResult<()> {
+    let grows = window
+        .outer_size()
+        .map_or(true, |now| size.width > now.width || size.height > now.height);
+    if grows {
+        window.set_position(position)?;
+        window.set_size(size)?;
+    } else {
+        window.set_size(size)?;
+        window.set_position(position)?;
+    }
+    Ok(())
+}
+
+/// The lowest row a notch or the pet may use on `monitor`, in physical pixels.
+pub(crate) fn usable_bottom(monitor: &tauri::Monitor) -> i32 {
+    let area = monitor.work_area();
+    let screen = (
+        monitor.position().x,
+        monitor.position().y,
+        monitor.size().width,
+        monitor.size().height,
+    );
+    placement::above_taskbar(area.position.y + area.size.height as i32, taskbar_top(screen))
+}
+
+/// The top edge of a bottom taskbar shown on the screen `(x, y, width, height)`, if any.
+#[cfg(windows)]
+fn taskbar_top((x, y, width, height): (i32, i32, u32, u32)) -> Option<i32> {
+    use windows::core::w;
+    use windows::Win32::Foundation::{HWND, RECT};
+    use windows::Win32::UI::WindowsAndMessaging::{FindWindowExW, GetWindowRect, IsWindowVisible};
+    let (right, bottom) = (x + width as i32, y + height as i32);
+    let mut found = None;
+    for class in [w!("Shell_TrayWnd"), w!("Shell_SecondaryTrayWnd")] {
+        let mut after: Option<HWND> = None;
+        // SAFETY: plain window lookups; `rect` is a local the call fills.
+        while let Ok(bar) = unsafe { FindWindowExW(None, after, class, None) } {
+            if bar.is_invalid() {
+                break;
+            }
+            after = Some(bar);
+            let mut rect = RECT::default();
+            if unsafe { IsWindowVisible(bar) }.as_bool() && unsafe { GetWindowRect(bar, &mut rect) }.is_ok() {
+                let middle = (rect.left + rect.right) / 2;
+                // A bar along this screen's bottom half (not one at the top or on a side).
+                let wide = rect.right - rect.left > rect.bottom - rect.top;
+                if wide
+                    && middle >= x
+                    && middle < right
+                    && rect.top > y + height as i32 / 2
+                    && rect.top < bottom
+                {
+                    found = Some(found.map_or(rect.top, |t: i32| t.min(rect.top)));
+                }
+            }
+        }
+    }
+    found
+}
+
+#[cfg(not(windows))]
+fn taskbar_top(_: (i32, i32, u32, u32)) -> Option<i32> {
+    None
+}
+
+fn place_now(window: &WebviewWindow, (width, height): (f64, f64)) -> AppResult<()> {
     let shell = window.app_handle().state::<ShellState>();
     // Being dragged to a new spot: show it there (saved when you let go), maybe on another screen.
     let spot = DRAG_SPOT.lock().unwrap_or_else(|e| e.into_inner()).clone();
@@ -80,7 +167,7 @@ pub fn place(window: &WebviewWindow, (width, height): (f64, f64)) -> AppResult<(
         x: area.position.x,
         y: area.position.y,
         width: area.size.width,
-        height: area.size.height,
+        height: (usable_bottom(&monitor) - area.position.y).max(0) as u32,
     };
     let settings = window
         .app_handle()
@@ -101,9 +188,7 @@ pub fn place(window: &WebviewWindow, (width, height): (f64, f64)) -> AppResult<(
             from_top,
             settings.offset_y,
         );
-        window.set_size(frame.1)?;
-        window.set_position(frame.0)?;
-        return Ok(());
+        return apply_frame(window, frame.0, frame.1);
     }
     let (offset_x, offset_y, bottom) = {
         (
@@ -122,10 +207,7 @@ pub fn place(window: &WebviewWindow, (width, height): (f64, f64)) -> AppResult<(
         top_center_frame(work, monitor.scale_factor(), width, height)
     };
     let position = nudge(frame, work, monitor.scale_factor(), offset_x, offset_y, bottom);
-    let size = frame.1;
-    window.set_size(size)?;
-    window.set_position(position)?;
-    Ok(())
+    apply_frame(window, position, frame.1)
 }
 
 /// While you drag the notch: where it would land (shown, not saved until you let go).

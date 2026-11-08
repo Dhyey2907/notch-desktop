@@ -251,7 +251,7 @@ impl ControlService {
             self.app
                 .state::<AppState>()
                 .bus
-                .emit("control", AppEvent::ControlChanged(snapshot));
+                .emit("control", AppEvent::ControlChanged(super::demo_mask(snapshot)));
         }
     }
 

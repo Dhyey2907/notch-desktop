@@ -340,6 +340,33 @@ impl BatteryWatch {
     }
 }
 
+/// Demo mode (recording the website's videos): a sample Wi-Fi network and accessories instead
+/// of this PC's own.
+pub fn demo_mask(mut snapshot: ControlSnapshot) -> ControlSnapshot {
+    if crate::demo() {
+        snapshot.network = NetworkInfo {
+            internet: Internet::Online,
+            kind: "wifi".into(),
+            ssid: Some("Home Wi-Fi".into()),
+            bars: Some(4),
+            vpn: None,
+        };
+        snapshot.devices = vec![
+            DeviceBattery {
+                name: "Galaxy Buds".into(),
+                kind: "bluetooth".into(),
+                percent: 82,
+            },
+            DeviceBattery {
+                name: "Xbox controller".into(),
+                kind: "controller".into(),
+                percent: 64,
+            },
+        ];
+    }
+    snapshot
+}
+
 #[cfg(test)]
 mod battery_tests {
     use super::BatteryWatch;

@@ -505,12 +505,16 @@ impl FunService {
         };
         strip_frame(w);
         let area = monitor.work_area();
+        // Standing on top of the taskbar, even where Windows leaves it out of the work area.
+        let bottom = crate::shell::usable_bottom(&monitor);
         let (y, height) = pet_strip(
-            (area.position.y, area.size.height),
+            (area.position.y, (bottom - area.position.y).max(0) as u32),
             (PET_HEIGHT * monitor.scale_factor()).round() as u32,
         );
-        let _ = w.set_size(PhysicalSize::new(area.size.width, height));
+        // Onto its screen first: sized on another screen with a different scale, Windows would
+        // rescale it on arrival (a 1920 px strip came out 1280 px wide).
         let _ = w.set_position(PhysicalPosition::new(area.position.x, y));
+        let _ = w.set_size(PhysicalSize::new(area.size.width, height));
     }
 }
 

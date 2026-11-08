@@ -118,6 +118,12 @@ pub fn nudge(
     PhysicalPosition::new(x.clamp(work.x, max_x), y.clamp(work.y, max_y))
 }
 
+/// The bottom a notch or the pet can use: the work area's, or the top of a taskbar that sits
+/// inside the work area (some secondary screens don't keep their taskbar out of it).
+pub fn above_taskbar(work_bottom: i32, taskbar_top: Option<i32>) -> i32 {
+    taskbar_top.map_or(work_bottom, |top| top.min(work_bottom))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -197,6 +203,14 @@ mod tests {
     fn finds_the_monitor_under_the_cursor() {
         assert!(contains((2000, 100), (1920, 0), (1280, 720)));
         assert!(!contains((1919, 100), (1920, 0), (1280, 720)));
+    }
+
+    #[test]
+    fn a_taskbar_inside_the_work_area_raises_the_bottom() {
+        assert_eq!(above_taskbar(1138, None), 1138);
+        assert_eq!(above_taskbar(1138, Some(1090)), 1090);
+        // A taskbar already outside the work area changes nothing.
+        assert_eq!(above_taskbar(1525, Some(1530)), 1525);
     }
 
     #[test]
