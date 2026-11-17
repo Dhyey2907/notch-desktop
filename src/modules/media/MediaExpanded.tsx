@@ -155,17 +155,26 @@ function NowPlaying({
 
             <LyricsView media={media} />
 
-            <MediaControl
-              playing={playing}
-              canPrevious={media.capabilities.previous}
-              canNext={media.capabilities.next}
-              canPlayPause={media.capabilities.playPause}
-              onPrevious={() => send({ kind: "previous" })}
-              onPlayPause={() => send({ kind: "playPause" })}
-              onNext={() => send({ kind: "next" })}
-            />
-            {failed && <p className="media__note">{media.sourceApp} didn't respond to that. Try again.</p>}
-            {/spotify/i.test(media.sourceApp) && !media.mock && <SpotifyExtras title={media.title} />}
+            {/* Notes and Spotify's extras sit beside the controls: the panel's height is fixed,
+                and a row of their own pushed the column onto the playlists below. */}
+            <div className="media__actions">
+              <MediaControl
+                playing={playing}
+                canPrevious={media.capabilities.previous}
+                canNext={media.capabilities.next}
+                canPlayPause={media.capabilities.playPause}
+                onPrevious={() => send({ kind: "previous" })}
+                onPlayPause={() => send({ kind: "playPause" })}
+                onNext={() => send({ kind: "next" })}
+              />
+              {failed ? (
+                <p className="media__note" title={`${media.sourceApp} didn't respond to that. Try again.`}>
+                  {media.sourceApp} didn't respond to that. Try again.
+                </p>
+              ) : (
+                /spotify/i.test(media.sourceApp) && !media.mock && <SpotifyExtras title={media.title} />
+              )}
+            </div>
           </div>
         </div>
         <PlaylistTiles />

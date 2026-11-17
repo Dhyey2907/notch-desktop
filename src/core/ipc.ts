@@ -318,6 +318,9 @@ export const ipc = {
   soundState: () => invoke<SoundState | null>("sound_state"),
   /** Synced lyrics for the song playing now, if found. */
   lyricsCurrent: () => invoke<Lyrics | null>("lyrics_current"),
+  /** The floating lyrics tile: the whole song over the album's colors. */
+  lyricsWindowOpen: () => invoke<void>("lyrics_window_open"),
+  lyricsWindowClose: () => invoke<void>("lyrics_window_close"),
   /** Two colors from a cached album-art file. */
   artworkPalette: (path: string) => invoke<Palette | null>("artwork_palette", { path }),
   /** Speaker volume, 0 to 1 (unmutes). */

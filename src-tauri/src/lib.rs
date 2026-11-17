@@ -200,6 +200,8 @@ macro_rules! app_commands {
             commands::ask::ai_test,
             commands::ask::ai_ollama_models,
             commands::music::lyrics_current,
+            commands::music::lyrics_window_open,
+            commands::music::lyrics_window_close,
             commands::music::artwork_palette,
             commands::system::sound_state,
             commands::system::sound_set_volume,

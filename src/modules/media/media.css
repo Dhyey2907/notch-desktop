@@ -151,9 +151,43 @@
   margin-left: calc(-1 * var(--space-2));
 }
 
+.media__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.media__actions .nd-media-control {
+  flex: none;
+}
+
+.media__actions > .media__note,
+.media__actions > .spotify-extras {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+/* One line at most: the panel has a fixed height, and a second line ran onto the playlists. */
 .media__note {
   font-size: var(--text-sm);
   color: var(--warning);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.media__note--action {
+  align-self: flex-start;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--text-sm);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
 }
 
 .media-compact {
@@ -319,12 +353,25 @@
 }
 
 /* Synced lyrics */
+/* A button: click for the whole song in a floating tile. */
 .media__lyrics {
   display: flex;
   flex-direction: column;
   gap: 2px;
   margin: var(--space-1) 0;
   min-height: 2.6em;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.media__lyrics:hover .media__lyric--now {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .media__lyric {
@@ -358,10 +405,9 @@
 
 /* Spotify: heart and up next. */
 .spotify-extras {
+  position: relative;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
   gap: 8px;
 }
 
@@ -385,10 +431,20 @@
   border-color: color-mix(in srgb, #1ed760 50%, transparent);
 }
 
+/* Opens above its button, over the panel, so it never pushes the playlists. */
 .spotify-extras__queue {
-  flex-basis: 100%;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  z-index: 2;
+  width: max-content;
+  max-width: 260px;
   margin: 0;
-  padding-left: 18px;
+  padding: var(--space-2) var(--space-3) var(--space-2) 26px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-island);
   font-size: 12px;
   color: var(--text-secondary);
 }

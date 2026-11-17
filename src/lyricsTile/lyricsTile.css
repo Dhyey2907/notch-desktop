@@ -1,0 +1,193 @@
+/* The floating lyrics tile: album colors edge to edge, the song's lines scrolling over them. */
+html.lyrics-window,
+html.lyrics-window body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #0b0b0f;
+}
+
+.lyrics-tile {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: #f5f5f7;
+  font-family: var(--font-sans, system-ui, sans-serif);
+}
+
+/* Same layers as the Media panel: blurred art, its colors, then a shade for readable text. */
+.lyrics-tile__backdrop,
+.lyrics-tile__tint,
+.lyrics-tile__shade {
+  position: absolute;
+  inset: -40px;
+  pointer-events: none;
+  transition:
+    background 600ms ease,
+    opacity 600ms ease;
+}
+
+.lyrics-tile__backdrop {
+  background-size: cover;
+  background-position: center;
+  filter: blur(40px) saturate(1.4);
+  opacity: 0.85;
+  transform: scale(1.2);
+}
+
+.lyrics-tile__tint {
+  opacity: 0.55;
+  mix-blend-mode: soft-light;
+}
+
+.lyrics-tile__tint--brand {
+  opacity: 0.9;
+  mix-blend-mode: normal;
+}
+
+.lyrics-tile__shade {
+  background: linear-gradient(
+    180deg,
+    rgba(8, 8, 10, 0.35) 0%,
+    rgba(8, 8, 10, 0.5) 50%,
+    rgba(8, 8, 10, 0.72) 100%
+  );
+}
+
+/* The top bar moves the window. */
+.lyrics-tile__bar {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 12px 10px 14px;
+  cursor: grab;
+  user-select: none;
+}
+
+.lyrics-tile__art {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 8px;
+  object-fit: cover;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.lyrics-tile__song {
+  flex: 1;
+  min-width: 0;
+}
+
+.lyrics-tile__song p {
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lyrics-tile__title {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.lyrics-tile__artist {
+  margin-top: 2px;
+  font-size: 12px;
+  color: rgba(245, 245, 247, 0.65);
+}
+
+.lyrics-tile__close {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: inherit;
+  cursor: pointer;
+}
+
+.lyrics-tile__close:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.lyrics-tile__body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  /* Lines fade out at the top and bottom edges. */
+  mask-image: linear-gradient(180deg, transparent 0, #000 36px, #000 calc(100% - 48px), transparent 100%);
+}
+
+.lyrics-tile__lines {
+  /* Positioned, so each line's offsetTop is measured from the list. */
+  position: relative;
+  height: 100%;
+  margin: 0;
+  padding: 40% 18px;
+  box-sizing: border-box;
+  list-style: none;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.lyrics-tile__line {
+  margin: 0 0 12px;
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: rgba(245, 245, 247, 0.45);
+  transition:
+    color 300ms ease,
+    transform 300ms ease;
+  transform-origin: left center;
+}
+
+.lyrics-tile__line--past {
+  color: rgba(245, 245, 247, 0.3);
+}
+
+.lyrics-tile__line--now {
+  color: #fff;
+  transform: scale(1.04);
+}
+
+.lyrics-tile__line button,
+.lyrics-tile__line span {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.lyrics-tile__line button {
+  cursor: pointer;
+}
+
+.lyrics-tile__line button:hover {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.lyrics-tile__empty {
+  margin: 0;
+  padding: 40px 18px;
+  font-size: 14px;
+  color: rgba(245, 245, 247, 0.7);
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lyrics-tile__line {
+    transition: none;
+  }
+}

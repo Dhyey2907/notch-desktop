@@ -12,6 +12,7 @@ import { PetWalk } from "./focus/PetWalk";
 import { PipApp } from "./pip/PipApp";
 import { StickyApp } from "./sticky/StickyApp";
 import { GrabApp } from "./grab/GrabApp";
+import { LyricsTileApp } from "./lyricsTile/LyricsTileApp";
 import { SettingsApp } from "./settings/SettingsApp";
 
 // Start listening before the first render so no backend event is missed.
@@ -42,6 +43,9 @@ if (isStickyWindow) document.documentElement.classList.add("sticky-window");
 // The away screen on other monitors (#away).
 const isAwayWindow = window.location.hash.startsWith("#away");
 if (isAwayWindow) document.documentElement.classList.add("away-window");
+// The floating lyrics tile (#lyrics).
+const isLyricsWindow = window.location.hash.startsWith("#lyrics");
+if (isLyricsWindow) document.documentElement.classList.add("lyrics-window");
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     {isSettingsWindow ? (
@@ -58,6 +62,8 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
       <StickyApp />
     ) : isAwayWindow ? (
       <AwayApp />
+    ) : isLyricsWindow ? (
+      <LyricsTileApp />
     ) : (
       <App />
     )}

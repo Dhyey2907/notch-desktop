@@ -31,7 +31,27 @@ export function SpotifyExtras({ title }: { title: string }) {
   }, [title, connected]);
 
   if (!connected) return null;
-  if (note) return <p className="media__note">{note}</p>;
+  // Older sign-ins lack the permissions for likes and the queue: one short line that opens the
+  // place to fix it (a long sentence wrapped onto the playlists below).
+  if (note && /^Reconnect Spotify/.test(note)) {
+    return (
+      <button
+        type="button"
+        className="media__note media__note--action"
+        title={note}
+        onClick={() => void ipc.openSettingsWindow("media")}
+      >
+        Reconnect Spotify for likes and the queue
+      </button>
+    );
+  }
+  if (note) {
+    return (
+      <p className="media__note" title={note}>
+        {note}
+      </p>
+    );
+  }
   if (!now?.trackId) return null;
 
   const toggle = () => {
