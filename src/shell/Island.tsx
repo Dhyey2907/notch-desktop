@@ -30,7 +30,7 @@ import { useMusicPulse } from "./musicPulse";
 import { addWheel, idleSwipe } from "./gestures";
 import { useSystemHud } from "./systemHud";
 import { trackFullscreen, useFullscreen } from "./fullscreen";
-import { scaledRadius } from "./appearance";
+import { restingRadius, scaledRadius } from "./appearance";
 import { HOVER_CLOSE_MS, hideOverFullscreen, OPEN_DELAY_MS, PEEK_DELAY_MS, SWIPE_DISTANCE } from "./behavior";
 import { BubbleClock } from "./BubbleClock";
 import { WorkdayLine } from "./WorkdayLine";
@@ -430,7 +430,14 @@ export function Island() {
           animate={{
             width: size.width,
             height: size.height,
-            borderRadius: islandCorners(scaledRadius(islandRadius(size), look?.roundness ?? 100)),
+            borderRadius: islandCorners(
+              scaledRadius(
+                mode === "collapsed"
+                  ? Math.min(islandRadius(size), restingRadius(look ?? { bubble: "pill" }))
+                  : islandRadius(size),
+                look?.roundness ?? 100,
+              ),
+            ),
           }}
           transition={transition}
           onAnimationComplete={() => void settle()}

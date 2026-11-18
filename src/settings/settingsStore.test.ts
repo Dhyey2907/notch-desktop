@@ -54,6 +54,7 @@ const defaults: Settings = {
     size: "normal",
     textSize: "normal",
     bubble: "pill",
+    shape: "pill",
     bubbleClock: false,
     theme: "black",
     opacity: 100,

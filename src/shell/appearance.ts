@@ -2,6 +2,7 @@
 // the resting bubble. Applied as CSS variables, plus `zoom` for the notch size, so every
 // component follows without knowing about these settings.
 import type { AppearanceSettings } from "../core/generated/AppearanceSettings";
+import type { NotchShape } from "../core/generated/NotchShape";
 import type { Scale } from "../core/generated/Scale";
 import type { Theme } from "../core/generated/Theme";
 import type { Size } from "./geometry";
@@ -68,11 +69,38 @@ export function scaledRadius(radius: number, roundness: number): number {
   return Math.max(4, (radius * roundness) / 100);
 }
 
+/** The resting notch's outline per shape: its smallest size and corner radius (logical px). */
+export const NOTCH_SHAPES: Record<NotchShape, Size & { radius: number }> = {
+  pill: { width: 64, height: 14, radius: 7 },
+  rounded: { width: 88, height: 20, radius: 8 },
+  notch: { width: 124, height: 26, radius: 12 },
+  sharp: { width: 88, height: 20, radius: 3 },
+};
+
+/** The clock in the bubble needs this much more width. */
+const CLOCK_WIDTH = 40;
+
 /** The resting bubble's size for a look. */
-export function restingSize(a: Pick<AppearanceSettings, "bubble" | "bubbleClock">): Size {
+export function restingSize(
+  a: Pick<AppearanceSettings, "bubble" | "bubbleClock"> & Partial<Pick<AppearanceSettings, "shape">>,
+): Size {
   if (a.bubble === "dot") return { width: 22, height: 12 };
-  if (a.bubbleClock && a.bubble === "pill") return { width: 104, height: 18 };
-  return { width: 64, height: 14 };
+  const shape = NOTCH_SHAPES[a.shape ?? "pill"];
+  const clock = a.bubbleClock && a.bubble === "pill";
+  return {
+    width: shape.width + (clock ? CLOCK_WIDTH : 0),
+    height: clock ? Math.max(shape.height, 18) : shape.height,
+  };
+}
+
+/** The resting bubble's corner radius for a look, before the roundness setting. */
+export function restingRadius(
+  a: Pick<AppearanceSettings, "bubble"> & Partial<Pick<AppearanceSettings, "shape">>,
+) {
+  if (a.bubble === "dot") return 6;
+  const shape = NOTCH_SHAPES[a.shape ?? "pill"];
+  // The pill keeps fully round ends at whatever height the clock gives it.
+  return a.shape === "pill" || !a.shape ? Infinity : shape.radius;
 }
 
 let scale = 1;

@@ -1,12 +1,20 @@
 import { describe, expect, it } from "vitest";
 
 import type { AppearanceSettings } from "../core/generated/AppearanceSettings";
-import { appearanceVars, islandBackground, readableOn, restingSize, scaledRadius } from "./appearance";
+import {
+  appearanceVars,
+  islandBackground,
+  readableOn,
+  restingRadius,
+  restingSize,
+  scaledRadius,
+} from "./appearance";
 
 const LOOK: AppearanceSettings = {
   size: "normal",
   textSize: "normal",
   bubble: "pill",
+  shape: "pill",
   bubbleClock: false,
   theme: "black",
   opacity: 100,
@@ -47,6 +55,18 @@ describe("appearance", () => {
     expect(restingSize(LOOK)).toEqual({ width: 64, height: 14 });
     expect(restingSize({ bubble: "pill", bubbleClock: true }).width).toBe(104);
     expect(restingSize({ bubble: "dot", bubbleClock: true })).toEqual({ width: 22, height: 12 });
+  });
+
+  it("gives each notch shape its own size and corners", () => {
+    expect(restingSize({ bubble: "pill", bubbleClock: false, shape: "notch" })).toEqual({
+      width: 124,
+      height: 26,
+    });
+    expect(restingSize({ bubble: "pill", bubbleClock: true, shape: "rounded" }).width).toBe(128);
+    expect(restingRadius({ bubble: "pill", shape: "pill" })).toBe(Infinity);
+    expect(restingRadius({ bubble: "pill", shape: "sharp" })).toBeLessThan(
+      restingRadius({ bubble: "pill", shape: "notch" }),
+    );
     expect(scaledRadius(24, 50)).toBe(12);
     expect(scaledRadius(24, 0)).toBe(4);
   });
