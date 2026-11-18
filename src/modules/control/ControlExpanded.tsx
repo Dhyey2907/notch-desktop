@@ -23,6 +23,7 @@ import { Fragment, useEffect, useState, type ReactNode } from "react";
 import type { ControlSnapshot } from "../../core/generated/ControlSnapshot";
 import type { RadioKind } from "../../core/generated/RadioKind";
 import { ipc, isIpcError } from "../../core/ipc";
+import { Arrange } from "../../shell/Arrange";
 import { useArranged } from "../../shell/layout";
 import { useControl } from "./controlStore";
 import { SECTIONS, TOGGLES } from "./layout";
@@ -329,17 +330,25 @@ export default function ControlExpanded() {
           {error}
         </p>
       )}
-      {rows.map((row) =>
-        row[0] === "network" || row[0] === "battery" ? (
-          <div key={row.join("+")} className="control-cards">
-            {row.map((id) => (
-              <Fragment key={id}>{section(id)}</Fragment>
-            ))}
-          </div>
-        ) : (
-          <Fragment key={row[0]}>{section(row[0])}</Fragment>
-        ),
-      )}
+      <Arrange
+        group="control"
+        items={SECTIONS}
+        className="control__sections"
+        units={rows.map((row) => ({
+          key: row.join("+"),
+          ids: row,
+          node:
+            row[0] === "network" || row[0] === "battery" ? (
+              <div className="control-cards">
+                {row.map((id) => (
+                  <Fragment key={id}>{section(id)}</Fragment>
+                ))}
+              </div>
+            ) : (
+              section(row[0])
+            ),
+        }))}
+      />
     </section>
   );
 }

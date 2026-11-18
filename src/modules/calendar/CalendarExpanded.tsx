@@ -25,6 +25,7 @@ import {
   useCalendar,
 } from "./calendarStore";
 import { useSettings } from "../../settings";
+import { Arrange } from "../../shell/Arrange";
 import { useArranged } from "../../shell/layout";
 import { CALENDAR_PARTS } from "./layout";
 import { InviteAnswer, NewEventForm } from "./CalendarActions";
@@ -146,72 +147,78 @@ function Agenda({ snapshot, now }: { snapshot: CalendarSnapshot; now: number }) 
 
   return (
     <ModuleContainer title="Calendar" trailing={trailing}>
-      <div className="calendar">
-        {parts.map((part) =>
-          part.id === "month" ? (
-            <MonthCard key="month" today={today} daysWithEvents={daysWithEvents} />
-          ) : (
-            <div key="agenda" className="calendar__agenda">
-              <p className="calendar__date">
-                {today.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}
-              </p>
-              <p className="calendar__summary">
-                {status ??
-                  (todays.length === 0
-                    ? "Nothing scheduled today"
-                    : `${todays.length} ${todays.length === 1 ? "event" : "events"} today`)}
-              </p>
-              {invites.length > 0 && (
-                <div className="calendar__invites" aria-label="Invites waiting for your answer">
-                  {invites.slice(0, 3).map((event) => (
-                    <div key={`${event.id}${event.start}`} className="calendar__invite">
-                      <span className="calendar__invite-text">
-                        <span className="calendar__title" title={event.title}>
-                          {event.title}
+      <Arrange
+        group="calendar"
+        items={CALENDAR_PARTS}
+        className="calendar"
+        units={parts.map((part) => ({
+          key: part.id,
+          ids: [part.id],
+          node:
+            part.id === "month" ? (
+              <MonthCard key="month" today={today} daysWithEvents={daysWithEvents} />
+            ) : (
+              <div key="agenda" className="calendar__agenda">
+                <p className="calendar__date">
+                  {today.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}
+                </p>
+                <p className="calendar__summary">
+                  {status ??
+                    (todays.length === 0
+                      ? "Nothing scheduled today"
+                      : `${todays.length} ${todays.length === 1 ? "event" : "events"} today`)}
+                </p>
+                {invites.length > 0 && (
+                  <div className="calendar__invites" aria-label="Invites waiting for your answer">
+                    {invites.slice(0, 3).map((event) => (
+                      <div key={`${event.id}${event.start}`} className="calendar__invite">
+                        <span className="calendar__invite-text">
+                          <span className="calendar__title" title={event.title}>
+                            {event.title}
+                          </span>
+                          <span className="calendar__soon">
+                            {new Date(event.start).toLocaleString(undefined, {
+                              weekday: "short",
+                              hour: "numeric",
+                              minute: "2-digit",
+                            })}
+                          </span>
                         </span>
-                        <span className="calendar__soon">
-                          {new Date(event.start).toLocaleString(undefined, {
+                        {canEdit ? (
+                          <InviteAnswer event={event} onStatus={setStatus} />
+                        ) : (
+                          <button type="button" className="nd-chip" onClick={openSettings}>
+                            Answer…
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {upcoming.length > 0 ? (
+                  <ol className="calendar__list">
+                    {upcoming.slice(0, 5).map((event) => (
+                      <AgendaRow key={`${event.id}${event.start}`} event={event} now={now} />
+                    ))}
+                  </ol>
+                ) : (
+                  next && (
+                    <p className="calendar__next">
+                      Next: {next.title} ·{" "}
+                      {sameLocalDay(new Date(next.start), today)
+                        ? formatClock(next.start)
+                        : new Date(next.start).toLocaleString(undefined, {
                             weekday: "short",
                             hour: "numeric",
                             minute: "2-digit",
                           })}
-                        </span>
-                      </span>
-                      {canEdit ? (
-                        <InviteAnswer event={event} onStatus={setStatus} />
-                      ) : (
-                        <button type="button" className="nd-chip" onClick={openSettings}>
-                          Answer…
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-              {upcoming.length > 0 ? (
-                <ol className="calendar__list">
-                  {upcoming.slice(0, 5).map((event) => (
-                    <AgendaRow key={`${event.id}${event.start}`} event={event} now={now} />
-                  ))}
-                </ol>
-              ) : (
-                next && (
-                  <p className="calendar__next">
-                    Next: {next.title} ·{" "}
-                    {sameLocalDay(new Date(next.start), today)
-                      ? formatClock(next.start)
-                      : new Date(next.start).toLocaleString(undefined, {
-                          weekday: "short",
-                          hour: "numeric",
-                          minute: "2-digit",
-                        })}
-                  </p>
-                )
-              )}
-            </div>
-          ),
-        )}
-      </div>
+                    </p>
+                  )
+                )}
+              </div>
+            ),
+        }))}
+      />
     </ModuleContainer>
   );
 }

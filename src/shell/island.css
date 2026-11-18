@@ -4,7 +4,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px; /* DOCK.gap in geometry.ts */
+  gap: 0;
   pointer-events: none;
 }
 
@@ -163,23 +163,39 @@
   height: 100%;
 }
 
-/* Dock beneath the expanded island. */
+/* Dock: the open panel's bottom bar (Island.tsx grows the panel by DOCK.height for it), with a
+   hairline between it and the module above. */
+.island[data-mode="expanded"] .island-content--expanded {
+  bottom: 40px; /* DOCK.height in geometry.ts */
+}
+
 .dock {
-  flex: none;
-  /* Its natural width: the window is sized to fit it (geometry.ts windowSizeFor). */
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  margin: 0 auto;
+  /* Its natural width: the panel and window are sized to fit it (geometry.ts windowSizeFor). */
   width: max-content;
   display: flex;
   align-items: center;
   gap: var(--space-1);
   height: 40px; /* DOCK.height in geometry.ts */
   box-sizing: border-box;
-  padding: 0 var(--space-1);
-  background: var(--island-bg, var(--background));
-  border-radius: var(--radius-pill);
-  box-shadow: var(--shadow-island);
-  outline: 1px solid var(--border);
-  outline-offset: -1px;
+  padding: 0 var(--space-2);
   pointer-events: auto;
+}
+
+.island-dock-rule {
+  content: "";
+  position: absolute;
+  left: var(--space-4);
+  right: var(--space-4);
+  bottom: 40px;
+  height: 1px;
+  background: var(--border);
+  pointer-events: none;
 }
 
 .dock__divider {
@@ -497,4 +513,20 @@
 .island-frame[data-edge="left"] .island[data-upright] .island-content--collapsed {
   rotate: -90deg;
   translate: 0 var(--bubble-long);
+}
+
+/* Glass: a frosted sheen (light catching the top of the glass), a brighter rim and a faint
+   inner glow, The tint itself is --island-bg. */
+:root[data-theme="glass"] .island {
+  background-image:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.015) 38%, transparent 70%),
+    radial-gradient(120% 80% at 50% 0%, rgba(255, 255, 255, 0.05), transparent 60%);
+  --border: rgba(255, 255, 255, 0.13);
+}
+
+:root[data-theme="glass"] .island:not([data-mode="collapsed"]) {
+  box-shadow:
+    var(--shadow-island),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.03);
 }

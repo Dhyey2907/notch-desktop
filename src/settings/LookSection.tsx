@@ -136,7 +136,7 @@ export function LookSection() {
         </div>
       </Surface>
       <Surface>
-        <Row label="Theme" description="Glass lets the desktop show through.">
+        <Row label="Theme" description="Glass is a frosted, slightly see-through tint with a soft sheen.">
           <SegmentedControl<Theme>
             label="Theme"
             value={look.theme}

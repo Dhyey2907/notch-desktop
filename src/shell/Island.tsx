@@ -40,6 +40,7 @@ import { useLockScreenInfo } from "./useLockScreenInfo";
 import { isNotchDragging, useNotchDrag, useNotchFade } from "./useNotchMove";
 import {
   activityIslandSize,
+  DOCK,
   edgeGap,
   GAME_HUD_SIZE,
   hasShoulders,
@@ -127,6 +128,13 @@ export function Island() {
     void useIsland.getState().setVertical(sideEdge);
   }, [sideEdge]);
   const upright = sideEdge && mode === "collapsed";
+  // Open, the dock is the panel's bottom bar (one surface, not a second floating strip): the
+  // panel grows by the dock's height, and to the dock's width if the dock is wider.
+  const dockWidth = useIsland((s) => s.dockWidth);
+  const shownSize =
+    mode === "expanded"
+      ? { width: Math.max(size.width, dockWidth), height: size.height + DOCK.height }
+      : size;
   // "Distance from the edge: None" hangs the notch off the screen edge; any gap floats it.
   const attached = (look?.offsetY ?? 0) === 0;
   const autoHide = look?.bubble === "hidden";
@@ -428,8 +436,8 @@ export function Island() {
           aria-label="Overline"
           initial={false}
           animate={{
-            width: size.width,
-            height: size.height,
+            width: shownSize.width,
+            height: shownSize.height,
             borderRadius: islandCorners(
               scaledRadius(
                 mode === "collapsed"
@@ -495,9 +503,10 @@ export function Island() {
               {mode === "expanded" && <ModuleHost />}
             </motion.div>
           </AnimatePresence>
+          {mode === "expanded" && <span className="island-dock-rule" aria-hidden />}
+          <AnimatePresence>{mode === "expanded" && <Dock />}</AnimatePresence>
         </motion.section>
       </motion.div>
-      <AnimatePresence>{mode === "expanded" && <Dock />}</AnimatePresence>
     </div>
   );
 }

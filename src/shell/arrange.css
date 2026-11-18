@@ -1,0 +1,42 @@
+/* Drag to rearrange (Arrange.tsx). Each item fills its slot so cards keep their own layout. */
+.arrange__item {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  border-radius: var(--radius-card);
+  touch-action: pan-y;
+}
+
+.arrange__item > * {
+  flex: 1;
+  min-width: 0;
+}
+
+.arrange--dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.arrange--dragging .arrange__item:not(.arrange__item--lifted) {
+  opacity: 0.72;
+  transition: opacity 0.15s ease;
+}
+
+.arrange__item--lifted {
+  position: relative;
+  z-index: 2;
+  scale: 1.03;
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.35),
+    0 0 0 1px var(--border-strong);
+  transition:
+    scale 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arrange__item--lifted {
+    scale: 1;
+    transition: none;
+  }
+}

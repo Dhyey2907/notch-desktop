@@ -15,8 +15,12 @@ const THEME_RGB: Record<Theme, [number, number, number]> = {
   graphite: [36, 36, 40],
   glass: [22, 22, 28],
 };
-/** Glass is always see-through; this is its most opaque. */
-const GLASS_MAX_OPACITY = 75;
+/**
+ * Glass: a frosted tint, not a clear window. The desktop can't be blurred behind a web page,
+ * so a thin tint lets text behind it bleed into the cards; the Opacity slider therefore picks
+ * within a range that stays readable (40 → the most see-through, 100 → the most solid).
+ */
+const GLASS_OPACITY = { min: 86, max: 96 } as const;
 
 /** Text-size tokens from tokens.css (px). */
 const TEXT_TOKENS: Record<string, number> = {
@@ -29,7 +33,10 @@ const TEXT_TOKENS: Record<string, number> = {
 
 export function islandBackground(a: Pick<AppearanceSettings, "theme" | "opacity">): string {
   const [r, g, b] = THEME_RGB[a.theme];
-  const opacity = a.theme === "glass" ? Math.min(a.opacity, GLASS_MAX_OPACITY) : a.opacity;
+  const opacity =
+    a.theme === "glass"
+      ? Math.round(GLASS_OPACITY.min + ((a.opacity - 40) / 60) * (GLASS_OPACITY.max - GLASS_OPACITY.min))
+      : a.opacity;
   return `rgba(${r}, ${g}, ${b}, ${opacity / 100})`;
 }
 
@@ -46,6 +53,11 @@ export function appearanceVars(a: AppearanceSettings): Record<string, string> {
   const text = TEXT_SCALE[a.textSize];
   const vars: Record<string, string> = {
     "--island-bg": islandBackground(a),
+    // Cards are light veils over the island rather than solid boxes, so they sit on any theme
+    // (and on glass) without looking pasted on.
+    "--surface": "rgba(255, 255, 255, 0.05)",
+    "--surface-elevated": "rgba(255, 255, 255, 0.075)",
+    "--surface-hover": "rgba(255, 255, 255, 0.1)",
     "--island-roundness": String(a.roundness / 100),
   };
   for (const [name, px] of Object.entries(TEXT_TOKENS)) vars[name] = `${Math.round(px * text * 10) / 10}px`;
@@ -62,6 +74,7 @@ export function applyAppearance(a: AppearanceSettings, el: HTMLElement) {
   for (const name of ["--active", "--on-active"]) if (!(name in vars)) el.style.removeProperty(name);
   for (const [name, value] of Object.entries(vars)) el.style.setProperty(name, value);
   el.toggleAttribute("data-accent-music", a.accentFromMusic);
+  el.dataset.theme = a.theme;
 }
 
 /** Corner radius after the roundness setting (never fully square). */

@@ -45,8 +45,8 @@ export function activityIslandSize(actions: "none" | "inline" | "row", code = fa
  */
 export const WINDOW_MARGIN = { x: 22, top: 6, bottom: 30 } as const;
 
-/** Module dock shown beneath the expanded island (design.md §17). */
-export const DOCK = { height: 40, gap: 8 } as const;
+/** Module dock: the open panel's bottom bar (design.md §17). The panel grows by its height. */
+export const DOCK = { height: 40, gap: 0 } as const;
 
 /** The concave curves where an attached notch meets the screen edge (logical px). */
 export const SHOULDER = 10;

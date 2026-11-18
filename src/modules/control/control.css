@@ -727,3 +727,10 @@
 .wifi__bar--on {
   background: var(--text-primary);
 }
+
+/* The rearrangeable rows (Arrange.tsx). */
+.control__sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}

@@ -38,8 +38,9 @@ describe("appearance", () => {
     expect(vars["--active"]).toBeUndefined();
   });
 
-  it("makes glass see-through even at full opacity", () => {
-    expect(islandBackground({ theme: "glass", opacity: 100 })).toBe("rgba(22, 22, 28, 0.75)");
+  it("keeps glass a readable frosted tint at any opacity", () => {
+    expect(islandBackground({ theme: "glass", opacity: 100 })).toBe("rgba(22, 22, 28, 0.96)");
+    expect(islandBackground({ theme: "glass", opacity: 40 })).toBe("rgba(22, 22, 28, 0.86)");
     expect(islandBackground({ theme: "graphite", opacity: 60 })).toBe("rgba(36, 36, 40, 0.6)");
   });
 

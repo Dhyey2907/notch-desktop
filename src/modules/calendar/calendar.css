@@ -213,3 +213,8 @@
   height: 22px;
   padding: 0 var(--space-2);
 }
+
+/* Drag to rearrange: the agenda keeps taking the room the month card leaves. */
+.calendar > .arrange__item:has(> .calendar__agenda) {
+  flex: 1;
+}
