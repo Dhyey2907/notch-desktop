@@ -22,7 +22,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { Fragment, useEffect, useRef, useState, type PointerEvent, type WheelEvent } from "react";
+import { useEffect, useRef, useState, type PointerEvent, type WheelEvent } from "react";
 
 import { eventBus } from "../../core/eventBus";
 import type { Dashboard } from "../../core/generated/Dashboard";
@@ -34,6 +34,7 @@ import { span, weekendIn, workday } from "../../core/workday";
 import { ipc } from "../../core/ipc";
 import { useReduceMotion } from "../../design/useReduceMotion";
 import { useSettings } from "../../settings";
+import { Arrange } from "../../shell/Arrange";
 import { useArranged } from "../../shell/layout";
 import type { ScreenTime } from "../../core/generated/ScreenTime";
 import { dayKeyBack, dayLabel, formatMinutes, greeting, longDate } from "./dashboard";
@@ -150,11 +151,12 @@ export default function HomeExpanded() {
           {show("desktops") && dash && dash.desktops.desktops.length > 0 && <DesktopPicker dash={dash} />}
         </div>
       </header>
-      <div className="home__grid">
-        {cards.map((c) => (
-          <Fragment key={c.id}>{card(c.id)}</Fragment>
-        ))}
-      </div>
+      <Arrange
+        group="home"
+        items={HOME_CARDS}
+        className="home__grid"
+        units={cards.map((c) => ({ key: c.id, ids: [c.id], node: card(c.id) }))}
+      />
     </section>
   );
 }

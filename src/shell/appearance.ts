@@ -2,6 +2,7 @@
 // the resting bubble. Applied as CSS variables, plus `zoom` for the notch size, so every
 // component follows without knowing about these settings.
 import type { AppearanceSettings } from "../core/generated/AppearanceSettings";
+import type { NotchShape } from "../core/generated/NotchShape";
 import type { Scale } from "../core/generated/Scale";
 import type { Theme } from "../core/generated/Theme";
 import type { Size } from "./geometry";
@@ -14,8 +15,12 @@ const THEME_RGB: Record<Theme, [number, number, number]> = {
   graphite: [36, 36, 40],
   glass: [22, 22, 28],
 };
-/** Glass is always see-through; this is its most opaque. */
-const GLASS_MAX_OPACITY = 75;
+/**
+ * Glass: a frosted tint, not a clear window. The desktop can't be blurred behind a web page,
+ * so a thin tint lets text behind it bleed into the cards; the Opacity slider therefore picks
+ * within a range that stays readable (40 → the most see-through, 100 → the most solid).
+ */
+const GLASS_OPACITY = { min: 86, max: 96 } as const;
 
 /** Text-size tokens from tokens.css (px). */
 const TEXT_TOKENS: Record<string, number> = {
@@ -28,7 +33,10 @@ const TEXT_TOKENS: Record<string, number> = {
 
 export function islandBackground(a: Pick<AppearanceSettings, "theme" | "opacity">): string {
   const [r, g, b] = THEME_RGB[a.theme];
-  const opacity = a.theme === "glass" ? Math.min(a.opacity, GLASS_MAX_OPACITY) : a.opacity;
+  const opacity =
+    a.theme === "glass"
+      ? Math.round(GLASS_OPACITY.min + ((a.opacity - 40) / 60) * (GLASS_OPACITY.max - GLASS_OPACITY.min))
+      : a.opacity;
   return `rgba(${r}, ${g}, ${b}, ${opacity / 100})`;
 }
 
@@ -45,6 +53,11 @@ export function appearanceVars(a: AppearanceSettings): Record<string, string> {
   const text = TEXT_SCALE[a.textSize];
   const vars: Record<string, string> = {
     "--island-bg": islandBackground(a),
+    // Cards are light veils over the island rather than solid boxes, so they sit on any theme
+    // (and on glass) without looking pasted on.
+    "--surface": "rgba(255, 255, 255, 0.05)",
+    "--surface-elevated": "rgba(255, 255, 255, 0.075)",
+    "--surface-hover": "rgba(255, 255, 255, 0.1)",
     "--island-roundness": String(a.roundness / 100),
   };
   for (const [name, px] of Object.entries(TEXT_TOKENS)) vars[name] = `${Math.round(px * text * 10) / 10}px`;
@@ -61,6 +74,7 @@ export function applyAppearance(a: AppearanceSettings, el: HTMLElement) {
   for (const name of ["--active", "--on-active"]) if (!(name in vars)) el.style.removeProperty(name);
   for (const [name, value] of Object.entries(vars)) el.style.setProperty(name, value);
   el.toggleAttribute("data-accent-music", a.accentFromMusic);
+  el.dataset.theme = a.theme;
 }
 
 /** Corner radius after the roundness setting (never fully square). */
@@ -68,11 +82,38 @@ export function scaledRadius(radius: number, roundness: number): number {
   return Math.max(4, (radius * roundness) / 100);
 }
 
+/** The resting notch's outline per shape: its smallest size and corner radius (logical px). */
+export const NOTCH_SHAPES: Record<NotchShape, Size & { radius: number }> = {
+  pill: { width: 64, height: 14, radius: 7 },
+  rounded: { width: 88, height: 20, radius: 8 },
+  notch: { width: 124, height: 26, radius: 12 },
+  sharp: { width: 88, height: 20, radius: 3 },
+};
+
+/** The clock in the bubble needs this much more width. */
+const CLOCK_WIDTH = 40;
+
 /** The resting bubble's size for a look. */
-export function restingSize(a: Pick<AppearanceSettings, "bubble" | "bubbleClock">): Size {
+export function restingSize(
+  a: Pick<AppearanceSettings, "bubble" | "bubbleClock"> & Partial<Pick<AppearanceSettings, "shape">>,
+): Size {
   if (a.bubble === "dot") return { width: 22, height: 12 };
-  if (a.bubbleClock && a.bubble === "pill") return { width: 104, height: 18 };
-  return { width: 64, height: 14 };
+  const shape = NOTCH_SHAPES[a.shape ?? "pill"];
+  const clock = a.bubbleClock && a.bubble === "pill";
+  return {
+    width: shape.width + (clock ? CLOCK_WIDTH : 0),
+    height: clock ? Math.max(shape.height, 18) : shape.height,
+  };
+}
+
+/** The resting bubble's corner radius for a look, before the roundness setting. */
+export function restingRadius(
+  a: Pick<AppearanceSettings, "bubble"> & Partial<Pick<AppearanceSettings, "shape">>,
+) {
+  if (a.bubble === "dot") return 6;
+  const shape = NOTCH_SHAPES[a.shape ?? "pill"];
+  // The pill keeps fully round ends at whatever height the clock gives it.
+  return a.shape === "pill" || !a.shape ? Infinity : shape.radius;
 }
 
 let scale = 1;

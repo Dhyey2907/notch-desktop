@@ -3,11 +3,12 @@ import type { CSSProperties } from "react";
 
 import type { AppearanceSettings } from "../core/generated/AppearanceSettings";
 import type { BubbleStyle } from "../core/generated/BubbleStyle";
+import type { NotchShape } from "../core/generated/NotchShape";
 import type { ScreenEdge } from "../core/generated/ScreenEdge";
 import type { Scale } from "../core/generated/Scale";
 import type { Theme } from "../core/generated/Theme";
 import { SegmentedControl, Surface, Switch } from "../design/components";
-import { appearanceVars, scaledRadius, SIZE_SCALE } from "../shell/appearance";
+import { appearanceVars, restingRadius, restingSize, scaledRadius, SIZE_SCALE } from "../shell/appearance";
 import { ipc } from "../core/ipc";
 import { useSettings } from ".";
 import { ColorChoice, Row, Select, Slider } from "./controls";
@@ -25,18 +26,20 @@ const SCALES: { value: Scale; label: string }[] = [
 function Preview({ look }: { look: AppearanceSettings }) {
   const vars = appearanceVars(look) as CSSProperties;
   const zoom = SIZE_SCALE[look.size];
-  const bubble =
-    look.bubble === "dot"
-      ? { width: 22, height: 12 }
-      : look.bubbleClock && look.bubble === "pill"
-        ? { width: 104, height: 18 }
-        : { width: 64, height: 14 };
+  const bubble = restingSize(look);
+  const radius = Math.min(bubble.height / 2, restingRadius(look));
   return (
     <div className="look-preview" style={vars} aria-label="Preview of the notch" role="img">
       <div className="look-preview__stage" style={{ zoom }}>
         <div
           className={`look-preview__bubble${look.bubble === "hidden" ? " look-preview__bubble--hidden" : ""}`}
-          style={{ ...bubble, borderRadius: scaledRadius(bubble.height / 2, look.roundness) }}
+          style={{
+            ...bubble,
+            borderRadius:
+              look.offsetY === 0
+                ? `0 0 ${scaledRadius(radius, look.roundness)}px ${scaledRadius(radius, look.roundness)}px`
+                : scaledRadius(radius, look.roundness),
+          }}
         >
           {look.bubbleClock && look.bubble === "pill" && <span className="look-preview__clock">6:12</span>}
         </div>
@@ -52,7 +55,10 @@ function Preview({ look }: { look: AppearanceSettings }) {
         </div>
       </div>
       {look.bubble === "hidden" && (
-        <p className="look-preview__note">The bubble appears when you point at it.</p>
+        <p className="look-preview__note">
+          The notch tucks into the screen edge. Point at the edge to bring it back; notifications still pop
+          out.
+        </p>
       )}
     </div>
   );
@@ -98,9 +104,25 @@ export function LookSection() {
             options={[
               { value: "pill", label: "Pill" },
               { value: "dot", label: "Dot" },
-              { value: "hidden", label: "Hidden" },
+              { value: "hidden", label: "Auto-hide" },
             ]}
             onChange={(bubble) => set({ bubble })}
+          />
+        </Row>
+        <Row
+          label="Notch shape"
+          description="The outline it rests in: a slim pill, a rounded rectangle, a wider laptop-style notch, or tight corners. Not used with the dot."
+        >
+          <SegmentedControl<NotchShape>
+            label="Notch shape"
+            value={look.shape}
+            options={[
+              { value: "pill", label: "Pill" },
+              { value: "rounded", label: "Rounded" },
+              { value: "notch", label: "Notch" },
+              { value: "sharp", label: "Sharp" },
+            ]}
+            onChange={(shape) => set({ shape })}
           />
         </Row>
         <div id="setting-clock-in-the-bubble">
@@ -114,7 +136,7 @@ export function LookSection() {
         </div>
       </Surface>
       <Surface>
-        <Row label="Theme" description="Glass lets the desktop show through.">
+        <Row label="Theme" description="Glass is a frosted, slightly see-through tint with a soft sheen.">
           <SegmentedControl<Theme>
             label="Theme"
             value={look.theme}
@@ -267,10 +289,10 @@ export function LookSection() {
           }
           description={
             look.edge === "bottom"
-              ? "Leave a gap below the notch."
+              ? "None: the notch rests on the taskbar. Any gap floats it."
               : side
-                ? "Leave a gap beside the notch."
-                : "Leave a gap above the notch."
+                ? "None: the notch hangs off the side of the screen. Any gap floats it."
+                : "None: the notch hangs from the top of the screen. Any gap floats it."
           }
         >
           <Slider

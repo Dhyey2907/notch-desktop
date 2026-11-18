@@ -10,7 +10,7 @@ import { showHeldSummary } from "../focus/useFocusSession";
 import { useSettings } from "../settings";
 import { applyAppearance, restingSize, setUiScale, SIZE_SCALE } from "./appearance";
 import { CARD_TIME_SCALE, inQuietHours } from "./behavior";
-import { ISLAND_SIZE } from "./geometry";
+import { ISLAND_SIZE, setNotchPlacement } from "./geometry";
 import { playAlert } from "./alertSound";
 import { useIsland } from "./useIsland";
 import { useWallpaperColor } from "./useWallpaperAccent";
@@ -30,6 +30,7 @@ export function useLook() {
     root.style.setProperty("zoom", String(scale));
     setUiScale(scale);
     root.dataset.bubble = look.bubble;
+    setNotchPlacement(look.edge, look.offsetY === 0);
     const resting = restingSize(look);
     ISLAND_SIZE.collapsed = resting;
     const island = useIsland.getState();

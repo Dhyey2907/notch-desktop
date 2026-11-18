@@ -135,4 +135,31 @@ describe("islandStore sizes", () => {
     expect(store.getState().size).toEqual({ width: 420, height: 136 });
     expect(sizes.at(-1)).toEqual(windowSizeFor("activity", { width: 420, height: 136 }));
   });
+
+  it("tucks the resting bubble away and grows the window before bringing it back", async () => {
+    const { store, sizes } = setup();
+    await store.getState().settle();
+    sizes.length = 0;
+
+    await store.getState().setTucked(true);
+    expect(store.getState().tucked).toBe(true);
+    // The window shrinks to the strip only once the slide settles.
+    expect(sizes).toEqual([]);
+    await store.getState().settle();
+    expect(sizes).toEqual([windowSizeFor("collapsed", store.getState().size, 0, { tucked: true })]);
+
+    sizes.length = 0;
+    await store.getState().setTucked(false);
+    expect(sizes).toEqual([windowSizeFor("collapsed", store.getState().size)]);
+    expect(store.getState().tucked).toBe(false);
+  });
+
+  it("comes out of hiding for anything but resting, and only tucks while resting", async () => {
+    const { store } = setup();
+    await store.getState().setTucked(true);
+    await store.getState().request("activity");
+    expect(store.getState().tucked).toBe(false);
+    await store.getState().setTucked(true);
+    expect(store.getState().tucked).toBe(false);
+  });
 });

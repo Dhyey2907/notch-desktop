@@ -152,8 +152,24 @@ pub enum BubbleStyle {
     #[default]
     Pill,
     Dot,
-    /// Invisible until the pointer reaches it.
+    /// Auto-hide: tucked into the screen edge until the pointer reaches it or a card arrives.
     Hidden,
+}
+
+/// The resting notch's outline (pill or dot styles aside, the shape it rests in).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum NotchShape {
+    /// Slim, with fully round ends.
+    #[default]
+    Pill,
+    /// A rounded rectangle.
+    Rounded,
+    /// Wider and taller with soft corners, like a laptop's camera notch.
+    Notch,
+    /// A rectangle with tight corners.
+    Sharp,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
@@ -175,6 +191,8 @@ pub struct AppearanceSettings {
     pub size: Scale,
     pub text_size: Scale,
     pub bubble: BubbleStyle,
+    /// The resting bubble's outline.
+    pub shape: NotchShape,
     /// Show the time in the resting bubble.
     pub bubble_clock: bool,
     pub theme: Theme,
@@ -229,6 +247,7 @@ impl Default for AppearanceSettings {
             size: Scale::Normal,
             text_size: Scale::Normal,
             bubble: BubbleStyle::Pill,
+            shape: NotchShape::Pill,
             bubble_clock: false,
             theme: Theme::Black,
             opacity: 100,

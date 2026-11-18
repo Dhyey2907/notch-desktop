@@ -1,12 +1,20 @@
 import { describe, expect, it } from "vitest";
 
 import type { AppearanceSettings } from "../core/generated/AppearanceSettings";
-import { appearanceVars, islandBackground, readableOn, restingSize, scaledRadius } from "./appearance";
+import {
+  appearanceVars,
+  islandBackground,
+  readableOn,
+  restingRadius,
+  restingSize,
+  scaledRadius,
+} from "./appearance";
 
 const LOOK: AppearanceSettings = {
   size: "normal",
   textSize: "normal",
   bubble: "pill",
+  shape: "pill",
   bubbleClock: false,
   theme: "black",
   opacity: 100,
@@ -30,8 +38,9 @@ describe("appearance", () => {
     expect(vars["--active"]).toBeUndefined();
   });
 
-  it("makes glass see-through even at full opacity", () => {
-    expect(islandBackground({ theme: "glass", opacity: 100 })).toBe("rgba(22, 22, 28, 0.75)");
+  it("keeps glass a readable frosted tint at any opacity", () => {
+    expect(islandBackground({ theme: "glass", opacity: 100 })).toBe("rgba(22, 22, 28, 0.96)");
+    expect(islandBackground({ theme: "glass", opacity: 40 })).toBe("rgba(22, 22, 28, 0.86)");
     expect(islandBackground({ theme: "graphite", opacity: 60 })).toBe("rgba(36, 36, 40, 0.6)");
   });
 
@@ -47,6 +56,18 @@ describe("appearance", () => {
     expect(restingSize(LOOK)).toEqual({ width: 64, height: 14 });
     expect(restingSize({ bubble: "pill", bubbleClock: true }).width).toBe(104);
     expect(restingSize({ bubble: "dot", bubbleClock: true })).toEqual({ width: 22, height: 12 });
+  });
+
+  it("gives each notch shape its own size and corners", () => {
+    expect(restingSize({ bubble: "pill", bubbleClock: false, shape: "notch" })).toEqual({
+      width: 124,
+      height: 26,
+    });
+    expect(restingSize({ bubble: "pill", bubbleClock: true, shape: "rounded" }).width).toBe(128);
+    expect(restingRadius({ bubble: "pill", shape: "pill" })).toBe(Infinity);
+    expect(restingRadius({ bubble: "pill", shape: "sharp" })).toBeLessThan(
+      restingRadius({ bubble: "pill", shape: "notch" }),
+    );
     expect(scaledRadius(24, 50)).toBe(12);
     expect(scaledRadius(24, 0)).toBe(4);
   });
