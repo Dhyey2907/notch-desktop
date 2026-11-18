@@ -152,7 +152,7 @@ pub enum BubbleStyle {
     #[default]
     Pill,
     Dot,
-    /// Invisible until the pointer reaches it.
+    /// Auto-hide: tucked into the screen edge until the pointer reaches it or a card arrives.
     Hidden,
 }
 

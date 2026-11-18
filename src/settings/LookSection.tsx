@@ -52,7 +52,10 @@ function Preview({ look }: { look: AppearanceSettings }) {
         </div>
       </div>
       {look.bubble === "hidden" && (
-        <p className="look-preview__note">The bubble appears when you point at it.</p>
+        <p className="look-preview__note">
+          The notch tucks into the screen edge. Point at the edge to bring it back; notifications still pop
+          out.
+        </p>
       )}
     </div>
   );
@@ -98,7 +101,7 @@ export function LookSection() {
             options={[
               { value: "pill", label: "Pill" },
               { value: "dot", label: "Dot" },
-              { value: "hidden", label: "Hidden" },
+              { value: "hidden", label: "Auto-hide" },
             ]}
             onChange={(bubble) => set({ bubble })}
           />
@@ -267,10 +270,10 @@ export function LookSection() {
           }
           description={
             look.edge === "bottom"
-              ? "Leave a gap below the notch."
+              ? "None: the notch rests on the taskbar. Any gap floats it."
               : side
-                ? "Leave a gap beside the notch."
-                : "Leave a gap above the notch."
+                ? "None: the notch hangs off the side of the screen. Any gap floats it."
+                : "None: the notch hangs from the top of the screen. Any gap floats it."
           }
         >
           <Slider

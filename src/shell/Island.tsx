@@ -40,11 +40,15 @@ import { useLockScreenInfo } from "./useLockScreenInfo";
 import { isNotchDragging, useNotchDrag, useNotchFade } from "./useNotchMove";
 import {
   activityIslandSize,
+  edgeGap,
   GAME_HUD_SIZE,
+  hasShoulders,
   MINI_SIZE,
   HUD_SIZE,
+  islandCorners,
   islandRadius,
-  WINDOW_MARGIN,
+  setNotchPlacement,
+  tuckOffset,
   type IslandMode,
 } from "./geometry";
 import { CompactHost, ModuleHost, PeekHost } from "./ModuleHost";
@@ -62,6 +66,12 @@ import "./island.css";
 const PEEK_LEAVE_MS = 200;
 /** Let the island finish collapsing before it hides over a fullscreen app. */
 const FULLSCREEN_HIDE_DELAY_MS = 450;
+/** Auto-hide: how long the resting bubble stays after the pointer leaves it. */
+const TUCK_AFTER_MS = 600;
+/** Auto-hide: brought back from the edge, it stays this long even if the pointer never reaches it. */
+const REVEAL_GRACE_MS = 1500;
+/** The slide into and out of the screen edge. */
+const TUCK_SPRING = { type: "spring", visualDuration: 0.28, bounce: 0.12 } as const;
 
 function focusActiveDockItem() {
   const id = useModuleNav.getState().activeId;
@@ -96,6 +106,9 @@ export function Island() {
   const queued = useActivities((s) => Math.max(0, s.activities.filter((a) => !a.minimized).length - 1));
   const reduceMotion = useReduceMotion();
   const hoverTimer = useRef<number | undefined>(undefined);
+  const tuckTimer = useRef<number | undefined>(undefined);
+  const hovered = useRef(false);
+  const tucked = useIsland((s) => s.tucked);
   const swipe = useRef(idleSwipe());
 
   useModuleLifecycle();
@@ -114,6 +127,12 @@ export function Island() {
     void useIsland.getState().setVertical(sideEdge);
   }, [sideEdge]);
   const upright = sideEdge && mode === "collapsed";
+  // "Distance from the edge: None" hangs the notch off the screen edge; any gap floats it.
+  const attached = (look?.offsetY ?? 0) === 0;
+  const autoHide = look?.bubble === "hidden";
+  // Window sizes and corners below read this; setting it during render keeps them in step with
+  // the look being drawn (useLook refits the window after).
+  setNotchPlacement(edge, attached);
   // A drag cancels a pending hover-open, and a peek goes back to the bubble.
   const notchDrag = useNotchDrag(() => {
     window.clearTimeout(hoverTimer.current);
@@ -158,6 +177,40 @@ export function Island() {
     );
     return () => window.clearTimeout(timer);
   }, [hideForFullscreen]);
+
+  // Auto-hide: once the notch is back to resting and the pointer isn't on it, it slides into
+  // the screen edge. Pointing at the edge brings it back; cards bring it out on their own
+  // (any mode but collapsed untucks). Something put away and waiting keeps it out.
+  const scheduleTuck = (delay: number) => {
+    window.clearTimeout(tuckTimer.current);
+    if (useSettings.getState().settings?.appearance.bubble !== "hidden") return;
+    tuckTimer.current = window.setTimeout(() => {
+      const island = useIsland.getState();
+      const waitingNow = useActivities.getState().activities.some((a) => a.minimized);
+      if (island.mode !== "collapsed" || hovered.current || waitingNow || isNotchDragging()) return;
+      void island.setTucked(true);
+    }, delay);
+  };
+  useEffect(() => {
+    if (!autoHide || waiting) {
+      window.clearTimeout(tuckTimer.current);
+      void useIsland.getState().setTucked(false);
+      return;
+    }
+    if (mode === "collapsed" && !hovered.current) scheduleTuck(TUCK_AFTER_MS);
+    else window.clearTimeout(tuckTimer.current);
+  }, [autoHide, mode, waiting]);
+  useEffect(() => () => window.clearTimeout(tuckTimer.current), []);
+
+  const reveal = () => {
+    window.clearTimeout(tuckTimer.current);
+    void useIsland
+      .getState()
+      .setTucked(false)
+      .then(() => {
+        if (!hovered.current) scheduleTuck(REVEAL_GRACE_MS);
+      });
+  };
 
   // Sync the window to the initial mode once the webview is up.
   useEffect(() => {
@@ -248,6 +301,8 @@ export function Island() {
   const behavior = () => useSettings.getState().settings?.behavior;
 
   const onPointerEnter = () => {
+    hovered.current = true;
+    window.clearTimeout(tuckTimer.current);
     const current = useIsland.getState().mode;
     const prefs = behavior();
     window.clearTimeout(hoverTimer.current);
@@ -271,7 +326,9 @@ export function Island() {
   };
 
   const onPointerLeave = () => {
+    hovered.current = false;
     const current = useIsland.getState().mode;
+    if (current === "collapsed") scheduleTuck(TUCK_AFTER_MS);
     const prefs = behavior();
     const closeAfter = prefs?.autoCloseSecs
       ? prefs.autoCloseSecs * 1000
@@ -334,90 +391,105 @@ export function Island() {
     <div
       className="island-frame"
       data-edge={edge}
-      style={
-        bottomEdge
-          ? { paddingBottom: WINDOW_MARGIN.top }
-          : sideEdge
-            ? undefined
-            : { paddingTop: WINDOW_MARGIN.top }
-      }
+      data-attached={attached ? "" : undefined}
+      style={bottomEdge ? { paddingBottom: edgeGap() } : sideEdge ? undefined : { paddingTop: edgeGap() }}
     >
-      <motion.section
-        ref={islandRef}
-        className="island"
-        data-mode={mode}
-        data-upright={upright ? "" : undefined}
-        style={
-          upright
-            ? ({ "--bubble-long": `${size.height}px`, "--bubble-short": `${size.width}px` } as CSSProperties)
-            : undefined
-        }
-        data-faded={faded && mode === "collapsed" ? "" : undefined}
-        data-bubble={look?.bubble ?? "pill"}
-        aria-label="Overline"
+      {tucked && (
+        <div className="island-edge-strip" aria-hidden onPointerEnter={reveal} onPointerMove={reveal} />
+      )}
+      <motion.div
+        className="island-anchor"
         initial={false}
-        animate={{
-          width: size.width,
-          height: size.height,
-          borderRadius: scaledRadius(islandRadius(size), look?.roundness ?? 100),
-        }}
-        transition={transition}
+        animate={tucked ? { ...tuckOffset(size), opacity: 0 } : { x: 0, y: 0, opacity: 1 }}
+        transition={reduceMotion ? INSTANT : TUCK_SPRING}
         onAnimationComplete={() => void settle()}
-        onPointerEnter={onPointerEnter}
-        onPointerLeave={onPointerLeave}
-        onWheel={onWheel}
       >
-        {(mode === "collapsed" || mode === "peek") && (
-          <button
-            className="island-hit"
-            aria-label="Open Overline"
-            aria-expanded={false}
-            title="Alt+drag to move the notch to any edge or screen"
-            onPointerDown={notchDrag.onPointerDown}
-            onPointerMove={notchDrag.onPointerMove}
-            onPointerUp={notchDrag.onPointerUp}
-            onPointerCancel={notchDrag.onPointerCancel}
-            onClick={() => {
-              if (!notchDrag.consumeClick()) expand();
-            }}
-          />
+        {hasShoulders() && !upright && (
+          <>
+            <span className="island-shoulder island-shoulder--start" aria-hidden />
+            <span className="island-shoulder island-shoulder--end" aria-hidden />
+          </>
         )}
-        <AnimatePresence mode="popLayout" initial={false}>
-          <motion.div
-            key={shownActivity ? `activity-${shownActivity.id}` : mode}
-            className={`island-content island-content--${mode}`}
-            initial={{ opacity: 0, scale: 0.97 }}
-            animate={{ opacity: 1, scale: 1, transition: contentEnter(mode, reduceMotion) }}
-            exit={{ opacity: 0, transition: { duration: 0.08 } }}
-          >
-            {mode === "collapsed" && (
-              <>
-                {waiting && (
-                  <span className="island-attention" role="img" aria-label="Something is waiting for you" />
-                )}
-                <PinnedWidget />
-                <CompactHost />
-                {showPet && petHome && look?.bubble === "pill" && <Pet />}
-                {look?.bubbleClock && look.bubble === "pill" && <BubbleClock />}
-                {look?.bubble !== "dot" && <WorkdayLine />}
-              </>
-            )}
-            {mode === "peek" && <PeekHost />}
-            {shownActivity && (
-              <ActivityView
-                activity={shownActivity}
-                queued={queued}
-                onRunAction={(actionId) =>
-                  void useActivities.getState().runAction(shownActivity.id, actionId)
-                }
-                onOpen={() => openActivity(shownActivity)}
-                onClose={() => useActivities.getState().close(shownActivity.id)}
-              />
-            )}
-            {mode === "expanded" && <ModuleHost />}
-          </motion.div>
-        </AnimatePresence>
-      </motion.section>
+        <motion.section
+          ref={islandRef}
+          className="island"
+          data-mode={mode}
+          data-upright={upright ? "" : undefined}
+          style={
+            upright
+              ? ({
+                  "--bubble-long": `${size.height}px`,
+                  "--bubble-short": `${size.width}px`,
+                } as CSSProperties)
+              : undefined
+          }
+          data-faded={faded && mode === "collapsed" ? "" : undefined}
+          data-bubble={look?.bubble ?? "pill"}
+          aria-label="Overline"
+          initial={false}
+          animate={{
+            width: size.width,
+            height: size.height,
+            borderRadius: islandCorners(scaledRadius(islandRadius(size), look?.roundness ?? 100)),
+          }}
+          transition={transition}
+          onAnimationComplete={() => void settle()}
+          onPointerEnter={onPointerEnter}
+          onPointerLeave={onPointerLeave}
+          onWheel={onWheel}
+        >
+          {(mode === "collapsed" || mode === "peek") && (
+            <button
+              className="island-hit"
+              aria-label="Open Overline"
+              aria-expanded={false}
+              title="Alt+drag to move the notch to any edge or screen"
+              onPointerDown={notchDrag.onPointerDown}
+              onPointerMove={notchDrag.onPointerMove}
+              onPointerUp={notchDrag.onPointerUp}
+              onPointerCancel={notchDrag.onPointerCancel}
+              onClick={() => {
+                if (!notchDrag.consumeClick()) expand();
+              }}
+            />
+          )}
+          <AnimatePresence mode="popLayout" initial={false}>
+            <motion.div
+              key={shownActivity ? `activity-${shownActivity.id}` : mode}
+              className={`island-content island-content--${mode}`}
+              initial={{ opacity: 0, scale: 0.97 }}
+              animate={{ opacity: 1, scale: 1, transition: contentEnter(mode, reduceMotion) }}
+              exit={{ opacity: 0, transition: { duration: 0.08 } }}
+            >
+              {mode === "collapsed" && (
+                <>
+                  {waiting && (
+                    <span className="island-attention" role="img" aria-label="Something is waiting for you" />
+                  )}
+                  <PinnedWidget />
+                  <CompactHost />
+                  {showPet && petHome && look?.bubble === "pill" && <Pet />}
+                  {look?.bubbleClock && look.bubble === "pill" && <BubbleClock />}
+                  {look?.bubble !== "dot" && <WorkdayLine />}
+                </>
+              )}
+              {mode === "peek" && <PeekHost />}
+              {shownActivity && (
+                <ActivityView
+                  activity={shownActivity}
+                  queued={queued}
+                  onRunAction={(actionId) =>
+                    void useActivities.getState().runAction(shownActivity.id, actionId)
+                  }
+                  onOpen={() => openActivity(shownActivity)}
+                  onClose={() => useActivities.getState().close(shownActivity.id)}
+                />
+              )}
+              {mode === "expanded" && <ModuleHost />}
+            </motion.div>
+          </AnimatePresence>
+        </motion.section>
+      </motion.div>
       <AnimatePresence>{mode === "expanded" && <Dock />}</AnimatePresence>
     </div>
   );

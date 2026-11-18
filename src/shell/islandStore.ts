@@ -32,11 +32,19 @@ export interface IslandState {
   /** Size of the open panel (Edit layout → size); resizes now if a panel is open. */
   expandedSize: Size;
   setExpandedSize: (size: Size) => Promise<void>;
+  /**
+   * Auto-hide has slid the resting bubble into the screen edge. Untucking grows the window
+   * before the bubble slides out; tucking shrinks it once the slide settles (`settle`).
+   * Any mode other than collapsed untucks.
+   */
+  tucked: boolean;
+  setTucked: (tucked: boolean) => Promise<void>;
 }
 
 export function createIslandStore(resizeWindow: ResizeWindow, initialMode: IslandMode = "collapsed") {
   let windowSize: Size | null = null;
   let latestRequest = 0;
+  let windowFor: (mode: IslandMode, size: Size) => Size = (mode, size) => windowSizeFor(mode, size);
 
   const resizeTo = async (size: Size) => {
     if (sameSize(windowSize, size)) return;
@@ -49,72 +57,93 @@ export function createIslandStore(resizeWindow: ResizeWindow, initialMode: Islan
     }
   };
 
-  return create<IslandState>((set, get) => ({
-    mode: initialMode,
-    size: ISLAND_SIZE[initialMode],
+  return create<IslandState>((set, get) => {
+    windowFor = (mode, size) =>
+      windowSizeFor(mode, size, get().dockWidth, {
+        tucked: mode === "collapsed" && get().tucked,
+        vertical: get().vertical,
+      });
+    return {
+      mode: initialMode,
+      size: ISLAND_SIZE[initialMode],
 
-    bubbleWidth: ISLAND_SIZE.collapsed.width,
-    dockWidth: 0,
-    expandedSize: ISLAND_SIZE.expanded,
-    vertical: false,
+      bubbleWidth: ISLAND_SIZE.collapsed.width,
+      dockWidth: 0,
+      expandedSize: ISLAND_SIZE.expanded,
+      vertical: false,
+      tucked: false,
 
-    setVertical: async (vertical) => {
-      if (vertical === get().vertical) return;
-      set({ vertical });
-      if (get().mode === "collapsed") await get().request("collapsed");
-    },
+      setTucked: async (tucked) => {
+        const { mode, size } = get();
+        if (tucked === get().tucked || (tucked && mode !== "collapsed")) return;
+        if (tucked) {
+          set({ tucked });
+          return;
+        }
+        // Room first, then slide out (the island animates once `tucked` flips).
+        await resizeTo(windowSizeFor(mode, size, get().dockWidth, { vertical: get().vertical }));
+        set({ tucked });
+      },
 
-    setExpandedSize: async (size) => {
-      if (sameSize(get().expandedSize, size)) return;
-      set({ expandedSize: size });
-      if (get().mode === "expanded") await get().request("expanded");
-    },
+      setVertical: async (vertical) => {
+        if (vertical === get().vertical) return;
+        set({ vertical });
+        if (get().mode === "collapsed") await get().request("collapsed");
+      },
 
-    setDockWidth: async (width) => {
-      if (width === get().dockWidth) return;
-      set({ dockWidth: width });
-      if (get().mode === "expanded") await resizeTo(windowSizeFor("expanded", get().size, width));
-    },
+      setExpandedSize: async (size) => {
+        if (sameSize(get().expandedSize, size)) return;
+        set({ expandedSize: size });
+        if (get().mode === "expanded") await get().request("expanded");
+      },
 
-    setBubbleWidth: async (width) => {
-      if (width === get().bubbleWidth) return;
-      set({ bubbleWidth: width });
-      if (get().mode === "collapsed") await get().request("collapsed");
-    },
+      setDockWidth: async (width) => {
+        if (width === get().dockWidth) return;
+        set({ dockWidth: width });
+        if (get().mode === "expanded") await resizeTo(windowFor("expanded", get().size));
+      },
 
-    request: async (mode, requested) => {
-      const wanted =
-        requested ??
-        (mode === "collapsed"
-          ? { ...ISLAND_SIZE.collapsed, width: get().bubbleWidth }
-          : mode === "expanded"
-            ? get().expandedSize
-            : ISLAND_SIZE[mode]);
-      // Upright on a side: the bubble's length runs down the screen edge.
-      const size =
-        mode === "collapsed" && get().vertical ? { width: wanted.height, height: wanted.width } : wanted;
-      const current = get();
-      if (mode === current.mode && sameSize(current.size, size)) return;
-      const requestId = ++latestRequest;
-      // Never shrink here, only grow: the island may still be animating down from something
-      // bigger (the bubble refits while it collapses). `settle` trims once it lands.
-      const target = unionSize(
-        windowSizeFor(current.mode, current.size, current.dockWidth),
-        windowSizeFor(mode, size, current.dockWidth),
-      );
-      await resizeTo(windowSize ? unionSize(windowSize, target) : target);
-      // A newer request arrived while we were resizing; let it win.
-      if (requestId !== latestRequest) return;
-      set({ mode, size });
-    },
+      setBubbleWidth: async (width) => {
+        if (width === get().bubbleWidth) return;
+        set({ bubbleWidth: width });
+        if (get().mode === "collapsed") await get().request("collapsed");
+      },
 
-    toggleExpanded: () => get().request(get().mode === "expanded" ? "collapsed" : "expanded"),
+      request: async (mode, requested) => {
+        const wanted =
+          requested ??
+          (mode === "collapsed"
+            ? { ...ISLAND_SIZE.collapsed, width: get().bubbleWidth }
+            : mode === "expanded"
+              ? get().expandedSize
+              : ISLAND_SIZE[mode]);
+        // Upright on a side: the bubble's length runs down the screen edge.
+        const size =
+          mode === "collapsed" && get().vertical ? { width: wanted.height, height: wanted.width } : wanted;
+        const current = get();
+        if (mode === current.mode && sameSize(current.size, size)) return;
+        const requestId = ++latestRequest;
+        // Never shrink here, only grow: the island may still be animating down from something
+        // bigger (the bubble refits while it collapses). `settle` trims once it lands.
+        const target = unionSize(
+          windowFor(current.mode, current.size),
+          windowSizeFor(mode, size, current.dockWidth, { vertical: current.vertical }),
+        );
+        await resizeTo(windowSize ? unionSize(windowSize, target) : target);
+        // A newer request arrived while we were resizing; let it win.
+        if (requestId !== latestRequest) return;
+        // Anything that needs the island (a card, a click, a shortcut) brings it out of hiding.
+        set(mode === "collapsed" ? { mode, size } : { mode, size, tucked: false });
+      },
 
-    settle: () => resizeTo(windowSizeFor(get().mode, get().size, get().dockWidth)),
+      toggleExpanded: () => get().request(get().mode === "expanded" ? "collapsed" : "expanded"),
 
-    refit: () => {
-      windowSize = null;
-      return resizeTo(windowSizeFor(get().mode, get().size, get().dockWidth));
-    },
-  }));
+      settle: () => resizeTo(windowFor(get().mode, get().size)),
+
+      refit: () => {
+        windowSize = null;
+        return resizeTo(windowFor(get().mode, get().size));
+      },
+    };
+  });
 }

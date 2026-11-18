@@ -13,6 +13,13 @@
   flex-direction: column-reverse;
 }
 
+/* Holds the island and its shoulders; auto-hide slides this into the screen edge. */
+.island-anchor {
+  position: relative;
+  flex: none;
+  display: flex;
+}
+
 .island {
   position: relative;
   flex: none;
@@ -25,6 +32,75 @@
   /* Hairline so the island reads against dark wallpapers too. */
   outline: 1px solid var(--border);
   outline-offset: -1px;
+}
+
+/* Attached to the screen edge: no outline along the edge itself (it would draw a line across
+   the top of the screen), just a hairline down the sides and along the open edge. */
+.island-frame[data-attached] .island {
+  outline: none;
+}
+
+.island-frame[data-attached] .island::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border: 1px solid var(--border);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.island-frame[data-attached][data-edge="top"] .island::after {
+  border-top: 0;
+}
+
+.island-frame[data-attached][data-edge="bottom"] .island::after {
+  border-bottom: 0;
+}
+
+.island-frame[data-attached][data-edge="left"] .island::after {
+  border-left: 0;
+}
+
+.island-frame[data-attached][data-edge="right"] .island::after {
+  border-right: 0;
+}
+
+/* Shoulders: small concave curves either side, so the notch flows out of the screen edge
+   like a hardware notch instead of looking like a box stuck to it. SHOULDER in geometry.ts. */
+.island-shoulder {
+  position: absolute;
+  top: 0;
+  width: 10px;
+  height: 10px;
+  pointer-events: none;
+}
+
+.island-shoulder--start {
+  left: -10px;
+  background: radial-gradient(circle at 0 100%, transparent 9.5px, var(--island-bg, var(--background)) 10px);
+}
+
+.island-shoulder--end {
+  right: -10px;
+  background: radial-gradient(
+    circle at 100% 100%,
+    transparent 9.5px,
+    var(--island-bg, var(--background)) 10px
+  );
+}
+
+.island-frame[data-edge="bottom"] .island-shoulder {
+  top: auto;
+  bottom: 0;
+}
+
+.island-frame[data-edge="bottom"] .island-shoulder--start {
+  background: radial-gradient(circle at 0 0, transparent 9.5px, var(--island-bg, var(--background)) 10px);
+}
+
+.island-frame[data-edge="bottom"] .island-shoulder--end {
+  background: radial-gradient(circle at 100% 0, transparent 9.5px, var(--island-bg, var(--background)) 10px);
 }
 
 .island-hit {
@@ -241,9 +317,13 @@
   --on-active: #0a0a0a;
 }
 
-/* Settings → Look: a bubble that's invisible until the pointer reaches it. */
-.island[data-mode="collapsed"][data-bubble="hidden"]:not(:hover) {
-  opacity: 0;
+/* Auto-hide (Resting bubble → Auto-hide): the bubble slides into the screen edge (Island.tsx
+   animates .island-anchor) and this strip along the edge brings it back when you point there. */
+.island-edge-strip {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: auto;
 }
 
 .island[data-bubble="dot"] .island-content--collapsed > :not(.island-attention) {
